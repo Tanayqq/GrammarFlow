@@ -9,21 +9,14 @@ const PORT = process.env.PORT || 3000;
 const startTime = Date.now();
 
 // 1. Production-ready CORS (Multi-Platform Support)
-const allowedOrigins = [
-    'http://localhost:5500',
-    'http://127.0.0.1:5500',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-];
-
 app.use(cors({
     origin: function (origin, callback) {
-        if (!origin) return callback(null, true);
-        const isLocal = origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1');
-        const isExtension = origin.startsWith('chrome-extension://');
-        const isProduction = allowedOrigins.includes(origin);
-
-        if (isLocal || isExtension || isProduction) {
+        // Allow local dev, extensions, and our specific Vercel production site
+        if (!origin || 
+            origin.startsWith('http://localhost') || 
+            origin.startsWith('http://127.0.0.1') || 
+            origin.startsWith('chrome-extension://') ||
+            origin.includes('vercel.app')) {
             callback(null, true);
         } else {
             console.warn(`[CORS] Blocked origin: ${origin}`);
