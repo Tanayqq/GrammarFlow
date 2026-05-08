@@ -1,0 +1,129 @@
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const aiRoutes = require('./src/routes/ai.routes');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+const startTime = Date.now();
+
+// 1. Production-ready CORS (Multi-Platform Support)
+const allowedOrigins = [
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        if (!origin) return callback(null, true);
+        const isLocal = origin.startsWith('http://localhost') || origin.startsWith('http://127.0.0.1');
+        const isExtension = origin.startsWith('chrome-extension://');
+        const isProduction = allowedOrigins.includes(origin);
+
+        if (isLocal || isExtension || isProduction) {
+            callback(null, true);
+        } else {
+            console.warn(`[CORS] Blocked origin: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
+}));
+
+app.use(express.json());
+
+// 2. Custom Lightweight Logger
+app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        const duration = Date.now() - start;
+        const status = res.statusCode;
+        const method = req.method;
+        const url = req.originalUrl;
+        const timestamp = new Date().toISOString();
+        const statusColor = status >= 400 ? '\x1b[31m' : '\x1b[32m';
+        console.log(`[\x1b[36m${timestamp}\x1b[0m] ${method} ${url} ${statusColor}${status}\x1b[0m - ${duration}ms`);
+    });
+    next();
+});
+
+// 3. Consolidated Health & Diagnostics
+const getHealthStatus = () => {
+    const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+    const memory = process.memoryUsage();
+    return {
+        success: true,
+        data: {
+            status: 'UP',
+            uptime: `${uptimeSeconds}s`,
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV || 'development',
+            version: '1.2.0',
+            system: {
+                nodeVersion: process.version,
+                memoryUsage: {
+                    rss: `${Math.round(memory.rss / 1024 / 1024)}MB`,
+                    heapUsed: `${Math.round(memory.heapUsed / 1024 / 1024)}MB`
+                }
+            }
+        }
+    };
+};
+
+app.get('/api/v1/health', (req, res) => res.json(getHealthStatus()));
+app.get('/health', (req, res) => res.json(getHealthStatus()));
+
+// 4. Rate Limiting Protection (Memory-based)
+const rateLimitMap = new Map();
+const RATE_LIMIT_WINDOW = 60 * 1000;
+const MAX_REQUESTS = 100;
+
+app.use('/api', (req, res, next) => {
+    const ip = req.ip;
+    const now = Date.now();
+    const userData = rateLimitMap.get(ip) || { count: 0, startTime: now };
+
+    if (now - userData.startTime > RATE_LIMIT_WINDOW) {
+        userData.count = 1;
+        userData.startTime = now;
+    } else {
+        userData.count++;
+    }
+
+    rateLimitMap.set(ip, userData);
+
+    if (userData.count > MAX_REQUESTS) {
+        return res.status(429).json({
+            success: false,
+            error: { message: 'Too many requests. Please try again later.', code: 'RATE_LIMIT_EXCEEDED' }
+        });
+    }
+    next();
+});
+
+// 5. API Routes
+app.use('/api/v1', aiRoutes);
+
+// 6. Global Error Handling
+app.use((err, req, res, next) => {
+    console.error(`[\x1b[31mERROR\x1b[0m] ${new Date().toISOString()} - ${err.message}`);
+    res.status(err.status || 500).json({
+        success: false,
+        error: {
+            message: err.message || 'Internal Server Error',
+            code: err.code || 'SERVER_ERROR'
+        }
+    });
+});
+
+// 7. Start Server
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`\x1b[36m%s\x1b[0m`, `--------------------------------------------------`);
+    console.log(`\x1b[32m%s\x1b[0m`, `GrammarFlow Production Backend Active!`);
+    console.log(`\x1b[33m%s\x1b[0m`, `Port: ${PORT} | Mode: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`\x1b[36m%s\x1b[0m`, `--------------------------------------------------`);
+});
