@@ -128,17 +128,27 @@ class ContextAnalyzer {
 
     _detectIntent(text) {
         const t = text.toLowerCase();
-        // Indian casual markers
-        const casualSignals  = ['yaar', 'bhai', 'bro', 'man', 'lol', 'haha', 'arre', 'accha', 'theek', 'chill', 'tbh'];
-        const formalSignals  = ['however', 'therefore', 'accordingly', 'furthermore', 'whereas', 'thus', 'hence', 'pursuant'];
-        const emotionalSignals = ['feel', 'felt', 'hurt', 'love', 'miss', 'happy', 'sad', 'anxious', 'scared', 'proud', 'grateful'];
+        // Indian casual markers — Hinglish + Telugu-English + Kannada-English
+        const casualSignals = [
+            // Hinglish
+            'yaar', 'bhai', 'bro', 'man', 'lol', 'haha', 'arre', 'accha', 'theek', 'chill',
+            // Telugu casual
+            'ra', 'raa', 'anna', 'akka', 'naaku', 'nenu', 'chaala', 'konchem', 'manchi', 'undi', 'ante',
+            // Kannada casual
+            'ri', 'ree', 'kano', 'nanu', 'namma', 'swalpa', 'tumba', 'chennagi', 'bega', 'ide'
+        ];
+        const formalSignals = ['however', 'therefore', 'accordingly', 'furthermore', 'whereas', 'thus', 'hence', 'pursuant'];
+        const emotionalSignals = [
+            'feel', 'felt', 'hurt', 'love', 'miss', 'happy', 'sad', 'anxious', 'scared', 'proud', 'grateful',
+            'kastanga', 'manchidi', 'kastam', 'kashta', 'chennagide'
+        ];
 
         const score = (list) => list.filter(w => t.includes(w)).length;
         const c = score(casualSignals), f = score(formalSignals), e = score(emotionalSignals);
 
         if (e >= 2 && e >= c && e >= f) return 'emotional';
         if (f >= 2 && f > c) return 'professional';
-        if (c >= 2) return 'casual';
+        if (c >= 1) return 'casual';
         return 'neutral';
     }
 
