@@ -200,7 +200,7 @@ input:checked + .slider:before { transform: translateX(20px); }
                 this.lastKeystroke = Date.now();
                 this.emaSpeed = 0; 
                 this.alpha = 0.25; 
-                this.thresholds = { fast: 350, slow: 1200 };
+                this.thresholds = { fast: 300, slow: 900 };
             }
 
             recordStroke() {
@@ -213,9 +213,9 @@ input:checked + .slider:before { transform: translateX(20px); }
             }
 
             getDynamicDebounce() {
-                if (this.emaSpeed < this.thresholds.fast) return 4000; 
-                if (this.emaSpeed > this.thresholds.slow) return 700;
-                return 1600; 
+                if (this.emaSpeed < this.thresholds.fast) return 3500; 
+                if (this.emaSpeed > this.thresholds.slow) return 600;
+                return 1400; 
             }
         }
 
@@ -288,14 +288,15 @@ input:checked + .slider:before { transform: translateX(20px); }
                             text, language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
                         });
 
-                        // Stale Response Check: Only proceed if this is still the latest request
+                        // Stale Response Check
                         if (requestId !== lastRequestId) return;
 
                         if (res.success && res.data && res.data.length > 0) {
                             const sug = res.data[0];
                             
-                            // Constraint: SILENCE IS VALID (Confidence Check)
-                            if (sug.confidence < 0.75) {
+                            // Constraint: SILENCE IS VALID (Confidence Threshold: 0.6)
+                            if (sug.confidence < 0.6) {
+                                console.log("[Calm] Low confidence suggestion suppressed:", sug.confidence);
                                 UI.assistantBar.classList.remove("visible");
                                 UI.appLogo.classList.remove("notifying");
                                 return;
