@@ -1,10 +1,17 @@
 {
   "version": 2,
   "name": "grammarflow-web",
+  "public": true,
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": "/index.html" }
   ],
   "headers": [
+    {
+      "source": "/(.+)\\.(js|css|png|ico|svg|woff2?)$",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    },
     {
       "source": "/(.*)",
       "headers": [
