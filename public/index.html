@@ -100,40 +100,23 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 .assistant-bar {
     position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(150px);
-    width: 90%; max-width: 650px; background: #11111B; 
-    border: 1px solid #2D2D44; border-radius: 20px; padding: 16px 24px;
-    display: flex; align-items: center; gap: 20px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
-    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); z-index: 1000;
+    width: 95%; max-width: 680px; background: rgba(17, 17, 27, 0.95); 
+    backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); 
+    border-radius: 24px; padding: 18px 28px;
+    display: flex; align-items: center; gap: 20px; 
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    transition: all 0.8s cubic-bezier(0.19, 1, 0.22, 1); z-index: 1000;
+    opacity: 0; pointer-events: none;
 }
-.assistant-bar.visible { transform: translateX(-50%) translateY(0); }
-.assistant-icon { 
-    width: 32px; height: 32px; background: var(--primary-gradient); 
-    border-radius: 8px; display: flex; align-items: center; justify-content: center; 
-}
-.suggestion-content { flex-grow: 1; }
-.suggestion-label { 
-    font-size: 0.75rem; font-weight: 800; color: #A855F7; 
-    text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;
-}
-.suggestion-text { font-size: 1rem; color: #E4E4E7; }
-.suggestion-text b { color: var(--accent-green); }
-.apply-btn { 
-    background: var(--accent-green); color: white; border: none; 
-    padding: 10px 24px; border-radius: 10px; cursor: pointer; 
-    font-weight: 700; font-size: 1rem;
-}
-
-.hidden { display: none !important; }
-.spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; margin: 40px auto; }
-@keyframes spin { to { transform: rotate(360deg); } }
-
-.error-message { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 16px; color: #FCA5A5; font-size: 0.9rem; }
+.assistant-bar.visible { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: all; }
+.logo-circle.notifying { box-shadow: 0 0 20px rgba(168, 85, 247, 0.6); animation: pulse 2s infinite; }
+@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
     <div class="app-container">
         <header class="app-header">
-            <div class="logo-circle"></div>
+            <div class="logo-circle" id="appLogo"></div>
             <h1>GrammarFlow</h1>
         </header>
 
@@ -143,8 +126,8 @@ input:checked + .slider:before { transform: translateX(20px); }
             </div>
             
             <div class="controls">
-                <select id="styleSelect"><option>Formal</option><option>Casual</option><option>Concise</option></select>
-                <select id="toneSelect"><option>Polite</option><option>Friendly</option><option>Direct</option></select>
+                <select id="styleSelect"><option>Casual</option><option>Formal</option><option>Concise</option></select>
+                <select id="toneSelect"><option>Friendly</option><option>Polite</option><option>Direct</option></select>
                 <select id="languageSelect">
                     <option value="Auto">Auto-Detect</option>
                     <option value="English">English</option>
@@ -211,7 +194,33 @@ input:checked + .slider:before { transform: translateX(20px); }
             }
         };
 
+        // --- PHASE 3: MOMENTUM ENGINE ---
+        class MomentumEngine {
+            constructor() {
+                this.lastKeystroke = Date.now();
+                this.emaSpeed = 0; 
+                this.alpha = 0.25; 
+                this.thresholds = { fast: 350, slow: 1200 };
+            }
+
+            recordStroke() {
+                const now = Date.now();
+                const delta = now - this.lastKeystroke;
+                this.lastKeystroke = now;
+                if (delta > 0 && delta < 5000) {
+                    this.emaSpeed = (this.alpha * delta) + ((1 - this.alpha) * this.emaSpeed);
+                }
+            }
+
+            getDynamicDebounce() {
+                if (this.emaSpeed < this.thresholds.fast) return 4000; 
+                if (this.emaSpeed > this.thresholds.slow) return 700;
+                return 1600; 
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
+            const momentum = new MomentumEngine();
             const UI = {
                 inputText: document.getElementById("inputText"),
                 styleSelect: document.getElementById("styleSelect"),
@@ -225,8 +234,14 @@ input:checked + .slider:before { transform: translateX(20px); }
                 resultsList: document.getElementById("resultsList"),
                 assistantBar: document.getElementById("assistantBar"),
                 suggestionText: document.getElementById("suggestionText"),
-                applyBtn: document.getElementById("applySuggestionBtn")
+                suggestionLabel: document.getElementById("suggestionLabel"),
+                applyBtn: document.getElementById("applySuggestionBtn"),
+                appLogo: document.getElementById("appLogo")
             };
+
+            let assistantTimer = null;
+            let currentSuggestion = null;
+            let lastRequestId = 0;
 
             const setBusy = (busy) => {
                 UI.rewriteBtn.disabled = busy;
@@ -250,6 +265,64 @@ input:checked + .slider:before { transform: translateX(20px); }
                     UI.resultsList.appendChild(card);
                 });
             };
+
+            // Real-time Momentum & Race-Condition Logic
+            UI.inputText.addEventListener("keydown", () => momentum.recordStroke());
+
+            UI.inputText.addEventListener("input", () => {
+                clearTimeout(assistantTimer);
+                
+                if (UI.inputText.value.trim().length < 8) {
+                    UI.assistantBar.classList.remove("visible");
+                    UI.appLogo.classList.remove("notifying");
+                    return;
+                }
+
+                const debounceTime = momentum.getDynamicDebounce();
+                const requestId = ++lastRequestId;
+                
+                assistantTimer = setTimeout(async () => {
+                    const text = UI.inputText.value.trim();
+                    try {
+                        const res = await GrammarFlowAPI.request("/analyze-realtime", {
+                            text, language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
+                        });
+
+                        // Stale Response Check: Only proceed if this is still the latest request
+                        if (requestId !== lastRequestId) return;
+
+                        if (res.success && res.data && res.data.length > 0) {
+                            const sug = res.data[0];
+                            
+                            // Constraint: SILENCE IS VALID (Confidence Check)
+                            if (sug.confidence < 0.75) {
+                                UI.assistantBar.classList.remove("visible");
+                                UI.appLogo.classList.remove("notifying");
+                                return;
+                            }
+                            
+                            if (currentSuggestion?.suggestion === sug.suggestion) return;
+                            
+                            currentSuggestion = sug;
+                            UI.suggestionLabel.innerText = sug.category || "AUTHENTICITY";
+                            UI.suggestionText.innerHTML = `Consider: "<b>${sug.suggestion}</b>" <span style="opacity: 0.5; font-size: 0.8rem; margin-left: 8px;">(${sug.reason})</span>`;
+                            
+                            UI.assistantBar.classList.add("visible");
+                            UI.appLogo.classList.add("notifying");
+
+                            UI.applyBtn.onclick = () => {
+                                UI.inputText.value = UI.inputText.value.replace(sug.original, sug.suggestion);
+                                UI.assistantBar.classList.remove("visible");
+                                UI.appLogo.classList.remove("notifying");
+                                currentSuggestion = null;
+                            };
+                        } else {
+                            UI.assistantBar.classList.remove("visible");
+                            UI.appLogo.classList.remove("notifying");
+                        }
+                    } catch (e) { /* Silent for calm experience */ }
+                }, debounceTime);
+            });
 
             UI.rewriteBtn.onclick = async () => {
                 const text = UI.inputText.value.trim();
