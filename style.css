@@ -154,10 +154,15 @@ input:checked + .slider:before { transform: translateX(20px); }
     z-index: 0; /* Keep behind textarea text but above background */
 }
 
-/* Underline-only highlights — no background fills that bleed */
-.highlight-grammar { border-bottom: 3px solid #FF6584; border-radius: 0; }
-.highlight-tone { border-bottom: 3px solid #A855F7; border-radius: 0; }
+/* Phase 3: Underline-only highlights — no background fills that bleed */
+.highlight-grammar      { border-bottom: 3px solid #FF6584; border-radius: 0; }
+.highlight-tone         { border-bottom: 3px solid #A855F7; border-radius: 0; }
 .highlight-authenticity { border-bottom: 3px solid #22C55E; border-radius: 0; }
+
+/* Phase 4: Smart Suggestion categories */
+.highlight-clarity    { border-bottom: 3px solid #38BDF8; border-radius: 0; } /* sky blue */
+.highlight-flow       { border-bottom: 3px solid #F59E0B; border-radius: 0; } /* amber */
+.highlight-transition { border-bottom: 3px solid #FB923C; border-radius: 0; } /* coral */
 
 .hidden { display: none !important; }
 .spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1); border-top-color: var(--primary-color); border-radius: 50%; animation: spin 1s linear infinite; margin: 40px auto; }

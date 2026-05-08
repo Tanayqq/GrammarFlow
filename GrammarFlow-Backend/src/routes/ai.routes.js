@@ -6,6 +6,7 @@ router.post('/rewrite', aiController.rewrite);
 router.post('/grammar-fix', aiController.grammarFix);
 router.post('/suggestions', aiController.suggestions);
 router.post('/autocomplete', aiController.autocomplete);
-router.post('/analyze-realtime', aiController.analyzeRealtime);
+router.post('/analyze-realtime', aiController.analyzeRealtime);       // Phase 3 (sentence-level)
+router.post('/analyze-smart', aiController.analyzeSmartSuggestions);  // Phase 4 (paragraph-level)
 
 module.exports = router;
