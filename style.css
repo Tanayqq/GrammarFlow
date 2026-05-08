@@ -34,7 +34,7 @@ body { background-color: var(--bg-dark); color: var(--text-main); display: flex;
 }
 
 /* Editor Sync */
-.editor-container { position: relative; margin-bottom: 24px; }
+.editor-container { position: relative; margin-bottom: 24px; overflow: hidden; border-radius: 16px; }
 textarea#inputText {
     width: 100%; height: 200px; background: rgba(26, 26, 46, 0.5); 
     color: var(--text-main); border: 1px solid var(--border-color); 
@@ -128,6 +128,9 @@ input:checked + .slider:before { transform: translateX(20px); }
     font-size: 1.1rem; line-height: 1.6; font-family: 'Inter', sans-serif;
     color: transparent; white-space: pre-wrap; word-wrap: break-word;
     pointer-events: none; z-index: 1;
+    overflow: hidden; /* Prevent highlights bleeding outside textarea */
+    border-radius: 16px; /* Match textarea border-radius */
+    box-sizing: border-box;
 }
 
 .highlight-grammar { border-bottom: 4px solid #FF6584; background: rgba(255, 101, 132, 0.2); border-radius: 2px; }
