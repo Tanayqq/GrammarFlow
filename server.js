@@ -90,6 +90,16 @@ app.use('/api', (req, res, next) => {
 // 5. API Routes
 app.use('/api/v1', aiRoutes);
 
+// 6. Static Frontend Serving (Phase 3 Unified Architecture)
+// Serves the web app from the root directory
+app.use(express.static(path.join(__dirname)));
+
+// Fallback to index.html for SPA-like behavior (Phase 3 Final Middleware)
+app.use((req, res) => {
+    if (req.url.startsWith('/api')) return res.status(404).json({ success: false, error: { message: 'API route not found' } });
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // 6. Global Error Handling
 app.use((err, req, res, next) => {
     console.error(`[\x1b[31mERROR\x1b[0m] ${new Date().toISOString()} - ${err.message}`);

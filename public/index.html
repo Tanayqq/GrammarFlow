@@ -7,111 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-:root {
-    --bg-dark: #0A0A0F;
-    --card-bg: #12121E;
-    --input-bg: #1A1A2E;
-    --border-color: #2D2D44;
-    --text-main: #F8F9FA;
-    --text-muted: #9494B8;
-    --primary-color: #6366F1;
-    --primary-gradient: linear-gradient(135deg, #6366F1 0%, #A855F7 100%);
-    --button-gradient: linear-gradient(90deg, #6366F1 0%, #A855F7 100%);
-    --accent-green: #22C55E;
-    --accent-purple: #A855F7;
-    --shadow-glow: 0 4px 20px rgba(99, 102, 241, 0.3);
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-body { background-color: var(--bg-dark); color: var(--text-main); display: flex; justify-content: center; min-height: 100vh; padding: 60px 20px; line-height: 1.6; }
-
-.app-container { width: 100%; max-width: 800px; }
-
-.app-header { display: flex; align-items: center; gap: 16px; margin-bottom: 40px; padding-left: 10px; }
-.logo-circle { width: 44px; height: 44px; border-radius: 12px; background: var(--primary-gradient); }
-.app-header h1 { font-size: 1.8rem; font-weight: 800; color: #7C3AED; }
-
-.glass-card { 
-    background: rgba(18, 18, 30, 0.8); 
-    backdrop-filter: blur(20px);
-    border-radius: 24px; 
-    padding: 32px; 
-    border: 1px solid var(--border-color);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
-}
-
-.editor-container { position: relative; margin-bottom: 24px; }
-textarea#inputText {
-    width: 100%; height: 200px; background: rgba(26, 26, 46, 0.5); 
-    color: var(--text-main); border: 1px solid var(--border-color); 
-    border-radius: 16px; padding: 24px; font-size: 1.1rem; line-height: 1.6;
-    resize: none; transition: border-color 0.3s;
-}
-textarea#inputText:focus { outline: none; border-color: var(--primary-color); }
-
-.controls { display: grid; grid-template-columns: 1fr 1fr 1.5fr 1.2fr; gap: 16px; margin-bottom: 32px; }
-select { 
-    appearance: none; width: 100%; height: 56px; 
-    background: #1A1A2E; color: var(--text-main); 
-    border: 1px solid var(--border-color); border-radius: 14px; 
-    padding: 0 20px; cursor: pointer; font-size: 1rem; font-weight: 500;
-}
-
-.humanize-wrapper { 
-    display: flex; align-items: center; justify-content: space-between; 
-    padding: 0 20px; background: #1A1A2E; border: 1px solid var(--border-color); 
-    border-radius: 14px; height: 56px; 
-}
-.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
-.switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #3F3F46; transition: .4s; border-radius: 34px; }
-.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
-input:checked + .slider { background: var(--button-gradient); }
-input:checked + .slider:before { transform: translateX(20px); }
-
-.button-group { display: flex; gap: 16px; margin-top: 10px; }
-.secondary-btn { 
-    flex: 1; height: 60px; background: #1E1E36; color: var(--text-main); 
-    border: 1px solid var(--border-color); border-radius: 16px; 
-    cursor: pointer; font-weight: 600; font-size: 1rem;
-}
-.primary-btn { 
-    flex: 2; height: 60px; background: var(--button-gradient); 
-    color: white; border: none; border-radius: 16px; 
-    font-weight: 700; font-size: 1.1rem; cursor: pointer; 
-    box-shadow: var(--shadow-glow);
-}
-
-.output-section { margin-top: 40px; padding-top: 32px; border-top: 1px solid var(--border-color); }
-.result-card { 
-    background: #1A1A2E; border: 1px solid var(--border-color); 
-    border-radius: 20px; padding: 24px; margin-bottom: 16px;
-    font-size: 1.1rem; line-height: 1.7; position: relative;
-}
-
-.copy-btn-mini {
-    position: absolute; top: 12px; right: 12px; background: rgba(255,255,255,0.05);
-    border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-muted);
-    width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; transition: all 0.2s;
-}
-.copy-btn-mini:hover { background: rgba(255,255,255,0.1); color: white; }
-
-.assistant-bar {
-    position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(150px);
-    width: 95%; max-width: 680px; background: rgba(17, 17, 27, 0.95); 
-    backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); 
-    border-radius: 24px; padding: 18px 28px;
-    display: flex; align-items: center; gap: 20px; 
-    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
-    transition: all 0.8s cubic-bezier(0.19, 1, 0.22, 1); z-index: 1000;
-    opacity: 0; pointer-events: none;
-}
-.assistant-bar.visible { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: all; }
-.logo-circle.notifying { box-shadow: 0 0 20px rgba(168, 85, 247, 0.6); animation: pulse 2s infinite; }
-@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="app-container">
@@ -122,7 +18,8 @@ input:checked + .slider:before { transform: translateX(20px); }
 
         <main class="panel glass-card">
             <div class="editor-container">
-                <textarea id="inputText" placeholder="Start typing naturally..."></textarea>
+                <div id="highlighterOverlay" class="highlighter-overlay"></div>
+                <textarea id="inputText" placeholder="Start typing naturally..." spellcheck="false"></textarea>
             </div>
             
             <div class="controls">
@@ -138,7 +35,10 @@ input:checked + .slider:before { transform: translateX(20px); }
                 </select>
                 <div class="humanize-wrapper">
                     <span style="font-size: 0.85rem; font-weight: 500;">Human Mode</span>
-                    <label class="switch"><input type="checkbox" id="humanizeToggle" checked><span class="slider"></span></label>
+                    <label class="switch">
+                        <input type="checkbox" id="humanizeToggle" checked>
+                        <span class="slider"></span>
+                    </label>
                 </div>
             </div>
 
@@ -153,10 +53,15 @@ input:checked + .slider:before { transform: translateX(20px); }
             </div>
         </main>
 
+        <!-- Adaptive Suggestion Bar -->
         <div id="assistantBar" class="assistant-bar">
-            <div class="assistant-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg></div>
+            <div class="assistant-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+                </svg>
+            </div>
             <div class="suggestion-content">
-                <div class="suggestion-label" id="suggestionLabel">AUTHENTICITY</div>
+                <div class="suggestion-label" id="suggestionLabel">SUGGESTION</div>
                 <div class="suggestion-text" id="suggestionText">Loading suggestion...</div>
             </div>
             <div class="assistant-actions">
@@ -165,195 +70,6 @@ input:checked + .slider:before { transform: translateX(20px); }
         </div>
     </div>
 
-    <script>
-        const CONFIG = {
-            PRODUCTION_API_URL: "https://grammarflow-brain.onrender.com", 
-            API_VERSION: "/api/v1",
-            TIMEOUT_MS: 35000
-        };
-
-        const getBaseUrl = () => {
-            if (CONFIG.PRODUCTION_API_URL) return CONFIG.PRODUCTION_API_URL + CONFIG.API_VERSION;
-            const host = window.location.hostname;
-            const isLocal = host === 'localhost' || host === '127.0.0.1';
-            return isLocal ? `http://localhost:3000${CONFIG.API_VERSION}` : CONFIG.API_VERSION;
-        };
-
-        const GrammarFlowAPI = {
-            async request(endpoint, payload) {
-                try {
-                    const response = await fetch(`${getBaseUrl()}${endpoint}`, {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload)
-                    });
-                    const data = await response.json();
-                    if (!response.ok || !data.success) throw new Error(data.error?.message || "Server error");
-                    return data;
-                } catch (error) { throw error; }
-            }
-        };
-
-        // --- PHASE 3: MOMENTUM ENGINE ---
-        class MomentumEngine {
-            constructor() {
-                this.lastKeystroke = Date.now();
-                this.emaSpeed = 0; 
-                this.alpha = 0.25; 
-                this.thresholds = { fast: 300, slow: 900 };
-            }
-
-            recordStroke() {
-                const now = Date.now();
-                const delta = now - this.lastKeystroke;
-                this.lastKeystroke = now;
-                if (delta > 0 && delta < 5000) {
-                    this.emaSpeed = (this.alpha * delta) + ((1 - this.alpha) * this.emaSpeed);
-                }
-            }
-
-            getDynamicDebounce() {
-                if (this.emaSpeed < this.thresholds.fast) return 3500; 
-                if (this.emaSpeed > this.thresholds.slow) return 600;
-                return 1400; 
-            }
-        }
-
-        document.addEventListener("DOMContentLoaded", () => {
-            const momentum = new MomentumEngine();
-            const UI = {
-                inputText: document.getElementById("inputText"),
-                styleSelect: document.getElementById("styleSelect"),
-                toneSelect: document.getElementById("toneSelect"),
-                languageSelect: document.getElementById("languageSelect"),
-                humanizeToggle: document.getElementById("humanizeToggle"),
-                rewriteBtn: document.getElementById("rewriteBtn"),
-                fixGrammarBtn: document.getElementById("fixGrammarBtn"),
-                outputSection: document.getElementById("outputSection"),
-                loadingIndicator: document.getElementById("loadingIndicator"),
-                resultsList: document.getElementById("resultsList"),
-                assistantBar: document.getElementById("assistantBar"),
-                suggestionText: document.getElementById("suggestionText"),
-                suggestionLabel: document.getElementById("suggestionLabel"),
-                applyBtn: document.getElementById("applySuggestionBtn"),
-                appLogo: document.getElementById("appLogo")
-            };
-
-            let assistantTimer = null;
-            let currentSuggestion = null;
-            let lastRequestId = 0;
-
-            const setBusy = (busy) => {
-                UI.rewriteBtn.disabled = busy;
-                UI.fixGrammarBtn.disabled = busy;
-                if (busy) {
-                    UI.loadingIndicator.classList.remove("hidden");
-                    UI.outputSection.classList.remove("hidden");
-                    UI.resultsList.innerHTML = "";
-                } else {
-                    UI.loadingIndicator.classList.add("hidden");
-                }
-            };
-
-            const renderResults = (results) => {
-                UI.resultsList.innerHTML = "";
-                const data = Array.isArray(results) ? results : [results];
-                data.forEach(text => {
-                    const card = document.createElement("div");
-                    card.className = "result-card";
-                    card.innerHTML = `<div class="result-text">${text}</div>`;
-                    UI.resultsList.appendChild(card);
-                });
-            };
-
-            // Real-time Momentum & Race-Condition Logic
-            UI.inputText.addEventListener("keydown", () => momentum.recordStroke());
-
-            UI.inputText.addEventListener("input", () => {
-                clearTimeout(assistantTimer);
-                
-                if (UI.inputText.value.trim().length < 8) {
-                    UI.assistantBar.classList.remove("visible");
-                    UI.appLogo.classList.remove("notifying");
-                    return;
-                }
-
-                const debounceTime = momentum.getDynamicDebounce();
-                const requestId = ++lastRequestId;
-                
-                assistantTimer = setTimeout(async () => {
-                    const text = UI.inputText.value.trim();
-                    try {
-                        const res = await GrammarFlowAPI.request("/analyze-realtime", {
-                            text, language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
-                        });
-
-                        // Stale Response Check
-                        if (requestId !== lastRequestId) return;
-
-                        if (res.success && res.data && res.data.length > 0) {
-                            const sug = res.data[0];
-                            
-                            // Constraint: SILENCE IS VALID (Confidence Threshold: 0.6)
-                            if (sug.confidence < 0.6) {
-                                console.log("[Calm] Low confidence suggestion suppressed:", sug.confidence);
-                                UI.assistantBar.classList.remove("visible");
-                                UI.appLogo.classList.remove("notifying");
-                                return;
-                            }
-                            
-                            if (currentSuggestion?.suggestion === sug.suggestion) return;
-                            
-                            currentSuggestion = sug;
-                            UI.suggestionLabel.innerText = sug.category || "AUTHENTICITY";
-                            UI.suggestionText.innerHTML = `Consider: "<b>${sug.suggestion}</b>" <span style="opacity: 0.5; font-size: 0.8rem; margin-left: 8px;">(${sug.reason})</span>`;
-                            
-                            UI.assistantBar.classList.add("visible");
-                            UI.appLogo.classList.add("notifying");
-
-                            UI.applyBtn.onclick = () => {
-                                UI.inputText.value = UI.inputText.value.replace(sug.original, sug.suggestion);
-                                UI.assistantBar.classList.remove("visible");
-                                UI.appLogo.classList.remove("notifying");
-                                currentSuggestion = null;
-                            };
-                        } else {
-                            UI.assistantBar.classList.remove("visible");
-                            UI.appLogo.classList.remove("notifying");
-                        }
-                    } catch (e) { /* Silent for calm experience */ }
-                }, debounceTime);
-            });
-
-            UI.rewriteBtn.onclick = async () => {
-                const text = UI.inputText.value.trim();
-                if (!text) return;
-                setBusy(true);
-                try {
-                    const res = await GrammarFlowAPI.request("/rewrite", {
-                        text, style: UI.styleSelect.value, tone: UI.toneSelect.value,
-                        language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
-                    });
-                    renderResults(res.data);
-                } catch (e) {
-                    UI.resultsList.innerHTML = `<div class="error-message">${e.message}</div>`;
-                } finally { setBusy(false); }
-            };
-
-            UI.fixGrammarBtn.onclick = async () => {
-                const text = UI.inputText.value.trim();
-                if (!text) return;
-                setBusy(true);
-                try {
-                    const res = await GrammarFlowAPI.request("/grammar-fix", {
-                        text, language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
-                    });
-                    renderResults(res.data);
-                } catch (e) {
-                    UI.resultsList.innerHTML = `<div class="error-message">${e.message}</div>`;
-                } finally { setBusy(false); }
-            };
-        });
-    </script>
+    <script src="app.js"></script>
 </body>
 </html>

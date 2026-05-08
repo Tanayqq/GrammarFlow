@@ -131,9 +131,27 @@ const autocomplete = async (req, res, next) => {
 
 const analyzeRealtime = async (req, res, next) => {
     try {
-        const { text, language = "English", humanize = false } = req.body;
+        let { text, language = "English", humanize = false } = req.body;
         if (!text || text.trim().length < 3) {
             return sendResponse(res, true, []); // Return empty if too short
+        }
+
+        // Basic Language Detection for "Auto"
+        if (language === "Auto" || language === "Auto-Detect") {
+            const hasHindi = /[\u0900-\u097F]/.test(text);
+            const hasTelugu = /[\u0C00-\u0C7F]/.test(text);
+            const hasKannada = /[\u0CB0-\u0CFF]/.test(text);
+            
+            if (hasHindi) language = "Hindi";
+            else if (hasTelugu) language = "Telugu";
+            else if (hasKannada) language = "Kannada";
+            else {
+                // Check for Hinglish keywords or mix
+                const hinglishKeywords = ["hai", "hoon", "tha", "kya", "toh", "yaar", "bhai", "acha"];
+                const isHinglish = text.toLowerCase().split(/\W+/).some(w => hinglishKeywords.includes(w));
+                language = isHinglish ? "Hinglish" : "English";
+            }
+            console.log(`[Real-time] Auto-detected language: ${language}`);
         }
 
         const prompt = prompts.getStableRealtimePrompt(language, humanize);
