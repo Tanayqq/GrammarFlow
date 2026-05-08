@@ -61,13 +61,19 @@
                 </svg>
             </div>
             <div class="suggestion-content">
-                <div class="suggestion-label" id="suggestionLabel">SUGGESTION</div>
+                <div class="suggestion-header">
+                    <div class="suggestion-label" id="suggestionLabel">SUGGESTION</div>
+                    <div class="suggestion-counter" id="suggestionCounter"></div>
+                </div>
                 <div class="suggestion-text" id="suggestionText">Loading suggestion...</div>
             </div>
             <div class="assistant-actions">
+                <button id="prevSuggestionBtn" class="nav-btn" title="Previous">&#8592;</button>
+                <button id="nextSuggestionBtn" class="nav-btn" title="Next">&#8594;</button>
                 <button id="applySuggestionBtn" class="apply-btn">Apply</button>
             </div>
         </div>
+
     </div>
 
     <script src="app.js"></script>
