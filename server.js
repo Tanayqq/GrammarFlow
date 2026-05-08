@@ -8,30 +8,19 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const startTime = Date.now();
 
-// 1. Production-ready CORS (Multi-Platform Support)
+// 1. Production-ready CORS (Stabilized for Phase 3)
 app.use(cors({
-    origin: function (origin, callback) {
-        // Allow local dev, extensions, and our specific Vercel production site
-        if (!origin || 
-            origin.startsWith('http://localhost') || 
-            origin.startsWith('http://127.0.0.1') || 
-            origin.startsWith('chrome-extension://') ||
-            origin.includes('vercel.app')) {
-            callback(null, true);
-        } else {
-            console.warn(`[CORS] Blocked origin: ${origin}`);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    methods: ['GET', 'POST'],
+    origin: '*', 
+    methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true
 }));
 
 app.use(express.json());
 
-// 2. Custom Lightweight Logger
+// 2. Custom Lightweight Logger (Enhanced)
 app.use((req, res, next) => {
     const start = Date.now();
+    const origin = req.headers.origin || 'No Origin';
     res.on('finish', () => {
         const duration = Date.now() - start;
         const status = res.statusCode;
@@ -39,7 +28,7 @@ app.use((req, res, next) => {
         const url = req.originalUrl;
         const timestamp = new Date().toISOString();
         const statusColor = status >= 400 ? '\x1b[31m' : '\x1b[32m';
-        console.log(`[\x1b[36m${timestamp}\x1b[0m] ${method} ${url} ${statusColor}${status}\x1b[0m - ${duration}ms`);
+        console.log(`[\x1b[36m${timestamp}\x1b[0m] ${method} ${url} ${statusColor}${status}\x1b[0m - ${duration}ms - Origin: ${origin}`);
     });
     next();
 });
