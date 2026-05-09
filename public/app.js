@@ -174,23 +174,11 @@ class ContextAnalyzer {
 }
 
 // ─────────────────────────────────────────────
-// SENTENCE TRACKER — context extraction
+// CONTEXT EXTRACTOR — always sends full text
+// Replaces the fragile cursor-based SentenceTracker
+// that silently failed when cursor was after a period
 // ─────────────────────────────────────────────
-const SentenceTracker = {
-    getContext(text, cursorSource) {
-        // Long text: send the full paragraph to /analyze-smart
-        if (text.length >= 200) return text.trim();
-        // Short text: send active sentence to /analyze-realtime
-        const cursor = cursorSource.selectionStart;
-        const sentences = text.split(/([.!?\n])/);
-        let pos = 0;
-        for (let i = 0; i < sentences.length; i++) {
-            pos += sentences[i].length;
-            if (pos >= cursor) return (sentences[i] + (sentences[i + 1] || '')).trim();
-        }
-        return text.trim();
-    }
-};
+const getAnalysisContext = (text) => text.trim();
 
 // ─────────────────────────────────────────────
 // APP BOOTSTRAP
@@ -321,7 +309,8 @@ document.addEventListener("DOMContentLoaded", () => {
         UI.appLogo.classList.add("notifying");
 
         assistantTimer = setTimeout(async () => {
-            const context = SentenceTracker.getContext(rawText, UI.inputText);
+            // Always analyze the full text — simple, reliable, no cursor bugs
+            const context = getAnalysisContext(rawText);
             if (context.length < 5) { UI.appLogo.classList.remove("notifying"); return; }
 
             // Phase 4: paragraph mode for long text, sentence mode for short
