@@ -11,6 +11,9 @@
     <!-- Document Processing Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.1.0/build/index.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -91,7 +94,18 @@
 
             <div id="outputSection" class="output-section hidden">
                 <div id="loadingIndicator" class="spinner hidden"></div>
+                <div id="resumePrompt" class="resume-prompt hidden">
+                    <p>Found a previous session for this file. Resume from where you left off?</p>
+                    <div class="button-group mini">
+                        <button id="resumeYesBtn" class="primary-btn">Yes, Resume</button>
+                        <button id="resumeNoBtn" class="secondary-btn">Start Fresh</button>
+                    </div>
+                </div>
                 <div class="results-list" id="resultsList"></div>
+                <div id="exportControls" class="export-controls hidden">
+                    <button id="downloadPdfBtn" class="export-btn pdf">Download PDF</button>
+                    <button id="downloadDocxBtn" class="export-btn docx">Download Word</button>
+                </div>
             </div>
         </main>
 

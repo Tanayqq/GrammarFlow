@@ -535,7 +535,34 @@ document.addEventListener("DOMContentLoaded", () => {
             return combinedText.trim();
         }
 
-        chunkText(text, maxChars = 8000) {
+        async extractAll() {
+            let combinedText = "";
+            for (const file of this.files) {
+                if (file.type === "application/pdf") {
+                    combinedText += await this.extractPdfText(file) + "\\n\\n";
+                } else if (file.type.startsWith("image/")) {
+                    combinedText += await this.extractImageText(file) + "\\n\\n";
+                }
+            }
+            return combinedText.trim();
+        }
+
+        getLanguageWeight(lang) {
+            const weights = {
+                'English': 1.0,
+                'Hinglish': 1.8,
+                'Telugu': 2.5,
+                'Kannada': 2.5,
+                'Hindi': 2.2
+            };
+            return weights[lang] || 1.5;
+        }
+
+        chunkText(text, language = 'English') {
+            const weight = this.getLanguageWeight(language);
+            const baseMaxChars = 12000;
+            const maxChars = Math.floor(baseMaxChars / weight);
+            
             if (text.length <= maxChars) return [text];
             const chunks = [];
             let currentIdx = 0;
@@ -546,27 +573,27 @@ document.addEventListener("DOMContentLoaded", () => {
                     chunks.push(text.substring(currentIdx));
                     break;
                 }
-                // Try to find a paragraph break
-                let breakIdx = text.lastIndexOf("\\n\\n", endIdx);
+                
+                // Smart boundary detection: Try sections first, then paragraphs, then sentences
+                let breakIdx = text.lastIndexOf("\\n# ", endIdx); // Markdown Heading
+                if (breakIdx <= currentIdx) breakIdx = text.lastIndexOf("\\n\\n", endIdx); // Paragraph
+                if (breakIdx <= currentIdx) breakIdx = text.lastIndexOf(". ", endIdx); // Sentence
+                
                 if (breakIdx <= currentIdx) {
-                    // Fallback to sentence break
-                    breakIdx = text.lastIndexOf(". ", endIdx);
-                }
-                if (breakIdx <= currentIdx) {
-                    // Fallback to word boundary
-                    breakIdx = text.lastIndexOf(" ", endIdx);
-                }
-                if (breakIdx <= currentIdx) {
-                    // Hard break if no boundaries found
-                    breakIdx = endIdx;
+                    breakIdx = endIdx; // Fallback
                 } else {
-                    breakIdx += 1; // Include the boundary character (space or dot)
+                    breakIdx += 1;
                 }
                 
                 chunks.push(text.substring(currentIdx, breakIdx).trim());
                 currentIdx = breakIdx;
             }
             return chunks;
+        }
+
+        getCacheKey(file, mode, lang) {
+            if (!file) return null;
+            return `gf_doc_${file.name}_${file.size}_${mode}_${lang}`;
         }
 
         async processDocument() {
@@ -577,103 +604,160 @@ document.addEventListener("DOMContentLoaded", () => {
             UI.loadingIndicator.classList.remove("hidden");
             UI.resultsList.innerHTML = '';
             UI.outputSection.classList.remove("hidden");
+            document.getElementById("exportControls").classList.add("hidden");
             
-            // Show cancel button
             const cancelBtn = document.getElementById("cancelProcessBtn");
             if (cancelBtn) {
                 cancelBtn.classList.remove("hidden");
-                cancelBtn.onclick = () => {
-                    this.isCanceled = true;
-                    cancelBtn.innerText = "Canceling...";
-                };
+                cancelBtn.onclick = () => { this.isCanceled = true; cancelBtn.innerText = "Canceling..."; };
             }
 
-            renderResults(["Extracting text from document(s)... This happens locally on your device."]);
+            const mainFile = this.files[0];
+            const mode = UI.documentModeSelect.value;
+            const lang = UI.languageSelect.value;
+            const cacheKey = this.getCacheKey(mainFile, mode, lang);
+            
+            let intermediateResults = [];
+            let startAt = 0;
+
+            // Check Cache
+            const cachedData = localStorage.getItem(cacheKey);
+            if (cachedData) {
+                const data = JSON.parse(cachedData);
+                const resume = await this.promptResume();
+                if (resume) {
+                    intermediateResults = data.results;
+                    startAt = data.nextChunk;
+                    renderResults(intermediateResults);
+                }
+            }
 
             try {
-                this.extractedText = await this.extractAll();
-                if (!this.extractedText) throw new Error("No text found in documents.");
+                if (startAt === 0) {
+                    renderResults(["Extracting text from document(s)... locally."]);
+                    this.extractedText = await this.extractAll();
+                }
+
+                if (!this.extractedText && startAt === 0) throw new Error("No text found.");
                 
-                const chunks = this.chunkText(this.extractedText);
-                let intermediateResults = [];
+                const chunks = this.chunkText(this.extractedText, lang);
                 
-                for (let i = 0; i < chunks.length; i++) {
-                    if (this.isCanceled) throw new Error("Processing canceled by user.");
+                for (let i = startAt; i < chunks.length; i++) {
+                    if (this.isCanceled) throw new Error("Canceled by user.");
                     
-                    renderResults([`Processing part ${i + 1} of ${chunks.length}... (Please wait)`]);
+                    renderResults([...intermediateResults, `Processing part ${i + 1} of ${chunks.length}...`]);
                     
-                    let success = false;
-                    let retries = 0;
-                    let chunkResult = null;
-                    const maxRetries = 5;
+                    const chunkResult = await this.requestWithRetry(chunks[i], mode, lang);
+                    intermediateResults.push(chunkResult);
                     
-                    while (!success && retries < maxRetries) {
-                        try {
-                            const res = await GrammarFlowAPI.request("/process-document", {
-                                text: chunks[i],
-                                mode: UI.documentModeSelect.value,
-                                language: UI.languageSelect.value,
-                                style: UI.styleSelect.value,
-                                tone: UI.toneSelect.value,
-                                humanize: UI.humanizeToggle.checked,
-                                isConsolidation: false
-                            });
-                            chunkResult = res.data[0];
-                            success = true;
-                        } catch (err) {
-                            retries++;
-                            if (this.isCanceled) throw new Error("Processing canceled by user.");
-                            console.warn(`Chunk ${i+1} failed (Attempt ${retries}/${maxRetries}): ${err.message}`);
-                            if (retries >= maxRetries) throw new Error(`Failed to process document chunk ${i+1} after ${maxRetries} attempts. (AI Rate Limit Hit)`);
-                            // Exponential backoff
-                            await new Promise(r => setTimeout(r, 2000 * retries));
-                        }
-                    }
+                    // Save to Cache
+                    localStorage.setItem(cacheKey, JSON.stringify({ results: intermediateResults, nextChunk: i + 1 }));
                     
-                    if (chunkResult) intermediateResults.push(chunkResult);
+                    // Progressive Display
+                    renderResults(intermediateResults);
                     
-                    // Delay between chunks to prevent aggressive rate limiting
                     if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 2000));
                 }
 
-                if (this.isCanceled) throw new Error("Processing canceled by user.");
+                if (this.isCanceled) throw new Error("Canceled by user.");
 
-                // If only 1 chunk, just return it. Otherwise, optionally consolidate based on mode.
+                // Final Pass
+                let finalResult = "";
                 if (chunks.length === 1) {
-                    renderResults(intermediateResults);
+                    finalResult = intermediateResults[0];
+                } else if (mode === "Summarize") {
+                    renderResults([...intermediateResults, "Generating final consolidated summary..."]);
+                    finalResult = await this.hierarchicalConsolidate(intermediateResults, mode, lang);
                 } else {
-                    const mode = UI.documentModeSelect.value;
-                    const combinedText = intermediateResults.join("\\n\\n");
-                    
-                    if (mode === "Summarize") {
-                        renderResults(["Generating final consolidated summary..."]);
-                        const res = await GrammarFlowAPI.request("/process-document", {
-                            text: combinedText,
-                            mode: mode,
-                            language: UI.languageSelect.value,
-                            style: UI.styleSelect.value,
-                            tone: UI.toneSelect.value,
-                            humanize: UI.humanizeToggle.checked,
-                            isConsolidation: true
-                        });
-                        renderResults(res.data);
-                    } else {
-                        // For Translate, Simplify, Grammar, etc., just stitch them together.
-                        renderResults([combinedText]);
-                    }
+                    finalResult = intermediateResults.join("\\n\\n");
                 }
-                
+
+                renderResults([finalResult]);
+                this.finalOutput = finalResult;
+                document.getElementById("exportControls").classList.remove("hidden");
+                localStorage.removeItem(cacheKey); // Clear cache on success
+
             } catch (e) {
-                renderResults([`Error: ${e.message}`]);
+                renderResults([...intermediateResults, `Error: ${e.message}`]);
             } finally {
                 setBusy(false);
-                if (cancelBtn) {
-                    cancelBtn.classList.add("hidden");
-                    cancelBtn.innerText = "Cancel";
+                if (cancelBtn) { cancelBtn.classList.add("hidden"); cancelBtn.innerText = "Cancel"; }
+            }
+        }
+
+        async requestWithRetry(text, mode, lang, isConsolidation = false) {
+            let retries = 0;
+            while (retries < 5) {
+                try {
+                    const res = await GrammarFlowAPI.request("/process-document", {
+                        text, mode, language: lang, 
+                        style: UI.styleSelect.value, tone: UI.toneSelect.value, 
+                        humanize: UI.humanizeToggle.checked, isConsolidation
+                    });
+                    return res.data[0];
+                } catch (err) {
+                    retries++;
+                    if (this.isCanceled) throw new Error("Canceled.");
+                    if (retries >= 5) throw err;
+                    await new Promise(r => setTimeout(r, 2000 * Math.pow(1.5, retries))); // Adaptive backoff
                 }
             }
         }
+
+        async hierarchicalConsolidate(results, mode, lang) {
+            const combined = results.join("\\n\\n");
+            if (combined.length < 20000) {
+                return await this.requestWithRetry(combined, mode, lang, true);
+            }
+            // If still too large, chunk the results and recurse
+            const newChunks = this.chunkText(combined, lang);
+            const summarizedChunks = [];
+            for (const chunk of newChunks) {
+                summarizedChunks.push(await this.requestWithRetry(chunk, mode, lang, true));
+            }
+            return await this.hierarchicalConsolidate(summarizedChunks, mode, lang);
+        }
+
+        promptResume() {
+            return new Promise((resolve) => {
+                const prompt = document.getElementById("resumePrompt");
+                prompt.classList.remove("hidden");
+                document.getElementById("resumeYesBtn").onclick = () => { prompt.classList.add("hidden"); resolve(true); };
+                document.getElementById("resumeNoBtn").onclick = () => { prompt.classList.add("hidden"); resolve(false); };
+            });
+        }
+
+        exportToPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const text = this.finalOutput || "No output to export.";
+            const splitText = doc.splitTextToSize(text, 180);
+            doc.text(splitText, 10, 10);
+            doc.save("GrammarFlow_Result.pdf");
+        }
+
+        exportToDOCX() {
+            const { Document, Packer, Paragraph, TextRun } = window.docx;
+            const doc = new Document({
+                sections: [{
+                    properties: {},
+                    children: [new Paragraph({ children: [new TextRun(this.finalOutput)] })],
+                }],
+            });
+            Packer.toBlob(doc).then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "GrammarFlow_Result.docx";
+                a.click();
+            });
+        }
     }
+
+    // Initialize Global Processor
+    window.documentProcessor = new DocumentProcessor();
+    document.getElementById("downloadPdfBtn").onclick = () => window.documentProcessor.exportToPDF();
+    document.getElementById("downloadDocxBtn").onclick = () => window.documentProcessor.exportToDOCX();
 
     window.documentProcessor = new DocumentProcessor();
 });
