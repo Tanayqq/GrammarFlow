@@ -261,7 +261,11 @@ const processDocument = async (req, res, next) => {
         console.log(`[API v1] /process-document. Mode: ${mode}, Lang: ${language}, Consolidation: ${isConsolidation}`);
 
         const prompt = prompts.getDocumentProcessingPrompt(mode, language, style, tone, humanize, isConsolidation);
-        const resultText = await aiService.callGroqAPI(prompt, text, 0.4);
+        
+        // Use the high-capacity model for final consolidation, and the fast, high-rate-limit model for individual chunks
+        const model = isConsolidation ? "llama-3.3-70b-versatile" : "llama-3.1-8b-instant";
+        
+        const resultText = await aiService.callGroqAPI(prompt, text, 0.4, model);
 
         // The result is just raw markdown text, we wrap it in an array to match the frontend expectations
         sendResponse(res, true, [resultText.trim()], null, { mode, language, humanize });

@@ -656,7 +656,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     // Progressive Display
                     renderResults(intermediateResults);
                     
-                    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 2000));
+                    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 3000));
                 }
 
                 if (this.isCanceled) throw new Error("Canceled by user.");

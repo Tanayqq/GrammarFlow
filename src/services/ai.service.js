@@ -1,7 +1,8 @@
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL_NAME = "llama-3.3-70b-versatile";
+const DEFAULT_MODEL = "llama-3.1-8b-instant"; // Higher rate limits for chunking
+const PREM_MODEL = "llama-3.3-70b-versatile"; // Use for complex tasks
 
-async function callGroqAPI(systemPrompt, userText, temperature = 0.7) {
+async function callGroqAPI(systemPrompt, userText, temperature = 0.7, model = DEFAULT_MODEL) {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
         throw new Error("GROQ_API_KEY is not configured on the server.");
@@ -25,7 +26,7 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7) {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    model: MODEL_NAME,
+                    model: model,
                     messages: [
                         { role: "system", content: systemPrompt },
                         { role: "user", content: userText }
