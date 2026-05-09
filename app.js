@@ -175,10 +175,26 @@ class ContextAnalyzer {
 
 // ─────────────────────────────────────────────
 // CONTEXT EXTRACTOR — always sends full text
-// Replaces the fragile cursor-based SentenceTracker
-// that silently failed when cursor was after a period
 // ─────────────────────────────────────────────
 const getAnalysisContext = (text) => text.trim();
+
+// ─────────────────────────────────────────────
+// NORMALIZE FOR ANALYSIS
+// Used ONLY for cache keys and duplicate detection.
+// Original text is always sent to the backend unchanged.
+//
+// Treats these as identical:
+//   "Hello world" == "Hello world." == "Hello world!" ==
+//   "Hello world?" == "Hello world..." == "  Hello   world.  "
+// ─────────────────────────────────────────────
+const normalizeForAnalysis = (text) =>
+    text
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, ' ')           // collapse multiple spaces
+        .replace(/[.!?]{1,}$/g, '')     // strip trailing . ! ? ...
+        .replace(/^["'`]|["'`]$/g, '') // strip surrounding quotes
+        .trim();
 
 // ─────────────────────────────────────────────
 // APP BOOTSTRAP
@@ -206,14 +222,15 @@ document.addEventListener("DOMContentLoaded", () => {
         appLogo:            document.getElementById("appLogo")
     };
 
-    const momentum       = new MomentumEngine();
-    const highlighter    = new ShadowHighlighter(UI.inputText, UI.highlighterOverlay);
+    const momentum        = new MomentumEngine();
+    const highlighter     = new ShadowHighlighter(UI.inputText, UI.highlighterOverlay);
     const contextAnalyzer = new ContextAnalyzer();
 
-    let assistantTimer   = null;
-    let lastRequestId    = 0;
-    let allSuggestions   = [];
-    let currentSugIdx    = 0;
+    let assistantTimer    = null;
+    let lastRequestId     = 0;
+    let lastAnalyzedKey   = '';   // normalized cache key — prevents re-firing on punctuation-only changes
+    let allSuggestions    = [];
+    let currentSugIdx     = 0;
 
     // ─── DISPLAY SUGGESTION ───────────────────
     const showSuggestion = (idx) => {
@@ -243,8 +260,9 @@ document.addEventListener("DOMContentLoaded", () => {
         UI.assistantBar.classList.remove("visible");
         UI.appLogo.classList.remove("notifying");
         highlighter.setHighlights([]);
-        allSuggestions = [];
-        currentSugIdx  = 0;
+        allSuggestions  = [];
+        currentSugIdx   = 0;
+        lastAnalyzedKey = '';  // Reset so next input always re-analyzes
     };
 
     // ─── NAV BUTTONS ─────────────────────────
@@ -302,16 +320,28 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const rawText = UI.inputText.value;
         const text = rawText.trim();
-        if (text.length < 5) { hideAssistant(); return; }
+        if (text.length < 5) { lastAnalyzedKey = ''; hideAssistant(); return; }
+
 
         const debounce  = momentum.getDebounce();
         const requestId = ++lastRequestId;
         UI.appLogo.classList.add("notifying");
 
         assistantTimer = setTimeout(async () => {
-            // Always analyze the full text — simple, reliable, no cursor bugs
-            const context = getAnalysisContext(rawText);
-            if (context.length < 5) { UI.appLogo.classList.remove("notifying"); return; }
+            const context    = getAnalysisContext(rawText);
+            const normalKey  = normalizeForAnalysis(context);
+
+            if (context.length < 5 || normalKey.length < 3) {
+                UI.appLogo.classList.remove("notifying");
+                return;
+            }
+
+            // Skip if the meaningful content hasn't changed
+            // (e.g. user only added/changed trailing punctuation or whitespace)
+            if (normalKey === lastAnalyzedKey) {
+                UI.appLogo.classList.remove("notifying");
+                return;
+            }
 
             // Phase 4: paragraph mode for long text, sentence mode for short
             const isLongText = context.length >= 200;
@@ -340,6 +370,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     // Show all suggestions with meaningful confidence (lowered threshold for reliability)
                     const valid = res.data.filter(s => (s.confidence || 1) >= 0.15);
                     if (!valid.length) { hideAssistant(); return; }
+                    lastAnalyzedKey = normalKey;  // ✅ Mark this content as analyzed
                     allSuggestions = valid;
                     showSuggestion(0);
                 } else {
