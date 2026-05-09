@@ -262,8 +262,8 @@ const processDocument = async (req, res, next) => {
 
         const prompt = prompts.getDocumentProcessingPrompt(mode, language, style, tone, humanize, isConsolidation);
         
-        // Use the high-capacity model for final consolidation, and the fast, high-rate-limit model for individual chunks
-        const model = isConsolidation ? "llama-3.3-70b-versatile" : "llama-3.1-8b-instant";
+        // Use the fast, high-rate-limit model for the entire document pipeline to prevent 429 errors on large files
+        const model = "llama-3.1-8b-instant";
         
         const resultText = await aiService.callGroqAPI(prompt, text, 0.4, model);
 

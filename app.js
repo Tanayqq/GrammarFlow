@@ -666,6 +666,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (chunks.length === 1) {
                     finalResult = intermediateResults[0];
                 } else if (mode === "Summarize") {
+                    renderResults([...intermediateResults, "Taking a brief pause to prevent AI rate limits... (10s)"]);
+                    await new Promise(r => setTimeout(r, 10000)); // 10s cooldown before the heavy final pass
+                    
                     renderResults([...intermediateResults, "Finalizing document structure and weaving summaries together... (Please wait)"]);
                     finalResult = await this.hierarchicalConsolidate(intermediateResults, mode, lang);
                 } else {
