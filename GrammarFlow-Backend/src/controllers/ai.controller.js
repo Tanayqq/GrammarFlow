@@ -102,13 +102,13 @@ const rewrite = async (req, res, next) => {
         }
 
         resultText = resultText.replace(/^(STRICT COMMAND|IMPORTANT|CRITICAL|STRICT|Note):.*?\n/gsi, '').trim();
-        const lines = resultText.split('\n').map(l => l.trim()).filter(l => l);
         let rewrites = [];
-        for (const line of lines) {
-            const match = line.match(/^[1-3][.\)]\s*(.*)/);
-            if (match) rewrites.push(match[1].trim());
+        const parts = resultText.split(/^[1-9][.\)]\s+/m);
+        if (parts.length > 1) {
+            rewrites = parts.slice(1).map(p => p.trim()).filter(p => p);
+        } else {
+            rewrites = [resultText.trim()];
         }
-        if (rewrites.length === 0) rewrites = [resultText];
         sendResponse(res, true, rewrites.slice(0, 3), null, { language, humanize });
     } catch (error) {
         console.error("[API v1] Rewrite error:", error.message);
