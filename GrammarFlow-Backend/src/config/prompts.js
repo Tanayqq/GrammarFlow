@@ -238,6 +238,19 @@ Return a JSON array of objects:
 5. Return ONLY the JSON array. No preamble, no disclaimers.
 6. VERIFY: Confirm every suggestion is in ${language} before returning.
 
+### FULL SENTENCE PRESERVATION RULE:
+Always rewrite the ENTIRE meaning of the input. Never return only the final clause, a fragment, or the "most important" part.
+Every major clause in the source must be represented in the output, including:
+1. Positive statements
+2. Negative statements
+3. Contrast words (but, however, although, yet)
+4. Explanatory details
+Before returning, verify: Does the output contain all core ideas? Does it preserve both praise and criticism? Is the result a complete sentence rather than a fragment?
+If any major clause is missing, regenerate the response.
+Example Input: "Honestly nanage concept tumba ishta aytu but implementation rushed anistu and overall structure swalpa disconnected anistu."
+Correct Output: "Honestly, I liked the concept, but the implementation felt rushed and the overall structure seemed somewhat disconnected."
+
+
 ### MANDATORY DECISION RULE (APPLY BEFORE RETURNING):
 Before deciding to return [], ask yourself:
 "Would a native ${language} speaker naturally phrase this in a smoother, clearer, or more emotionally authentic way?"
@@ -378,6 +391,19 @@ Return a JSON array of up to 5 suggestions, ranked by meaningful impact:
 4. "reason" must sound like a thoughtful multilingual friend — not a grammar textbook.
 5. Never produce robotic or overly formal rewrites.
 6. Return ONLY the JSON array. No preamble, no disclaimers.
+
+### FULL SENTENCE PRESERVATION RULE:
+Always rewrite the ENTIRE meaning of the input. Never return only the final clause, a fragment, or the "most important" part.
+Every major clause in the source must be represented in the output, including:
+1. Positive statements
+2. Negative statements
+3. Contrast words (but, however, although, yet)
+4. Explanatory details
+Before returning, verify: Does the output contain all core ideas? Does it preserve both praise and criticism? Is the result a complete sentence rather than a fragment?
+If any major clause is missing, regenerate the response.
+Example Input: "Honestly nanage concept tumba ishta aytu but implementation rushed anistu and overall structure swalpa disconnected anistu."
+Correct Output: "Honestly, I liked the concept, but the implementation felt rushed and the overall structure seemed somewhat disconnected."
+
 
 ### MANDATORY DECISION RULE (APPLY BEFORE RETURNING):
 Before deciding to return [], ask yourself:
