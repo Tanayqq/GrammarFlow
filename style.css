@@ -218,12 +218,18 @@ input:checked + .slider:before { transform: translateX(20px); }
     font-weight: 600;
     margin: 0 0 6px 0;
 }
-.document-upload-zone .upload-subtitle {
-    font-size: 0.9rem;
-    color: #a1a1aa;
-    margin: 0;
-}
+.document-.upload-title { font-weight: 600; color: #fff; margin-bottom: 0.25rem; font-size: 1.1rem; }
+.upload-subtitle { color: #a1a1aa; font-size: 0.9rem; }
 .hidden-file-input { display: none; }
+
+.document-buttons {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.document-buttons .primary-btn { flex: 2; }
+.document-buttons .secondary-btn { flex: 1; }
+.document-buttons .secondary-btn.hidden { display: none; }
 
 .file-preview-container {
     display: flex;

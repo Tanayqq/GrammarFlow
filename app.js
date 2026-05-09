@@ -532,48 +532,144 @@ document.addEventListener("DOMContentLoaded", () => {
                     combinedText += await this.extractImageText(file) + "\\n\\n";
                 }
             }
+            return combinedText.trim();
+        }
+
+        chunkText(text, maxChars = 15000) {
+            if (text.length <= maxChars) return [text];
+            const chunks = [];
+            let currentIdx = 0;
             
-            combinedText = combinedText.trim();
-            // Prevent Groq API crash: Limit text to ~25,000 characters (~5,000 words)
-            if (combinedText.length > 25000) {
-                console.warn("[DocumentProcessor] Text too long, truncating to 25000 chars.");
-                combinedText = combinedText.substring(0, 25000) + "... [DOCUMENT TRUNCATED DUE TO AI LIMITS]";
+            while (currentIdx < text.length) {
+                let endIdx = currentIdx + maxChars;
+                if (endIdx >= text.length) {
+                    chunks.push(text.substring(currentIdx));
+                    break;
+                }
+                // Try to find a paragraph break
+                let breakIdx = text.lastIndexOf("\\n\\n", endIdx);
+                if (breakIdx <= currentIdx) {
+                    // Fallback to sentence break
+                    breakIdx = text.lastIndexOf(". ", endIdx);
+                }
+                if (breakIdx <= currentIdx) {
+                    // Fallback to word boundary
+                    breakIdx = text.lastIndexOf(" ", endIdx);
+                }
+                if (breakIdx <= currentIdx) {
+                    // Hard break if no boundaries found
+                    breakIdx = endIdx;
+                } else {
+                    breakIdx += 1; // Include the boundary character (space or dot)
+                }
+                
+                chunks.push(text.substring(currentIdx, breakIdx).trim());
+                currentIdx = breakIdx;
             }
-            
-            return combinedText;
+            return chunks;
         }
 
         async processDocument() {
             if (this.files.length === 0) return;
             
             setBusy(true);
+            this.isCanceled = false;
             UI.loadingIndicator.classList.remove("hidden");
             UI.resultsList.innerHTML = '';
             UI.outputSection.classList.remove("hidden");
             
-            // Show OCR loading message explicitly
+            // Show cancel button
+            const cancelBtn = document.getElementById("cancelProcessBtn");
+            if (cancelBtn) {
+                cancelBtn.classList.remove("hidden");
+                cancelBtn.onclick = () => {
+                    this.isCanceled = true;
+                    cancelBtn.innerText = "Canceling...";
+                };
+            }
+
             renderResults(["Extracting text from document(s)... This happens locally on your device."]);
 
             try {
                 this.extractedText = await this.extractAll();
                 if (!this.extractedText) throw new Error("No text found in documents.");
                 
-                renderResults(["Analyzing extracted text with AI..."]);
-
-                const res = await GrammarFlowAPI.request("/process-document", {
-                    text: this.extractedText,
-                    mode: UI.documentModeSelect.value,
-                    language: UI.languageSelect.value,
-                    style: UI.styleSelect.value,
-                    tone: UI.toneSelect.value,
-                    humanize: UI.humanizeToggle.checked
-                });
+                const chunks = this.chunkText(this.extractedText);
+                let intermediateResults = [];
                 
-                renderResults(res.data);
+                for (let i = 0; i < chunks.length; i++) {
+                    if (this.isCanceled) throw new Error("Processing canceled by user.");
+                    
+                    renderResults([`Processing part ${i + 1} of ${chunks.length}... (Please wait)`]);
+                    
+                    let success = false;
+                    let retries = 0;
+                    let chunkResult = null;
+                    
+                    while (!success && retries < 3) {
+                        try {
+                            const res = await GrammarFlowAPI.request("/process-document", {
+                                text: chunks[i],
+                                mode: UI.documentModeSelect.value,
+                                language: UI.languageSelect.value,
+                                style: UI.styleSelect.value,
+                                tone: UI.toneSelect.value,
+                                humanize: UI.humanizeToggle.checked,
+                                isConsolidation: false
+                            });
+                            chunkResult = res.data[0];
+                            success = true;
+                        } catch (err) {
+                            retries++;
+                            if (this.isCanceled) throw new Error("Processing canceled by user.");
+                            console.warn(`Chunk ${i+1} failed (Attempt ${retries}): ${err.message}`);
+                            if (retries >= 3) throw new Error(`Failed to process document chunk ${i+1} after 3 attempts.`);
+                            // Exponential backoff
+                            await new Promise(r => setTimeout(r, 2000 * retries));
+                        }
+                    }
+                    
+                    if (chunkResult) intermediateResults.push(chunkResult);
+                    
+                    // Delay between chunks to prevent aggressive rate limiting
+                    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 1000));
+                }
+
+                if (this.isCanceled) throw new Error("Processing canceled by user.");
+
+                // If only 1 chunk, just return it. Otherwise, optionally consolidate based on mode.
+                if (chunks.length === 1) {
+                    renderResults(intermediateResults);
+                } else {
+                    const mode = UI.documentModeSelect.value;
+                    const combinedText = intermediateResults.join("\\n\\n");
+                    
+                    if (mode === "Summarize") {
+                        renderResults(["Generating final consolidated summary..."]);
+                        const res = await GrammarFlowAPI.request("/process-document", {
+                            text: combinedText,
+                            mode: mode,
+                            language: UI.languageSelect.value,
+                            style: UI.styleSelect.value,
+                            tone: UI.toneSelect.value,
+                            humanize: UI.humanizeToggle.checked,
+                            isConsolidation: true
+                        });
+                        renderResults(res.data);
+                    } else {
+                        // For Translate, Simplify, Grammar, etc., just stitch them together.
+                        renderResults([combinedText]);
+                    }
+                }
+                
             } catch (e) {
                 renderResults([`Error: ${e.message}`]);
             } finally {
                 setBusy(false);
+                if (cancelBtn) {
+                    cancelBtn.classList.add("hidden");
+                    cancelBtn.innerText = "Cancel";
+                }
             }
         }
     }

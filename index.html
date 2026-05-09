@@ -47,7 +47,12 @@
                 
                 <div id="filePreviewContainer" class="file-preview-container hidden"></div>
 
-                <div class="document-controls">
+                <div class="button-group document-buttons">
+                    <button id="cancelProcessBtn" class="secondary-btn hidden">Cancel</button>
+                    <button id="processDocBtn" class="primary-btn fluid-btn">Process Document</button>
+                </div>
+
+                <div class="controls document-controls">
                     <select id="documentModeSelect">
                         <option value="Summarize">Summarize Key Points</option>
                         <option value="Simplify">Simplify Language</option>
