@@ -535,7 +535,7 @@ document.addEventListener("DOMContentLoaded", () => {
             return combinedText.trim();
         }
 
-        chunkText(text, maxChars = 15000) {
+        chunkText(text, maxChars = 8000) {
             if (text.length <= maxChars) return [text];
             const chunks = [];
             let currentIdx = 0;
@@ -605,8 +605,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     let success = false;
                     let retries = 0;
                     let chunkResult = null;
+                    const maxRetries = 5;
                     
-                    while (!success && retries < 3) {
+                    while (!success && retries < maxRetries) {
                         try {
                             const res = await GrammarFlowAPI.request("/process-document", {
                                 text: chunks[i],
@@ -622,8 +623,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         } catch (err) {
                             retries++;
                             if (this.isCanceled) throw new Error("Processing canceled by user.");
-                            console.warn(`Chunk ${i+1} failed (Attempt ${retries}): ${err.message}`);
-                            if (retries >= 3) throw new Error(`Failed to process document chunk ${i+1} after 3 attempts.`);
+                            console.warn(`Chunk ${i+1} failed (Attempt ${retries}/${maxRetries}): ${err.message}`);
+                            if (retries >= maxRetries) throw new Error(`Failed to process document chunk ${i+1} after ${maxRetries} attempts. (AI Rate Limit Hit)`);
                             // Exponential backoff
                             await new Promise(r => setTimeout(r, 2000 * retries));
                         }
@@ -632,7 +633,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     if (chunkResult) intermediateResults.push(chunkResult);
                     
                     // Delay between chunks to prevent aggressive rate limiting
-                    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 1000));
+                    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 2000));
                 }
 
                 if (this.isCanceled) throw new Error("Processing canceled by user.");
