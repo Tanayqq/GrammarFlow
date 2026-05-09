@@ -560,7 +560,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         chunkText(text, language = 'English') {
             const weight = this.getLanguageWeight(language);
-            const baseMaxChars = 12000;
+            const baseMaxChars = 4000; // Drastically reduced for 6,000 TPM strict limits
             const maxChars = Math.floor(baseMaxChars / weight);
             
             if (text.length <= maxChars) return [text];
@@ -656,7 +656,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     // Progressive Display
                     renderResults(intermediateResults);
                     
-                    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 3000));
+                    if (i < chunks.length - 1) {
+                        renderResults([...intermediateResults, `Waiting 10s to stay under AI rate limits...`]);
+                        await new Promise(r => setTimeout(r, 10000));
+                    }
                 }
 
                 if (this.isCanceled) throw new Error("Canceled by user.");
@@ -702,7 +705,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     retries++;
                     if (this.isCanceled) throw new Error("Canceled.");
                     if (retries >= 5) throw err;
-                    await new Promise(r => setTimeout(r, 2000 * Math.pow(1.5, retries))); // Adaptive backoff
+                    console.warn(`Rate limit hit. Waiting ${10 * retries}s before retry...`);
+                    await new Promise(r => setTimeout(r, 10000 * retries)); // 10s, 20s, 30s... backoff
                 }
             }
         }
