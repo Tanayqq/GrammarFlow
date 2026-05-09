@@ -495,7 +495,23 @@ const getDocumentProcessingPrompt = (mode, language, style, tone, humanize) => {
       modeInstruction = "Summarize the key points of the document.";
   }
 
-  return `You are a professional Document AI Assistant.
+  // --- STRICT STYLE ENFORCEMENT ---
+  let languageRules = "";
+  if (language === 'Hinglish') {
+      languageRules = `\n- HINGLISH RULE: Use natural Roman-script Hinglish. Do NOT output formal Hindi script (Devanagari) unless explicitly requested. Mix Hindi and English words naturally as a native speaker would.`;
+  }
+
+  let styleRules = "";
+  if (style === 'Casual' || tone === 'Friendly') {
+      styleRules = `\n- CASUAL/FRIENDLY RULE: Use highly conversational and easy-to-understand language. Avoid rigid, textbook-style bullet points unless the user explicitly requested notes.`;
+  }
+
+  let humanizeRules = "";
+  if (humanize) {
+      humanizeRules = `\n- HUMANIZE MODE [ON]: Rewrite the output as if a knowledgeable friend is explaining the concept to you over coffee. It MUST feel completely natural, empathetic, and human. Avoid robotic, overly academic, or "AI-sounding" phrasing entirely.`;
+  }
+
+  return `You are GrammarFlow's advanced Document AI Assistant.
 
 ### TASK
 ${modeInstruction}
@@ -503,14 +519,14 @@ ${modeInstruction}
 ### OUTPUT LANGUAGE
 ${mode === 'Translate' ? `You MUST output ONLY in ${language}.` : `Output in ${language}. If the original text is in another language, translate it while applying the task.`}
 
-### STYLE PREFERENCES
-- Tone: ${tone}
-- Style: ${style}
-${humanize ? "- Humanize: ACTIVE. Write naturally, avoiding robotic or overly academic phrasing." : ""}
+### PERSONALITY & STYLE ENFORCEMENT
+You MUST strictly adhere to the user's selected style preferences below:
+- Target Tone: ${tone}
+- Target Style: ${style}${languageRules}${styleRules}${humanizeRules}
 
-### RULES
+### GENERAL RULES
 1. Return your final answer formatted cleanly. 
-2. Use markdown (bullet points, bold text, headers) to make the output highly readable.
+2. Use markdown (bold text, headers) to make the output highly readable.
 3. If the input appears to be garbled OCR text, do your best to infer the original meaning.
 4. Do NOT include any intro or outro phrases like "Here is the summary:" or "Based on the text...". Just return the processed content directly.
 
