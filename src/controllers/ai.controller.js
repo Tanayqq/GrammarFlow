@@ -102,13 +102,13 @@ const rewrite = async (req, res, next) => {
         }
 
         resultText = resultText.replace(/^(STRICT COMMAND|IMPORTANT|CRITICAL|STRICT|Note):.*?\n/gsi, '').trim();
-        const lines = resultText.split('\n').map(l => l.trim()).filter(l => l);
         let rewrites = [];
-        for (const line of lines) {
-            const match = line.match(/^[1-3][.\)]\s*(.*)/);
-            if (match) rewrites.push(match[1].trim());
+        const parts = resultText.split(/^[1-9][.\)]\s+/m);
+        if (parts.length > 1) {
+            rewrites = parts.slice(1).map(p => p.trim()).filter(p => p);
+        } else {
+            rewrites = [resultText.trim()];
         }
-        if (rewrites.length === 0) rewrites = [resultText];
         sendResponse(res, true, rewrites.slice(0, 3), null, { language, humanize });
     } catch (error) {
         console.error("[API v1] Rewrite error:", error.message);
@@ -247,11 +247,36 @@ const analyzeSmartSuggestions = async (req, res, next) => {
     }
 };
 
+// ─────────────────────────────────────────────
+// Phase 6: Document Processing
+// ─────────────────────────────────────────────
+const processDocument = async (req, res, next) => {
+    try {
+        const { text, mode = "Summarize", language = "English", style = "Casual", tone = "Friendly", humanize = false } = req.body;
+        
+        if (!text || text.trim().length === 0) {
+            return res.status(400).json({ success: false, error: { message: "Document text is required" } });
+        }
+
+        console.log(`[API v1] /process-document. Mode: ${mode}, Lang: ${language}`);
+
+        const prompt = prompts.getDocumentProcessingPrompt(mode, language, style, tone, humanize);
+        const resultText = await aiService.callGroqAPI(prompt, text, 0.4);
+
+        // The result is just raw markdown text, we wrap it in an array to match the frontend expectations
+        sendResponse(res, true, [resultText.trim()], null, { mode, language, humanize });
+    } catch (error) {
+        console.error("[API v1] Document processing error:", error.message);
+        res.status(500).json({ success: false, error: { message: "Failed to process document" } });
+    }
+};
+
 module.exports = {
     rewrite,
     grammarFix,
     suggestions,
     autocomplete,
     analyzeRealtime,
-    analyzeSmartSuggestions
+    analyzeSmartSuggestions,
+    processDocument
 };
