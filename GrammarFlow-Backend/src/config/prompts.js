@@ -469,11 +469,60 @@ Examples of paragraphs that MUST trigger suggestions:
 - Paragraphs with abrupt topic shifts without transitions`;
 };
 
+// ─────────────────────────────────────────────
+// Phase 6: Document Intelligence Prompts
+// ─────────────────────────────────────────────
+const getDocumentProcessingPrompt = (mode, language, style, tone, humanize) => {
+  let modeInstruction = "";
+  
+  switch(mode) {
+    case "Summarize":
+      modeInstruction = "Extract the key information and provide a concise, high-level summary of the entire document.";
+      break;
+    case "Simplify":
+      modeInstruction = "Rewrite the document text to be simpler and easier to read. Remove jargon and complex sentence structures.";
+      break;
+    case "Translate":
+      modeInstruction = `Translate the entire document into ${language}. Preserve the formatting and paragraph structure as much as possible.`;
+      break;
+    case "Explain":
+      modeInstruction = "Explain the concepts in this document as if you were talking to a 10-year-old child. Use analogies if helpful.";
+      break;
+    case "Grammar":
+      modeInstruction = "Fix all grammar, spelling, and OCR artifacts (like random symbols or misread letters) without fundamentally changing the content.";
+      break;
+    default:
+      modeInstruction = "Summarize the key points of the document.";
+  }
+
+  return `You are a professional Document AI Assistant.
+
+### TASK
+${modeInstruction}
+
+### OUTPUT LANGUAGE
+${mode === 'Translate' ? `You MUST output ONLY in ${language}.` : `Output in ${language}. If the original text is in another language, translate it while applying the task.`}
+
+### STYLE PREFERENCES
+- Tone: ${tone}
+- Style: ${style}
+${humanize ? "- Humanize: ACTIVE. Write naturally, avoiding robotic or overly academic phrasing." : ""}
+
+### RULES
+1. Return your final answer formatted cleanly. 
+2. Use markdown (bullet points, bold text, headers) to make the output highly readable.
+3. If the input appears to be garbled OCR text, do your best to infer the original meaning.
+4. Do NOT include any intro or outro phrases like "Here is the summary:" or "Based on the text...". Just return the processed content directly.
+
+### SOURCE DOCUMENT TEXT:`;
+};
+
 module.exports = {
-    getRewritePrompt,
-    getGrammarFixPrompt,
-    getSuggestionsPrompt,
-    getAutocompletePrompt,
-    getStableRealtimePrompt,
-    getSmartSuggestionsPrompt
+  getRewritePrompt,
+  getGrammarFixPrompt,
+  getSuggestionsPrompt,
+  getAutocompletePrompt,
+  getStableRealtimePrompt,
+  getSmartSuggestionsPrompt,
+  getDocumentProcessingPrompt
 };

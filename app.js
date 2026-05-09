@@ -219,7 +219,19 @@ document.addEventListener("DOMContentLoaded", () => {
         applyBtn:           document.getElementById("applySuggestionBtn"),
         prevBtn:            document.getElementById("prevSuggestionBtn"),
         nextBtn:            document.getElementById("nextSuggestionBtn"),
-        appLogo:            document.getElementById("appLogo")
+        appLogo:            document.getElementById("appLogo"),
+        // Document UI
+        tabText:            document.getElementById("tabText"),
+        tabDocument:        document.getElementById("tabDocument"),
+        textModeContainer:  document.getElementById("textModeContainer"),
+        documentModeContainer: document.getElementById("documentModeContainer"),
+        textActionButtons:  document.getElementById("textActionButtons"),
+        globalControls:     document.getElementById("globalControls"),
+        documentUploadZone: document.getElementById("documentUploadZone"),
+        fileInput:          document.getElementById("fileInput"),
+        filePreviewContainer: document.getElementById("filePreviewContainer"),
+        documentModeSelect: document.getElementById("documentModeSelect"),
+        processDocumentBtn: document.getElementById("processDocumentBtn")
     };
 
     const momentum        = new MomentumEngine();
@@ -410,4 +422,153 @@ document.addEventListener("DOMContentLoaded", () => {
         } catch (e) { renderResults([`Error: ${e.message}`]); }
         finally { setBusy(false); }
     };
+
+    // ─── DOCUMENT PROCESSOR ───────────────────────
+    class DocumentProcessor {
+        constructor() {
+            this.files = [];
+            this.extractedText = "";
+            this.initWorker();
+            this.bindEvents();
+        }
+
+        initWorker() {
+            if (window.pdfjsLib) {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+            }
+        }
+
+        bindEvents() {
+            // Tabs
+            UI.tabText.onclick = () => this.switchTab('text');
+            UI.tabDocument.onclick = () => this.switchTab('document');
+
+            // Upload Zone
+            UI.documentUploadZone.onclick = () => UI.fileInput.click();
+            UI.documentUploadZone.ondragover = (e) => { e.preventDefault(); UI.documentUploadZone.classList.add('dragover'); };
+            UI.documentUploadZone.ondragleave = () => UI.documentUploadZone.classList.remove('dragover');
+            UI.documentUploadZone.ondrop = (e) => {
+                e.preventDefault();
+                UI.documentUploadZone.classList.remove('dragover');
+                if (e.dataTransfer.files.length) this.handleFiles(e.dataTransfer.files);
+            };
+            UI.fileInput.onchange = (e) => this.handleFiles(e.target.files);
+
+            // Process Button
+            UI.processDocumentBtn.onclick = () => this.processDocument();
+        }
+
+        switchTab(tab) {
+            if (tab === 'text') {
+                UI.tabText.classList.add('active');
+                UI.tabDocument.classList.remove('active');
+                UI.textModeContainer.classList.remove('hidden');
+                UI.textActionButtons.classList.remove('hidden');
+                UI.documentModeContainer.classList.add('hidden');
+            } else {
+                UI.tabDocument.classList.add('active');
+                UI.tabText.classList.remove('active');
+                UI.documentModeContainer.classList.remove('hidden');
+                UI.textActionButtons.classList.add('hidden');
+                UI.textModeContainer.classList.add('hidden');
+            }
+        }
+
+        handleFiles(fileList) {
+            for (let i = 0; i < fileList.length; i++) {
+                const file = fileList[i];
+                if (file.type === "application/pdf" || file.type.startsWith("image/")) {
+                    this.files.push(file);
+                }
+            }
+            this.renderFilePreviews();
+            UI.processDocumentBtn.disabled = this.files.length === 0;
+        }
+
+        removeFile(index) {
+            this.files.splice(index, 1);
+            this.renderFilePreviews();
+            UI.processDocumentBtn.disabled = this.files.length === 0;
+        }
+
+        renderFilePreviews() {
+            UI.filePreviewContainer.innerHTML = '';
+            if (this.files.length > 0) {
+                UI.filePreviewContainer.classList.remove('hidden');
+                this.files.forEach((file, idx) => {
+                    const chip = document.createElement('div');
+                    chip.className = 'file-chip';
+                    chip.innerHTML = `<span>${file.name}</span> <span class="remove-file" onclick="documentProcessor.removeFile(${idx})">×</span>`;
+                    UI.filePreviewContainer.appendChild(chip);
+                });
+            } else {
+                UI.filePreviewContainer.classList.add('hidden');
+            }
+        }
+
+        async extractPdfText(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            let fullText = "";
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                fullText += textContent.items.map(item => item.str).join(' ') + "\\n";
+            }
+            return fullText;
+        }
+
+        async extractImageText(file) {
+            const result = await Tesseract.recognize(file, 'eng');
+            return result.data.text;
+        }
+
+        async extractAll() {
+            let combinedText = "";
+            for (const file of this.files) {
+                if (file.type === "application/pdf") {
+                    combinedText += await this.extractPdfText(file) + "\\n\\n";
+                } else if (file.type.startsWith("image/")) {
+                    combinedText += await this.extractImageText(file) + "\\n\\n";
+                }
+            }
+            return combinedText.trim();
+        }
+
+        async processDocument() {
+            if (this.files.length === 0) return;
+            
+            setBusy(true);
+            UI.loadingIndicator.classList.remove("hidden");
+            UI.resultsList.innerHTML = '';
+            UI.outputSection.classList.remove("hidden");
+            
+            // Show OCR loading message explicitly
+            renderResults(["Extracting text from document(s)... This happens locally on your device."]);
+
+            try {
+                this.extractedText = await this.extractAll();
+                if (!this.extractedText) throw new Error("No text found in documents.");
+                
+                renderResults(["Analyzing extracted text with AI..."]);
+
+                const res = await GrammarFlowAPI.request("/process-document", {
+                    text: this.extractedText,
+                    mode: UI.documentModeSelect.value,
+                    language: UI.languageSelect.value,
+                    style: UI.styleSelect.value,
+                    tone: UI.toneSelect.value,
+                    humanize: UI.humanizeToggle.checked
+                });
+                
+                renderResults(res.data);
+            } catch (e) {
+                renderResults([`Error: ${e.message}`]);
+            } finally {
+                setBusy(false);
+            }
+        }
+    }
+
+    window.documentProcessor = new DocumentProcessor();
 });

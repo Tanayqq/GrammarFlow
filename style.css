@@ -170,3 +170,88 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 @keyframes pulse { 0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); } 70% { transform: scale(1.05); box-shadow: 0 0 0 15px rgba(168, 85, 247, 0); } 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); } }
 .logo-circle.notifying { animation: pulse 2s infinite; border: 2px solid rgba(168, 85, 247, 0.8); }
+
+/* Document UI Styles */
+.tabs {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.tab-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #a1a1aa;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.tab-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.tab-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.document-upload-zone {
+    border: 2px dashed rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 40px 20px;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.02);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 20px;
+}
+.document-upload-zone:hover, .document-upload-zone.dragover {
+    border-color: var(--primary-color);
+    background: rgba(168, 85, 247, 0.05);
+}
+.document-upload-zone .upload-icon {
+    color: var(--primary-color);
+    margin-bottom: 12px;
+}
+.document-upload-zone .upload-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 6px 0;
+}
+.document-upload-zone .upload-subtitle {
+    font-size: 0.9rem;
+    color: #a1a1aa;
+    margin: 0;
+}
+.hidden-file-input { display: none; }
+
+.file-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.file-chip {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.file-chip .remove-file {
+    cursor: pointer;
+    color: #ef4444;
+    font-weight: bold;
+}
+.document-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.document-controls select {
+    width: 100%;
+}
+.full-width { width: 100%; }

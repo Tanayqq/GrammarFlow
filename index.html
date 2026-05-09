@@ -7,7 +7,10 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=4.3">
+    <link rel="stylesheet" href="style.css?v=4.4">
+    <!-- Document Processing Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
 </head>
 <body>
     <div class="app-container">
@@ -17,12 +20,46 @@
         </header>
 
         <main class="panel glass-card">
-            <div class="editor-container">
-                <div id="highlighterOverlay" class="highlighter-overlay"></div>
-                <textarea id="inputText" placeholder="Start typing naturally..." spellcheck="false"></textarea>
+            
+            <div class="tabs">
+                <button class="tab-btn active" id="tabText">Text Editor</button>
+                <button class="tab-btn" id="tabDocument">Document AI</button>
+            </div>
+
+            <!-- Text Editor Mode -->
+            <div id="textModeContainer">
+                <div class="editor-container">
+                    <div id="highlighterOverlay" class="highlighter-overlay"></div>
+                    <textarea id="inputText" placeholder="Start typing naturally..." spellcheck="false"></textarea>
+                </div>
+            </div>
+
+            <!-- Document AI Mode -->
+            <div id="documentModeContainer" class="hidden">
+                <div class="document-upload-zone" id="documentUploadZone">
+                    <div class="upload-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    </div>
+                    <p class="upload-title">Drop an image or PDF here</p>
+                    <p class="upload-subtitle">or click to browse files</p>
+                    <input type="file" id="fileInput" accept="image/*,application/pdf" multiple class="hidden-file-input">
+                </div>
+                
+                <div id="filePreviewContainer" class="file-preview-container hidden"></div>
+
+                <div class="document-controls">
+                    <select id="documentModeSelect">
+                        <option value="Summarize">Summarize Key Points</option>
+                        <option value="Simplify">Simplify Language</option>
+                        <option value="Translate">Translate</option>
+                        <option value="Explain">Explain to a 10-year-old</option>
+                        <option value="Grammar">Fix Grammar & OCR Errors</option>
+                    </select>
+                    <button id="processDocumentBtn" class="primary-btn full-width" disabled>Process Document</button>
+                </div>
             </div>
             
-            <div class="controls">
+            <div class="controls" id="globalControls">
                 <select id="styleSelect"><option>Casual</option><option>Formal</option><option>Concise</option></select>
                 <select id="toneSelect"><option>Friendly</option><option>Polite</option><option>Direct</option></select>
                 <select id="languageSelect">
@@ -42,7 +79,7 @@
                 </div>
             </div>
 
-            <div class="button-group">
+            <div class="button-group" id="textActionButtons">
                 <button id="fixGrammarBtn" class="secondary-btn">Fix Grammar</button>
                 <button id="rewriteBtn" class="primary-btn">Rewrite Paragraph</button>
             </div>
@@ -76,6 +113,6 @@
 
     </div>
 
-    <script src="app.js?v=4.3"></script>
+    <script src="app.js?v=4.4"></script>
 </body>
 </html>
