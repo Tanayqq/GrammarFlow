@@ -348,7 +348,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 UI.appLogo.classList.remove("notifying");
 
                 if (res.success && res.data && res.data.length > 0) {
-                    const valid = res.data.filter(s => (s.confidence || 1) >= 0.4);
+                    // Show all suggestions with meaningful confidence (lowered threshold for reliability)
+                    const valid = res.data.filter(s => (s.confidence || 1) >= 0.15);
                     if (!valid.length) { hideAssistant(); return; }
                     allSuggestions = valid;
                     showSuggestion(0);

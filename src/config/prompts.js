@@ -236,7 +236,31 @@ Return a JSON array of objects:
 3. Return [] ONLY when text is already smooth, natural, and clearly communicates its intent.
 4. Never produce robotic or overly formal rewrites.
 5. Return ONLY the JSON array. No preamble, no disclaimers.
-6. VERIFY: Confirm every suggestion is in ${language} before returning.`;
+6. VERIFY: Confirm every suggestion is in ${language} before returning.
+
+### MANDATORY DECISION RULE (APPLY BEFORE RETURNING):
+Before deciding to return [], ask yourself:
+"Would a native ${language} speaker naturally phrase this in a smoother, clearer, or more emotionally authentic way?"
+If YES → you MUST return at least one suggestion.
+If NO → return [].
+This test is MANDATORY. Do not skip it.
+
+### RELIABILITY CALIBRATION:
+- Major improvement possible → MUST suggest (confidence 0.8+)
+- Moderate improvement possible → MUST suggest (confidence 0.5-0.8)
+- Minor but meaningful improvement → SHOULD suggest (confidence 0.3-0.5)
+- Trivial/negligible only → stay silent
+
+Examples that MUST trigger suggestions (never return [] for these):
+- "I think maybe this proposal is not fully ready because..." → hesitation, weak confidence
+- "Honestly naaku ee idea nachindi but execution konchem rushed laga undi" → awkward mixed flow
+- "Bro meeting taravata matladham because now scene hectic undi" → can be smoother
+- "Sir project complete hai kya mai 12:30 ke baad submit kr skta hoon" → clarity can improve
+- "Naaku concept nachindi but implementation konchem risky laga undi" → flow can be smoother
+
+Examples where silence is OK:
+- "Hey bro, all good." → already natural and smooth
+- "Chal theek hai" → intentional casual, no improvement needed`;
 };
 
 
@@ -352,7 +376,26 @@ Return a JSON array of up to 5 suggestions, ranked by meaningful impact:
 3. Return [] ONLY when the writing is already excellent — smooth, natural, clear, and emotionally authentic.
 4. "reason" must sound like a thoughtful multilingual friend — not a grammar textbook.
 5. Never produce robotic or overly formal rewrites.
-6. Return ONLY the JSON array. No preamble, no disclaimers.`;
+6. Return ONLY the JSON array. No preamble, no disclaimers.
+
+### MANDATORY DECISION RULE (APPLY BEFORE RETURNING):
+Before deciding to return [], ask yourself:
+"Would a native ${language} speaker naturally write this paragraph in a smoother, clearer, or more connected way?"
+If YES → you MUST return at least one suggestion.
+If NO → return [].
+This test is MANDATORY. Do not skip it.
+
+### RELIABILITY CALIBRATION:
+- Major improvement possible → MUST suggest (priority 4-5, confidence 0.8+)
+- Moderate improvement possible → MUST suggest (priority 3, confidence 0.5-0.8)
+- Minor but meaningful → SHOULD suggest (priority 2, confidence 0.3-0.5)
+- Trivial/negligible only → stay silent (priority 1)
+
+Examples of paragraphs that MUST trigger suggestions:
+- Paragraphs with repetitive sentence starts
+- Mixed-language paragraphs where flow between languages is awkward
+- Paragraphs where emotional intent is present but phrasing undermines it
+- Paragraphs with abrupt topic shifts without transitions`;
 };
 
 module.exports = {

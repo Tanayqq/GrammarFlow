@@ -171,7 +171,7 @@ const analyzeRealtime = async (req, res, next) => {
         }
 
         const prompt = prompts.getStableRealtimePrompt(language, humanize);
-        const resultText = await aiService.callGroqAPI(prompt, text, 0.4);
+        const resultText = await aiService.callGroqAPI(prompt, text, 0.55);
 
         let suggestionsList = [];
         try {
@@ -202,7 +202,7 @@ const rankSuggestions = (suggestions, writingContext = {}) => {
     const priorityMap = INTENT_PRIORITY[intent] || INTENT_PRIORITY.neutral;
 
     return suggestions
-        .filter(s => (s.confidence || 0.5) >= 0.4)
+        .filter(s => (s.confidence || 0.5) >= 0.15)
         .sort((a, b) => {
             const aiDiff = (b.priority || 3) - (a.priority || 3);
             if (aiDiff !== 0) return aiDiff;
@@ -226,7 +226,7 @@ const analyzeSmartSuggestions = async (req, res, next) => {
         console.log(`[Smart] Analyzing. Lang: ${language}, Intent: ${writingContext.intent || '?'}, Words: ${writingContext.wordCount || '?'}`);
 
         const prompt = prompts.getSmartSuggestionsPrompt(language, humanize, writingContext);
-        const resultText = await aiService.callGroqAPI(prompt, text, 0.35);
+        const resultText = await aiService.callGroqAPI(prompt, text, 0.45);
 
         let raw = [];
         try {
