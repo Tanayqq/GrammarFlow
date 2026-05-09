@@ -666,7 +666,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (chunks.length === 1) {
                     finalResult = intermediateResults[0];
                 } else if (mode === "Summarize") {
-                    renderResults([...intermediateResults, "Generating final consolidated summary..."]);
+                    renderResults([...intermediateResults, "Finalizing document structure and weaving summaries together... (Please wait)"]);
                     finalResult = await this.hierarchicalConsolidate(intermediateResults, mode, lang);
                 } else {
                     finalResult = intermediateResults.join("\\n\\n");
