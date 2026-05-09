@@ -532,7 +532,15 @@ document.addEventListener("DOMContentLoaded", () => {
                     combinedText += await this.extractImageText(file) + "\\n\\n";
                 }
             }
-            return combinedText.trim();
+            
+            combinedText = combinedText.trim();
+            // Prevent Groq API crash: Limit text to ~25,000 characters (~5,000 words)
+            if (combinedText.length > 25000) {
+                console.warn("[DocumentProcessor] Text too long, truncating to 25000 chars.");
+                combinedText = combinedText.substring(0, 25000) + "... [DOCUMENT TRUNCATED DUE TO AI LIMITS]";
+            }
+            
+            return combinedText;
         }
 
         async processDocument() {
