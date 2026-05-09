@@ -252,15 +252,15 @@ const analyzeSmartSuggestions = async (req, res, next) => {
 // ─────────────────────────────────────────────
 const processDocument = async (req, res, next) => {
     try {
-        const { text, mode = "Summarize", language = "English", style = "Casual", tone = "Friendly", humanize = false } = req.body;
+        const { text, mode = "Summarize", language = "English", style = "Casual", tone = "Friendly", humanize = false, isConsolidation = false } = req.body;
         
         if (!text || text.trim().length === 0) {
             return res.status(400).json({ success: false, error: { message: "Document text is required" } });
         }
 
-        console.log(`[API v1] /process-document. Mode: ${mode}, Lang: ${language}`);
+        console.log(`[API v1] /process-document. Mode: ${mode}, Lang: ${language}, Consolidation: ${isConsolidation}`);
 
-        const prompt = prompts.getDocumentProcessingPrompt(mode, language, style, tone, humanize);
+        const prompt = prompts.getDocumentProcessingPrompt(mode, language, style, tone, humanize, isConsolidation);
         const resultText = await aiService.callGroqAPI(prompt, text, 0.4);
 
         // The result is just raw markdown text, we wrap it in an array to match the frontend expectations

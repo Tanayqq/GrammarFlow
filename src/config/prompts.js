@@ -472,12 +472,14 @@ Examples of paragraphs that MUST trigger suggestions:
 // ─────────────────────────────────────────────
 // Phase 6: Document Intelligence Prompts
 // ─────────────────────────────────────────────
-const getDocumentProcessingPrompt = (mode, language, style, tone, humanize) => {
+const getDocumentProcessingPrompt = (mode, language, style, tone, humanize, isConsolidation = false) => {
   let modeInstruction = "";
   
   switch(mode) {
     case "Summarize":
-      modeInstruction = "Extract the key information and provide a concise, high-level summary of the entire document.";
+      modeInstruction = isConsolidation 
+        ? "The text provided consists of multiple intermediate summaries of a large document. Weave them together into one cohesive, final, high-level summary."
+        : "Extract the key information and provide a concise, high-level summary of the entire document.";
       break;
     case "Simplify":
       modeInstruction = "Rewrite the document text to be simpler and easier to read. Remove jargon and complex sentence structures.";
