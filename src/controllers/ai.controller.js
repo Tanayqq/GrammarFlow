@@ -266,8 +266,8 @@ const processDocument = async (req, res, next) => {
         // The result is just raw markdown text, we wrap it in an array to match the frontend expectations
         sendResponse(res, true, [resultText.trim()], null, { mode, language, humanize });
     } catch (error) {
-        console.error("[API v1] Document processing error:", error.message);
-        res.status(500).json({ success: false, error: { message: "Failed to process document" } });
+        console.error("[\x1b[31mDOC ERROR\x1b[0m]", error.message);
+        sendResponse(res, false, null, error.message || "Failed to process document");
     }
 };
 

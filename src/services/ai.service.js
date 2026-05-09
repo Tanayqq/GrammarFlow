@@ -9,7 +9,7 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7) {
 
     let attempts = 0;
     const maxRetries = 3;
-    const timeoutMs = 30000; // 30 seconds
+    const timeoutMs = 90000; // 90 seconds (increased for large document consolidation)
 
     while (attempts < maxRetries) {
         const controller = new AbortController();
