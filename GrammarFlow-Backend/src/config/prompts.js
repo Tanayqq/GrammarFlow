@@ -316,9 +316,9 @@ const getSmartSuggestionsPrompt = (language = "English", humanize = false, writi
 
     const intentGuide = {
         professional: `Prioritize CLARITY and GRAMMAR. Flow and structure matter. Keep it sharp and precise.`,
-        casual:       `Prioritize AUTHENTICITY and CONVERSATIONAL FLOW. Never formalize casual or regional language.`,
-        emotional:    `Prioritize EMOTIONAL TONE and AUTHENTICITY. Never flatten emotional expression into neutral phrasing.`,
-        neutral:      `Balance CLARITY, FLOW, and AUTHENTICITY equally.`
+        casual: `Prioritize AUTHENTICITY and CONVERSATIONAL FLOW. Never formalize casual or regional language.`,
+        emotional: `Prioritize EMOTIONAL TONE and AUTHENTICITY. Never flatten emotional expression into neutral phrasing.`,
+        neutral: `Balance CLARITY, FLOW, and AUTHENTICITY equally.`
     };
 
     const focusPoints = [];
@@ -473,7 +473,7 @@ Examples of paragraphs that MUST trigger suggestions:
 // Phase 6: Document Intelligence Prompts
 // ─────────────────────────────────────────────
 const getDocumentProcessingPrompt = (mode, language, style, tone, humanize, isConsolidation = false) => {
-  return `You are GrammarFlow, an expert educational translator and explainer.
+    return `You are GrammarFlow, an expert educational translator and explainer.
 
 Your job is to transform academic notes into natural, human-like explanations in ${language} while preserving technical accuracy.
 
@@ -553,11 +553,11 @@ SOURCE DOCUMENT TEXT:
 };
 
 module.exports = {
-  getRewritePrompt,
-  getGrammarFixPrompt,
-  getSuggestionsPrompt,
-  getAutocompletePrompt,
-  getStableRealtimePrompt,
-  getSmartSuggestionsPrompt,
-  getDocumentProcessingPrompt
+    getRewritePrompt,
+    getGrammarFixPrompt,
+    getSuggestionsPrompt,
+    getAutocompletePrompt,
+    getStableRealtimePrompt,
+    getSmartSuggestionsPrompt,
+    getDocumentProcessingPrompt
 };
