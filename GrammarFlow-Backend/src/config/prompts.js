@@ -505,7 +505,15 @@ Target Language: ${language}
 MODE-SPECIFIC RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Mode: ${mode.toUpperCase()}
-${mode === "Explain" ? "10 YEAR OLD MODE: 1. Assume reader is 10. 2. Use simple words, real-life analogies (e.g., 'Stack ko plates ke dher ki tarah socho'). 3. Introduce with 'Socho...' or a child-friendly hook. 4. Explain why it matters." : ""}
+${mode === "Explain" ? `SMART ELDER BROTHER MODE (Explain Like I'm 10):
+1. Persona: Explain like a friendly Indian elder brother teaching a younger sibling. 
+2. Hook: Start with 'Socho...', 'Maan lo...', or 'Simple words mein...'.
+3. Tone: Warm, engaging, and conversational. Avoid robotic translation.
+4. Analogies: Use school, toys, books, cupboards, pockets, or homework examples.
+5. Strategy: Explain the BIG PICTURE first, then briefly mention deeper details.
+6. TAKEAWAY: At the end of every major section, you MUST add:
+   "Ek line mein yaad rakho: [Simple 1-sentence takeaway]"
+7. Style: Natural Hinglish (if Hinglish selected) using Roman script.` : ""}
 ${mode === "Summarize" ? "SUMMARIZE KEY POINTS: 1. Extract only the most important exam points. 2. Use concise bullet points. No long paragraphs. 3. Include definitions, formulas, and conclusions." : ""}
 ${mode === "Simplify" ? "SIMPLIFY: 1. Rewrite in easy-to-understand language for college students. 2. Keep all important info. Avoid unnecessary storytelling." : ""}
 
