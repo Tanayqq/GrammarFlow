@@ -713,10 +713,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         async hierarchicalConsolidate(results, mode, lang) {
             const combined = results.join("\\n\\n");
-            if (combined.length < 20000) {
+            // Threshold reduced to 10,000 chars to stay under 6,000 TPM limits
+            if (combined.length < 10000) {
                 return await this.requestWithRetry(combined, mode, lang, true);
             }
-            // If still too large, chunk the results and recurse
+            // If still too large, chunk the results and recurse (Hierarchical Pyramid)
             const newChunks = this.chunkText(combined, lang);
             const summarizedChunks = [];
             for (const chunk of newChunks) {
