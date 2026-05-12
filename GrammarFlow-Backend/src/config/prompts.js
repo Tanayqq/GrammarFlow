@@ -516,6 +516,21 @@ ${mode === "Explain" ? `SMART ELDER BROTHER MODE (Explain Like I'm 10):
 8. TAKEAWAY: At the end of every major section, you MUST add:
    "Ek line mein yaad rakho: [Simple 1-sentence takeaway]"
 9. Style: Natural Hinglish (if Hinglish selected) using Roman script. Avoid textbook language.` : ""}
+${mode === "ExamPrep" ? `EXAM PREP (Expert Academic Teacher):
+1. Task: Rewrite raw/messy notes (often mixed Hinglish) into clear, high-quality technical English.
+2. Logic: Explain concepts simply (10-year-old level) but keep all engineering terms (ALU, PC, Cache, etc.) 100% accurate.
+3. Cleanup: Remove all "Yaar", "Hey buddy", "Arre" and repetitive phrases. Fix all technical/factual mistakes.
+4. Structure: You MUST follow this format for every topic:
+   # [Topic Name]
+   ## Simple Definition
+   [1-2 sentence explanation]
+   ## Key Points
+   - [Important fact 1]
+   - [Important fact 2]
+   ## Easy Example
+   [Short example if helpful]
+   ## Exam Tips
+   - [Frequently asked points / Common mistakes]` : ""}
 ${mode === "Summarize" ? "SUMMARIZE KEY POINTS: 1. Extract only the most important exam points. 2. Use concise bullet points. No long paragraphs. 3. Include definitions, formulas, and conclusions." : ""}
 ${mode === "Simplify" ? "SIMPLIFY: 1. Rewrite in easy-to-understand language for college students. 2. Keep all important info. Avoid unnecessary storytelling." : ""}
 
