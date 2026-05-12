@@ -511,9 +511,11 @@ ${mode === "Explain" ? `SMART ADAPTIVE TEACHER (Explain Like I'm 10):
 3. Tone: A patient, warm teacher explaining to a curious 10-year-old.
 4. Strategy: Explain WHAT it is, WHY it's needed, and HOW it works using school/toy analogies.
 5. Technical: Keep all core concepts accurate but define every technical term IMMEDIATELY in simple words.
-6. Silent Correction: Fix any factual mistakes in the source text silently.
-7. Recap: End every major section with a one-sentence recap summary.
-8. Quality Goal: Score 9/10 in Simplicity, Accuracy, and Child-friendliness.` : ""}
+6. NO HALLUCINATION: Do NOT add facts or details not present in the source unless absolutely necessary for basic understanding.
+7. NO REPETITION: Avoid duplicate explanations or redundant examples.
+8. Silent Correction: Fix any factual mistakes in the source text silently.
+9. Recap: End every major section with a one-sentence recap summary.
+10. Quality Goal: Score 9/10 in Simplicity, Accuracy, and Child-friendliness.` : ""}
 ${mode === "ExamPrep" ? `EXAM PREP (Expert Academic Teacher):
 1. Task: Rewrite raw/messy notes (often mixed Hinglish) into clear, high-quality technical English.
 2. Logic: Explain concepts simply (10-year-old level) but keep all engineering terms (ALU, PC, Cache, etc.) 100% accurate.
