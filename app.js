@@ -560,7 +560,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         chunkText(text, language = 'English') {
             const weight = this.getLanguageWeight(language);
-            const baseMaxChars = 4000; // Drastically reduced for 6,000 TPM strict limits
+            const baseMaxChars = 6000; // Increased to speed up processing
             const maxChars = Math.floor(baseMaxChars / weight);
             
             if (text.length <= maxChars) return [text];
@@ -657,8 +657,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     renderResults(intermediateResults);
                     
                     if (i < chunks.length - 1) {
-                        renderResults([...intermediateResults, `Waiting 10s to stay under AI rate limits...`]);
-                        await new Promise(r => setTimeout(r, 10000));
+                        renderResults([...intermediateResults, `Waiting 5s to maintain AI stability...`]);
+                        await new Promise(r => setTimeout(r, 5000));
                     }
                 }
 
@@ -669,8 +669,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (chunks.length === 1) {
                     finalResult = intermediateResults[0];
                 } else if (mode === "Summarize") {
-                    renderResults([...intermediateResults, "Taking a brief pause to prevent AI rate limits... (10s)"]);
-                    await new Promise(r => setTimeout(r, 10000)); // 10s cooldown before the heavy final pass
+                    renderResults([...intermediateResults, "Taking a brief pause for the final high-quality pass... (15s)"]);
+                    await new Promise(r => setTimeout(r, 15000)); // Longer cooldown for the heavy final pass
                     
                     renderResults([...intermediateResults, "Finalizing document structure and weaving summaries together... (Please wait)"]);
                     finalResult = await this.hierarchicalConsolidate(intermediateResults, mode, lang);
