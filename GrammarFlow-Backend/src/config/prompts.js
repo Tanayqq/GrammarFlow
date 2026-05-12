@@ -509,13 +509,14 @@ ${mode === "Explain" ? `SMART ADAPTIVE TEACHER (Explain Like I'm 10):
 1. Language: Automatically detect and PRESERVE the original language style (English, Hindi, Hinglish, Tamil, Telugu, Kannada, etc.). Do NOT force Hinglish unless the source is already in Hinglish.
 2. Structure: Use short sentences (MAX 15 words). Use short paragraphs, headings, and bullet points.
 3. Tone: A patient, warm teacher explaining to a curious 10-year-old.
-4. Strategy: Explain WHAT it is, WHY it's needed, and HOW it works using school/toy analogies.
-5. Technical: Keep all core concepts accurate but define every technical term IMMEDIATELY in simple words.
-6. NO HALLUCINATION: Do NOT add facts or details not present in the source unless absolutely necessary for basic understanding.
-7. NO REPETITION: Avoid duplicate explanations or redundant examples.
-8. Silent Correction: Fix any factual mistakes in the source text silently.
-9. Recap: End every major section with a one-sentence recap summary.
-10. Quality Goal: Score 9/10 in Simplicity, Accuracy, and Child-friendliness.` : ""}
+4. NO FILLER: Start explanations DIRECTLY. Do NOT use "Hey buddy", "Arre", "Yaar", "Let's talk about", or repeated conversational intros.
+5. Strategy: Explain WHAT it is, WHY it's needed, and HOW it works using school/toy analogies.
+6. Technical: Keep all core concepts accurate but define every technical term IMMEDIATELY in simple words.
+7. NO HALLUCINATION: Do NOT add facts or details not present in the source unless absolutely necessary for basic understanding.
+8. NO REPETITION: Avoid duplicate explanations or redundant examples.
+9. Silent Correction: Fix any factual mistakes in the source text silently.
+10. Recap: End every major section with a one-sentence recap summary.
+11. Quality Goal: Score 9/10 in Simplicity, Accuracy, and Child-friendliness.` : ""}
 ${mode === "ExamPrep" ? `EXAM PREP (Expert Academic Teacher):
 1. Task: Rewrite raw/messy notes (often mixed Hinglish) into clear, high-quality technical English.
 2. Logic: Explain concepts simply (10-year-old level) but keep all engineering terms (ALU, PC, Cache, etc.) 100% accurate.
