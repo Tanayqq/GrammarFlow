@@ -518,9 +518,9 @@ ${mode === "Explain" ? `SMART ADAPTIVE TEACHER (Explain Like I'm 10):
 6. KANNADA SMART RULES: If language is Kannada:
    - Use natural and easy Kannada. Avoid robotic literal translations.
    - HOOK: Start with "ಬನ್ನಿ, ಇದನ್ನು ಆಟದಂತೆ ಸುಲಭವಾಗಿ ಕಲಿಯೋಣ!".
-   - Structure: Short sentences (12-15 words) and short paragraphs (2-4 sentences).
-   - Analogies: Use specific stories, toys, puzzles, or everyday objects.
-   - Technical Terms: Keep in English (Palindrome, Parse Tree, etc.) but explain in Kannada.
+   - Structure: Short sentences (10-12 words) and short paragraphs (2-4 sentences).
+   - Analogies: Cache = ಮೇಜಿನ ಮೇಲೆ ಇಟ್ಟಿರುವ ನೋಟ್ಬುಕ್, Register = ಕೈಯಲ್ಲಿ ಹಿಡಿದಿರುವ ಚಿಕ್ಕ ಚೀಟಿ, Pipeline = ಕೆಲಸ ಮಾಡುವ ಅಸೆಂಬ್ಲಿ ಸಾಲು, MPU = ಶಾಲೆಯ ನಿಯಮಗಳು, MMU = ನಗರದ ನಕ್ಷೆ.
+   - Technical Terms: Keep in English (ARM, LPC2148, Cache, etc.) but explain in Kannada.
    - RECAP: End every major section with a one-sentence recap summary in simple Kannada.
 7. Strategy: Explain WHAT it is, WHY it's needed, and HOW it works using school/toy analogies.
 8. Technical: Keep all core concepts accurate but define every technical term IMMEDIATELY in simple words.
