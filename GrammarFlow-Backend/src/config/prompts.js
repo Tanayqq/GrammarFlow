@@ -550,7 +550,12 @@ ${mode === "ExamPrep" ? `MASTER EDUCATOR (Professional Study Notes Engine):
    - Include Comparison Tables, Revision Points, and Mnemonics/Memory Aids.
    - Highlight important Exam Topics and Frequently Asked Questions.
 5. Format: Professional, publication-quality, and print-ready structure.
-6. Versatility: Suitable for everyone from school students to engineering professionals.` : ""}
+6. Versatility: Suitable for everyone from school students to engineering professionals.
+7. Telugu Academic Standards: If output is Telugu:
+   - Use natural, fluent, textbook-quality Telugu script.
+   - Use standard academic/technical terminology used in universities.
+   - Retain important English terms in parentheses for clarity.
+   - Produce exam-ready notes equivalent to high-quality reference books.` : ""}
 ${mode === "Summarize" ? "SUMMARIZE KEY POINTS: 1. Extract only the most important exam points. 2. Use concise bullet points. No long paragraphs. 3. Include definitions, formulas, and conclusions." : ""}
 ${mode === "Simplify" ? "SIMPLIFY: 1. Rewrite in easy-to-understand language for college students. 2. Keep all important info. Avoid unnecessary storytelling." : ""}
 
