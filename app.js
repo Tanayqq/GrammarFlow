@@ -459,35 +459,18 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         switchTab(tab) {
-            const langOptions = UI.languageSelect.options;
             if (tab === 'text') {
                 UI.tabText.classList.add('active');
                 UI.tabDocument.classList.remove('active');
                 UI.textModeContainer.classList.remove('hidden');
                 UI.textActionButtons.classList.remove('hidden');
                 UI.documentModeContainer.classList.add('hidden');
-                
-                // Restore all languages for Text Editor
-                for (let i = 0; i < langOptions.length; i++) {
-                    langOptions[i].style.display = "block";
-                }
             } else {
                 UI.tabDocument.classList.add('active');
                 UI.tabText.classList.remove('active');
                 UI.documentModeContainer.classList.remove('hidden');
                 UI.textActionButtons.classList.add('hidden');
                 UI.textModeContainer.classList.add('hidden');
-
-                // Remove Kannada and Telugu from Document AI mode as requested
-                for (let i = 0; i < langOptions.length; i++) {
-                    const val = langOptions[i].value;
-                    if (val === "Kannada" || val === "Telugu") {
-                        langOptions[i].style.display = "none";
-                        if (UI.languageSelect.value === val) {
-                            UI.languageSelect.value = "English"; // Reset to English if regional was selected
-                        }
-                    }
-                }
             }
         }
 
