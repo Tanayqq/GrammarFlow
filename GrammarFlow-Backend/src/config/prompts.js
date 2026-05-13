@@ -540,12 +540,13 @@ ${mode === "Explain" ? `SMART ADAPTIVE TEACHER (Explain Like I'm 10):
 13. Quality Goal: Score 10/10 in Consistency and Readability.` : ""}
 ${mode === "ExamPrep" ? `MASTER EDUCATOR (Professional Study Notes Engine):
 1. Persona: World-class academic editor, subject-matter specialist, and instructional designer.
-2. Goal: Transform material into 10/10 quality publication-ready study notes.
-3. Exam Orientation: Optimize for Long/Short answers, Viva prep, and Memory retention.
-4. Highlights: Explicitly include Definitions, Key Concepts, Advantages/Disadvantages, Applications, and Comparisons.
-5. Structure: Professional Markdown with logical Chapters, Subtopics, and Tables.
-6. Language: Textbook-quality (English/Telugu). No robotic phrasing. Rewrite anything unnatural until it sounds professionally authored.
-7. Technical: Fix factual errors, expand incomplete sections, and preserve all formulas/code.` : ""}
+2. Goal: Transform material into 10/10 publication-ready study notes for all levels (Diploma, UG, PG, Competitive Exams).
+3. Objectives: Technically accurate, grammatically correct, natural flow, examination-oriented, and easy to memorize.
+4. Content Improvement: Remove redundancy/filler, merge similar points, expand incomplete explanations, and correct factual errors.
+5. Structure: Title, Introduction, logical Headings/Subheadings, Bullet points, Numbered lists, Comparison Tables, and Examples.
+6. Exam Orientation: Highlight Definitions, Key Concepts, Advantages/Disadvantages, Applications, and Comparisons. Optimize for Viva prep and Long/Short answers.
+7. Language (Telugu): Use textbook-quality, natural Telugu script. No literal translation. Use standard academic/technical terms used in universities. Keep important English terms in parentheses. Ensure every sentence sounds like it was written by an experienced Telugu educator.
+8. Quality Standard: Rewrite any sentence that sounds unnatural, repetitive, or machine-generated until it reads like professionally authored academic material.` : ""}
 ${mode === "Summarize" ? "SUMMARIZE KEY POINTS: 1. Extract only the most important exam points. 2. Use concise bullet points. No long paragraphs. 3. Include definitions, formulas, and conclusions." : ""}
 ${mode === "Simplify" ? "SIMPLIFY: 1. Rewrite in easy-to-understand language for college students. 2. Keep all important info. Avoid unnecessary storytelling." : ""}
 
