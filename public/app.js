@@ -465,12 +465,36 @@ document.addEventListener("DOMContentLoaded", () => {
                 UI.textModeContainer.classList.remove('hidden');
                 UI.textActionButtons.classList.remove('hidden');
                 UI.documentModeContainer.classList.add('hidden');
+                
+                // Rebuild language options for Text Editor (includes Kannada/Telugu)
+                this.updateLanguageOptions(['Auto', 'English', 'Hindi', 'Hinglish', 'Kannada', 'Telugu']);
             } else {
                 UI.tabDocument.classList.add('active');
                 UI.tabText.classList.remove('active');
                 UI.documentModeContainer.classList.remove('hidden');
                 UI.textActionButtons.classList.add('hidden');
                 UI.textModeContainer.classList.add('hidden');
+
+                // Rebuild language options for Document AI (Hides Kannada/Telugu)
+                this.updateLanguageOptions(['Auto', 'English', 'Hindi', 'Hinglish']);
+            }
+        }
+
+        updateLanguageOptions(langs) {
+            const currentVal = UI.languageSelect.value;
+            UI.languageSelect.innerHTML = '';
+            langs.forEach(l => {
+                const opt = document.createElement('option');
+                opt.value = l;
+                opt.textContent = l === 'Auto' ? 'Auto-Detect' : l;
+                UI.languageSelect.appendChild(opt);
+            });
+            
+            // Restore previous value if it's still available, else default to English
+            if (langs.includes(currentVal)) {
+                UI.languageSelect.value = currentVal;
+            } else {
+                UI.languageSelect.value = 'English';
             }
         }
 
@@ -766,6 +790,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.documentProcessor = new DocumentProcessor();
     document.getElementById("downloadPdfBtn").onclick = () => window.documentProcessor.exportToPDF();
     document.getElementById("downloadDocxBtn").onclick = () => window.documentProcessor.exportToDOCX();
-
-    window.documentProcessor = new DocumentProcessor();
+    
+    // Set initial tab state
+    window.documentProcessor.switchTab('text');
 });
