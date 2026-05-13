@@ -1,13 +1,10 @@
-                                                                                                                                                                // ─────────────────────────────────────────────
-// LANGUAGE ENFORCEMENT (HIGHEST PRIORITY)
-// ─────────────────────────────────────────────
-// When a user explicitly selects a target language, EVERY response
-// MUST be written entirely in that language. This overrides:
-//   - source language detection
-//   - original wording preservation
-//   - multilingual input
-//   - code-switching
+                                                                                                                                                                //   - code-switching
 //   - slang preservation
+// 
+// ⚠️ ONE DOCUMENT, ONE SCRIPT RULE:
+// - If the target is Hindi → 100% Devanagari script. ZERO Roman letters (except IDs).
+// - If the target is Hinglish → 100% Roman/Latin script. ZERO Devanagari.
+// - NEVER mix scripts in the same response. Script consistency is 10/10 priority.
 // ─────────────────────────────────────────────
 
 /**
@@ -497,8 +494,9 @@ UNIVERSAL QUALITY RULES
 LANGUAGE ADAPTATION RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Target Language: ${language}
-- ${language === 'Hinglish' ? "HINGLISH: Use everyday spoken Hindi written in Roman script. Example: 'Finite Automata ek simple machine model hai jo input ko step by step padhta hai...'." : ""}
-- ${language === 'Hindi' ? "HINDI (DEVANAGARI): You MUST use Devanagari script (हिंदी) for everything except technical identifiers (e.g. LPC2148, GPIO). Do NOT write Hindi words in Roman/English script. This is NOT Hinglish mode." : ""}
+- ${language === 'Hinglish' ? "HINGLISH: Use everyday spoken Hindi written in Roman script ONLY. ZERO Devanagari script allowed. No English sentences, just Hindi grammar with Roman letters." : ""}
+- ${language === 'Hindi' ? "HINDI (DEVANAGARI): You MUST use Devanagari script (हिंदी) for everything. ZERO Roman script allowed except for technical codes (e.g. LPC2148). This is NOT Hinglish. If a word is English, TRANSLITERATE it to Devanagari (e.g. 'Microcontroller' -> 'माइक्रोकंट्रोलर')." : ""}
+- SCRIPT CONSISTENCY: Do NOT switch between Roman and Devanagari. Choose ONE based on the target language and stick to it 100%." : ""}
 - Maintain clarity and adapt terminology to educational conventions of ${language}.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
