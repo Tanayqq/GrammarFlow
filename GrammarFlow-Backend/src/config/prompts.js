@@ -542,7 +542,10 @@ STYLE & HUMANIZATION
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Tone: ${tone}
 - Style: ${style}
-${humanize ? "- Humanize Mode: ACTIVE. Use natural, varied phrasing. Avoid robotic repetitions. Write with empathy and clarity." : ""}
+${humanize ? `- Humanize Mode: ACTIVE.
+  - Use natural, varied phrasing. Avoid robotic repetitions like "upayog kiya jata hai" (उपयोग किया जाता है) or "madad karta hai" (मदद करता है).
+  - HINDI HUMANIZATION: Use "Hindustani" flow (spoken Hindi vocabulary) in Devanagari script. Instead of formal Sanskrit terms, use common words that a teacher would use in a real classroom (e.g., use "kaam" instead of "karyashilta", "jarurat" instead of "avashyakta").
+  - Write with empathy, clarity, and a conversational pulse.` : ""}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FINAL QUALITY CHECK
