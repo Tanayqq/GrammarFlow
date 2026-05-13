@@ -459,18 +459,35 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         switchTab(tab) {
+            const langOptions = UI.languageSelect.options;
             if (tab === 'text') {
                 UI.tabText.classList.add('active');
                 UI.tabDocument.classList.remove('active');
                 UI.textModeContainer.classList.remove('hidden');
                 UI.textActionButtons.classList.remove('hidden');
                 UI.documentModeContainer.classList.add('hidden');
+                
+                // Show Kannada and Telugu for Text Editor
+                for (let i = 0; i < langOptions.length; i++) {
+                    langOptions[i].style.display = "block";
+                }
             } else {
                 UI.tabDocument.classList.add('active');
                 UI.tabText.classList.remove('active');
                 UI.documentModeContainer.classList.remove('hidden');
                 UI.textActionButtons.classList.add('hidden');
                 UI.textModeContainer.classList.add('hidden');
+
+                // Hide Kannada and Telugu for Document AI as requested
+                for (let i = 0; i < langOptions.length; i++) {
+                    const val = langOptions[i].value;
+                    if (val === "Kannada" || val === "Telugu") {
+                        langOptions[i].style.display = "none";
+                        if (UI.languageSelect.value === val) {
+                            UI.languageSelect.value = "English"; 
+                        }
+                    }
+                }
             }
         }
 
@@ -766,6 +783,7 @@ document.addEventListener("DOMContentLoaded", () => {
     window.documentProcessor = new DocumentProcessor();
     document.getElementById("downloadPdfBtn").onclick = () => window.documentProcessor.exportToPDF();
     document.getElementById("downloadDocxBtn").onclick = () => window.documentProcessor.exportToDOCX();
-
-    window.documentProcessor = new DocumentProcessor();
+    
+    // Set initial tab state
+    window.documentProcessor.switchTab('text');
 });
