@@ -498,6 +498,7 @@ LANGUAGE ADAPTATION RULES
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Target Language: ${language}
 - ${language === 'Hinglish' ? "HINGLISH: Use everyday spoken Hindi written in Roman script. Example: 'Finite Automata ek simple machine model hai jo input ko step by step padhta hai...'." : ""}
+- ${language === 'Hindi' ? "HINDI (DEVANAGARI): You MUST use Devanagari script (हिंदी) for everything except technical identifiers (e.g. LPC2148, GPIO). Do NOT write Hindi words in Roman/English script. This is NOT Hinglish mode." : ""}
 - Maintain clarity and adapt terminology to educational conventions of ${language}.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
