@@ -693,13 +693,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (chunks.length === 1) {
                     finalResult = intermediateResults[0];
                 } else if (mode === "Summarize") {
-                    renderResults([...intermediateResults, "Taking a brief pause for the final high-quality pass... (15s)"]);
-                    await new Promise(r => setTimeout(r, 15000)); // Longer cooldown for the heavy final pass
-                    
                     renderResults([...intermediateResults, "Finalizing document structure and weaving summaries together... (Please wait)"]);
                     finalResult = await this.hierarchicalConsolidate(intermediateResults, mode, lang);
                 } else {
-                    finalResult = intermediateResults.join("\\n\\n");
+                    finalResult = intermediateResults.join("\n\n");
                 }
 
                 renderResults([finalResult]);
@@ -735,19 +732,21 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        async hierarchicalConsolidate(results, mode, lang) {
-            const combined = results.join("\\n\\n");
-            // Threshold reduced to 10,000 chars to stay under 6,000 TPM limits
-            if (combined.length < 10000) {
+        async hierarchicalConsolidate(results, mode, lang, depth = 0) {
+            const combined = results.join("\n\n");
+            
+            // If it's short enough or we've recursed too much (max 2 levels), just do one last pass
+            if (combined.length < 15000 || depth >= 2) {
                 return await this.requestWithRetry(combined, mode, lang, true);
             }
-            // If still too large, chunk the results and recurse (Hierarchical Pyramid)
+
+            // Otherwise, chunk and recurse
             const newChunks = this.chunkText(combined, lang);
             const summarizedChunks = [];
             for (const chunk of newChunks) {
                 summarizedChunks.push(await this.requestWithRetry(chunk, mode, lang, true));
             }
-            return await this.hierarchicalConsolidate(summarizedChunks, mode, lang);
+            return await this.hierarchicalConsolidate(summarizedChunks, mode, lang, depth + 1);
         }
 
         promptResume() {
