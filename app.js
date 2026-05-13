@@ -459,7 +459,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         switchTab(tab) {
-            const langOptions = UI.languageSelect.options;
             if (tab === 'text') {
                 UI.tabText.classList.add('active');
                 UI.tabDocument.classList.remove('active');
@@ -467,10 +466,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 UI.textActionButtons.classList.remove('hidden');
                 UI.documentModeContainer.classList.add('hidden');
                 
-                // Show Kannada and Telugu for Text Editor
-                for (let i = 0; i < langOptions.length; i++) {
-                    langOptions[i].style.display = "block";
-                }
+                // Rebuild language options for Text Editor (includes Kannada/Telugu)
+                this.updateLanguageOptions(['Auto', 'English', 'Hindi', 'Hinglish', 'Kannada', 'Telugu']);
             } else {
                 UI.tabDocument.classList.add('active');
                 UI.tabText.classList.remove('active');
@@ -478,16 +475,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 UI.textActionButtons.classList.add('hidden');
                 UI.textModeContainer.classList.add('hidden');
 
-                // Hide Kannada and Telugu for Document AI as requested
-                for (let i = 0; i < langOptions.length; i++) {
-                    const val = langOptions[i].value;
-                    if (val === "Kannada" || val === "Telugu") {
-                        langOptions[i].style.display = "none";
-                        if (UI.languageSelect.value === val) {
-                            UI.languageSelect.value = "English"; 
-                        }
-                    }
-                }
+                // Rebuild language options for Document AI (Hides Kannada/Telugu)
+                this.updateLanguageOptions(['Auto', 'English', 'Hindi', 'Hinglish']);
+            }
+        }
+
+        updateLanguageOptions(langs) {
+            const currentVal = UI.languageSelect.value;
+            UI.languageSelect.innerHTML = '';
+            langs.forEach(l => {
+                const opt = document.createElement('option');
+                opt.value = l;
+                opt.textContent = l === 'Auto' ? 'Auto-Detect' : l;
+                UI.languageSelect.appendChild(opt);
+            });
+            
+            // Restore previous value if it's still available, else default to English
+            if (langs.includes(currentVal)) {
+                UI.languageSelect.value = currentVal;
+            } else {
+                UI.languageSelect.value = 'English';
             }
         }
 
