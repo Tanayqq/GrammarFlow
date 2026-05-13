@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrammarFlow - AI Writing Companion</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+:root {
+    --bg-dark: #0A0A0F;
+    --card-bg: #12121E;
+    --input-bg: #1A1A2E;
+    --border-color: #2D2D44;
+    --text-main: #F8F9FA;
+    --text-muted: #9494B8;
+    --primary-color: #6366F1;
+    --primary-hover: #4F46E5;
+    --primary-gradient: linear-gradient(135deg, #6366F1 0%, #A855F7 100%);
+    --button-gradient: linear-gradient(90deg, #6366F1 0%, #A855F7 100%);
+    --accent-green: #22C55E;
+    --accent-purple: #A855F7;
+    --shadow-glow: 0 4px 20px rgba(99, 102, 241, 0.3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+body { background-color: var(--bg-dark); color: var(--text-main); display: flex; justify-content: center; min-height: 100vh; padding: 60px 20px; line-height: 1.6; }
+
+.app-container { width: 100%; max-width: 800px; }
+
+.app-header { display: flex; align-items: center; gap: 16px; margin-bottom: 40px; }
+.logo-circle { width: 44px; height: 44px; border-radius: 12px; background: var(--primary-gradient); }
+.app-header h1 { font-size: 1.8rem; font-weight: 800; color: #7C3AED; }
+
+.glass-card { 
+    background: rgba(18, 18, 30, 0.8); 
+    backdrop-filter: blur(20px);
+    border-radius: 24px; 
+    padding: 32px; 
+    border: 1px solid var(--border-color);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+}
+
+.editor-container { position: relative; margin-bottom: 24px; }
+textarea#inputText {
+    width: 100%; height: 200px; background: rgba(26, 26, 46, 0.5); 
+    color: var(--text-main); border: 1px solid var(--border-color); 
+    border-radius: 16px; padding: 24px; font-size: 1.1rem; line-height: 1.6;
+    resize: none; transition: border-color 0.3s;
+}
+textarea#inputText:focus { outline: none; border-color: var(--primary-color); }
+
+.controls { display: grid; grid-template-columns: 1fr 1fr 1.5fr 1.2fr; gap: 16px; margin-bottom: 32px; }
+select { 
+    appearance: none; width: 100%; height: 56px; 
+    background: #1A1A2E; color: var(--text-main); 
+    border: 1px solid var(--border-color); border-radius: 14px; 
+    padding: 0 20px; cursor: pointer; font-size: 1rem; font-weight: 500;
+}
+
+.humanize-wrapper { 
+    display: flex; align-items: center; justify-content: space-between; 
+    padding: 0 20px; background: #1A1A2E; border: 1px solid var(--border-color); 
+    border-radius: 14px; height: 56px; 
+}
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #3F3F46; transition: .4s; border-radius: 34px; }
+.slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background: var(--button-gradient); }
+input:checked + .slider:before { transform: translateX(20px); }
+
+.button-group { display: flex; gap: 16px; margin-top: 10px; }
+.secondary-btn { 
+    flex: 1; height: 60px; background: #1E1E36; color: var(--text-main); 
+    border: 1px solid var(--border-color); border-radius: 16px; 
+    cursor: pointer; font-weight: 600; font-size: 1rem;
+}
+.primary-btn { 
+    flex: 2; height: 60px; background: var(--button-gradient); 
+    color: white; border: none; border-radius: 16px; 
+    font-weight: 700; font-size: 1.1rem; cursor: pointer; 
+    box-shadow: var(--shadow-glow);
+}
+
+.output-section { margin-top: 40px; padding-top: 32px; border-top: 1px solid var(--border-color); }
+.result-card { 
+    background: #1A1A2E; border: 1px solid var(--border-color); 
+    border-radius: 20px; padding: 24px; margin-bottom: 16px;
+    font-size: 1.1rem; line-height: 1.7;
+}
+
+.assistant-bar {
+    position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%) translateY(150px);
+    width: 90%; max-width: 650px; background: #11111B; 
+    border: 1px solid #2D2D44; border-radius: 20px; padding: 16px 24px;
+    display: flex; align-items: center; gap: 20px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+    transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); z-index: 1000;
+}
+.assistant-bar.visible { transform: translateX(-50%) translateY(0); }
+.assistant-icon { 
+    width: 32px; height: 32px; background: var(--primary-gradient); 
+    border-radius: 8px; display: flex; align-items: center; justify-content: center; 
+}
+.suggestion-content { flex-grow: 1; }
+.suggestion-label { 
+    font-size: 0.75rem; font-weight: 800; color: #A855F7; 
+    text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;
+}
+.suggestion-text { font-size: 1rem; color: #E4E4E7; }
+.suggestion-text b { color: var(--accent-green); }
+.apply-btn { 
+    background: var(--accent-green); color: white; border: none; 
+    padding: 10px 24px; border-radius: 10px; cursor: pointer; 
+    font-weight: 700; font-size: 1rem;
+}
+
+.hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo-circle"></div>
+            <h1>GrammarFlow</h1>
+        </header>
+
+        <main class="panel glass-card">
+            <div class="editor-container">
+                <textarea id="inputText" placeholder="Start typing naturally..."></textarea>
+            </div>
+            
+            <div class="controls">
+                <select id="styleSelect"><option>Formal</option><option>Casual</option><option>Concise</option></select>
+                <select id="toneSelect"><option>Polite</option><option>Friendly</option><option>Direct</option></select>
+                <select id="languageSelect">
+                    <option value="Auto">Auto-Detect</option>
+                    <option value="English">English</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Hinglish">Hinglish</option>
+
+                </select>
+                <div class="humanize-wrapper">
+                    <span style="font-size: 0.85rem; font-weight: 500;">Human Mode</span>
+                    <label class="switch"><input type="checkbox" id="humanizeToggle" checked><span class="slider"></span></label>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button id="fixGrammarBtn" class="secondary-btn">Fix Grammar</button>
+                <button id="rewriteBtn" class="primary-btn">Rewrite Paragraph</button>
+            </div>
+
+            <div id="outputSection" class="output-section hidden">
+                <div class="results-list" id="resultsList"></div>
+            </div>
+        </main>
+
+        <div id="assistantBar" class="assistant-bar">
+            <div class="assistant-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg></div>
+            <div class="suggestion-content">
+                <div class="suggestion-label" id="suggestionLabel">AUTHENTICITY</div>
+                <div class="suggestion-text" id="suggestionText">Loading...</div>
+            </div>
+            <div class="assistant-actions">
+                <button id="applySuggestionBtn" class="apply-btn">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Copying the latest app logic for the root deployment
+        const CONFIG = {
+            PRODUCTION_API_URL: "", 
+            API_VERSION: "/api/v1"
+        };
+
+        const getBaseUrl = () => {
+            if (CONFIG.PRODUCTION_API_URL) return CONFIG.PRODUCTION_API_URL + CONFIG.API_VERSION;
+            return `http://localhost:3000${CONFIG.API_VERSION}`;
+        };
+
+        const UI = {
+            inputText: document.getElementById("inputText"),
+            assistantBar: document.getElementById("assistantBar"),
+            suggestionText: document.getElementById("suggestionText"),
+            suggestionLabel: document.getElementById("suggestionLabel"),
+            applyBtn: document.getElementById("applySuggestionBtn"),
+            styleSelect: document.getElementById("styleSelect"),
+            toneSelect: document.getElementById("toneSelect"),
+            languageSelect: document.getElementById("languageSelect"),
+            humanizeToggle: document.getElementById("humanizeToggle"),
+            rewriteBtn: document.getElementById("rewriteBtn"),
+            fixGrammarBtn: document.getElementById("fixGrammarBtn"),
+            resultsList: document.getElementById("resultsList"),
+            outputSection: document.getElementById("outputSection")
+        };
+
+        const callAPI = async (endpoint, payload) => {
+            try {
+                const res = await fetch(`${getBaseUrl()}${endpoint}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                return await res.json();
+            } catch (e) { return { success: false, error: { message: "Connection error" } }; }
+        };
+
+        UI.rewriteBtn.onclick = async () => {
+            UI.outputSection.classList.remove("hidden");
+            UI.resultsList.innerHTML = "Processing...";
+            const data = await callAPI("/rewrite", {
+                text: UI.inputText.value,
+                style: UI.styleSelect.value,
+                tone: UI.toneSelect.value,
+                language: UI.languageSelect.value,
+                humanize: UI.humanizeToggle.checked
+            });
+            if (data.success) {
+                UI.resultsList.innerHTML = "";
+                const items = Array.isArray(data.data) ? data.data : [data.data];
+                items.forEach(item => {
+                    const div = document.createElement("div");
+                    div.className = "result-card";
+                    div.innerText = item;
+                    UI.resultsList.appendChild(div);
+                });
+            }
+        };
+
+        UI.inputText.addEventListener("input", () => {
+            clearTimeout(window.timer);
+            window.timer = setTimeout(async () => {
+                const text = UI.inputText.value.trim();
+                if (text.length < 5) return;
+                const data = await callAPI("/analyze-realtime", {
+                    text, language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
+                });
+                if (data.success && data.data.length > 0) {
+                    const sug = data.data[0];
+                    UI.suggestionText.innerHTML = `Change "<b>${sug.original}</b>" to "<b>${sug.suggestion}</b>"`;
+                    UI.assistantBar.classList.add("visible");
+                    UI.applyBtn.onclick = () => {
+                        UI.inputText.value = UI.inputText.value.replace(sug.original, sug.suggestion);
+                        UI.assistantBar.classList.remove("visible");
+                    };
+                }
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

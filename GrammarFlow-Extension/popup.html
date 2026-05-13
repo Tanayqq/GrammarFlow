@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrammarFlow Settings</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="header">
+        <div class="logo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            GrammarFlow
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="section-title">Context Menu Settings</div>
+        <div class="description">These settings apply when you right-click "Improve with GrammarFlow" on any website.</div>
+
+        <div class="form-group">
+            <label>Output Language</label>
+            <select id="langSelect">
+                <option value="English">English</option>
+                <option value="Hinglish">Hinglish</option>
+
+                <option value="Hindi">Hindi</option>
+            </select>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label>Style</label>
+                <select id="styleSelect">
+                    <option value="Casual">Casual</option>
+                    <option value="Professional">Professional</option>
+                    <option value="Conversational">Conversational</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Tone</label>
+                <select id="toneSelect">
+                    <option value="Friendly">Friendly</option>
+                    <option value="Direct">Direct</option>
+                    <option value="Empathetic">Empathetic</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group toggle-group">
+            <label>Humanize AI</label>
+            <label class="switch">
+                <input type="checkbox" id="humanizeToggle" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="save-btn-container">
+            <button id="saveBtn" class="btn">Save Settings</button>
+            <span id="saveStatus" class="status-msg"></span>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
