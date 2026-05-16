@@ -6,192 +6,139 @@
     <title>GrammarFlow - AI Writing Companion</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=5.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=4.4">
+    <!-- Document Processing Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/docx@8.1.0/build/index.js"></script>
 </head>
 <body>
-    <div class="dashboard-layout">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-icon"></div>
-                <h2>GrammarFlow</h2>
-            </div>
+    <div class="app-container">
+        <header class="app-header">
+            <div class="logo-circle" id="appLogo"></div>
+            <h1>GrammarFlow</h1>
+        </header>
+
+        <main class="panel glass-card">
             
-            <nav class="sidebar-nav">
-                <a href="#" class="nav-item active">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                    Home
-                </a>
-                <a href="#" class="nav-item">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    Documents
-                </a>
-                <a href="#" class="nav-item">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-                    Templates
-                </a>
-                <a href="#" class="nav-item">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                    Settings
-                </a>
-            </nav>
-
-            <div class="sidebar-footer">
-                <a href="#" class="nav-item">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                    Settings
-                </a>
-                <a href="#" class="nav-item">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                    Log out
-                </a>
+            <div class="tabs">
+                <button class="tab-btn active" id="tabText">Text Editor</button>
+                <button class="tab-btn" id="tabDocument">Document AI</button>
             </div>
-        </aside>
 
-        <!-- Main Content Area -->
-        <div class="main-content">
-            <!-- Top Navigation Bar -->
-            <header class="top-nav">
-                <div class="search-bar">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <input type="text" placeholder="Search documents...">
-                </div>
-                <button class="new-doc-btn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    New Document
-                </button>
-            </header>
-
-            <!-- Dashboard Workspace -->
-            <main class="panel glass-card">
-                <div class="tabs">
-                    <button class="tab active">Text Editor</button>
-                    <button class="tab">Document AI</button>
-                </div>
-
+            <!-- Text Editor Mode -->
+            <div id="textModeContainer">
                 <div class="editor-container">
-                    <textarea id="inputText" placeholder="Start typing naturally..."></textarea>
+                    <div id="highlighterOverlay" class="highlighter-overlay"></div>
+                    <textarea id="inputText" placeholder="Start typing naturally..." spellcheck="false"></textarea>
+                </div>
+            </div>
+
+            <!-- Document AI Mode -->
+            <div id="documentModeContainer" class="hidden">
+                <div class="document-upload-zone" id="documentUploadZone">
+                    <div class="upload-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    </div>
+                    <p class="upload-title">Drop an image or PDF here</p>
+                    <p class="upload-subtitle">or click to browse files</p>
+                    <input type="file" id="fileInput" accept="image/*,application/pdf" multiple class="hidden-file-input">
                 </div>
                 
-                <div class="controls-toolbar">
-                    <div class="tone-chips">
-                        <span class="toolbar-label">Tone:</span>
-                        <!-- Kept original ID references where appropriate, but styled as chips -->
-                        <button class="tone-chip active" id="styleSelect" value="Casual">Casual</button>
-                        <button class="tone-chip" value="Friendly">Friendly</button>
-                        <button class="tone-chip" id="languageSelect" value="Auto">Auto-Detect</button>
-                    </div>
+                <div id="filePreviewContainer" class="file-preview-container hidden"></div>
 
-                    <div class="humanize-wrapper">
-                        <span style="font-size: 0.85rem; font-weight: 500;">Human Mode</span>
-                        <label class="switch"><input type="checkbox" id="humanizeToggle" checked><span class="slider"></span></label>
-                    </div>
+                <div class="button-group document-buttons">
+                    <button id="cancelProcessBtn" class="secondary-btn hidden">Cancel</button>
+                    <button id="processDocBtn" class="primary-btn fluid-btn">Process Document</button>
                 </div>
 
-                <div class="button-group">
-                    <button id="fixGrammarBtn" class="secondary-btn">Fix Grammar</button>
-                    <button id="rewriteBtn" class="primary-btn">Rewrite Paragraph</button>
-                </div>
-
-                <div id="outputSection" class="output-section hidden">
-                    <div class="results-list" id="resultsList"></div>
-                </div>
-            </main>
-
-            <div id="assistantBar" class="assistant-bar">
-                <div class="assistant-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg></div>
-                <div class="suggestion-content">
-                    <div class="suggestion-label" id="suggestionLabel">AUTHENTICITY</div>
-                    <div class="suggestion-text" id="suggestionText">Loading...</div>
-                </div>
-                <div class="assistant-actions">
-                    <button id="applySuggestionBtn" class="apply-btn">Apply</button>
+                <div class="controls document-controls">
+                    <select id="documentModeSelect">
+                        <option value="Summarize">Summarize Key Points</option>
+                        <option value="Simplify">Simplify Language</option>
+                        <option value="ExamPrep">Exam Prep (Academic Rewriter)</option>
+                        <option value="Translate">Translate</option>
+                        <option value="Explain">Explain to a 10-year-old</option>
+                        <option value="Grammar">OCR Fix &amp; Grammar Correct</option>
+                    </select>
+                    <button id="processDocumentBtn" class="primary-btn full-width" disabled>Process Document</button>
                 </div>
             </div>
+
+            <!-- OCR Mode Info Banner (shown only when OCR Fix mode is selected) -->
+            <div id="ocrModeBanner" class="hidden" style="background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15)); border: 1px solid rgba(99,102,241,0.4); border-radius: 10px; padding: 10px 14px; font-size: 0.82rem; color: #a5b4fc; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.1rem;">🔍</span>
+                <span><strong>OCR Correction Mode</strong> — Auto-detects language. Fixes OCR errors &amp; grammar only. Stylistic options are disabled to preserve original document structure.</span>
+            </div>
+            
+            <div class="controls" id="globalControls">
+                <select id="styleSelect"><option>Casual</option><option>Formal</option><option>Concise</option></select>
+                <select id="toneSelect"><option>Friendly</option><option>Polite</option><option>Direct</option></select>
+                <select id="languageSelect">
+                    <option value="Auto">Auto-Detect</option>
+                    <option value="English">English</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Hinglish">Hinglish</option>
+                    <option value="Kannada">Kannada</option>
+                    <option value="Telugu">Telugu</option>
+                </select>
+                <div class="humanize-wrapper">
+                    <span style="font-size: 0.85rem; font-weight: 500;">Human Mode</span>
+                    <label class="switch">
+                        <input type="checkbox" id="humanizeToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="button-group" id="textActionButtons">
+                <button id="fixGrammarBtn" class="secondary-btn">Fix Grammar</button>
+                <button id="rewriteBtn" class="primary-btn">Rewrite Paragraph</button>
+            </div>
+
+            <div id="outputSection" class="output-section hidden">
+                <div id="loadingIndicator" class="spinner hidden"></div>
+                <div id="resumePrompt" class="resume-prompt hidden">
+                    <p>Found a previous session for this file. Resume from where you left off?</p>
+                    <div class="button-group mini">
+                        <button id="resumeYesBtn" class="primary-btn">Yes, Resume</button>
+                        <button id="resumeNoBtn" class="secondary-btn">Start Fresh</button>
+                    </div>
+                </div>
+                <div class="results-list" id="resultsList"></div>
+                <div id="exportControls" class="export-controls hidden">
+                    <button id="downloadPdfBtn" class="export-btn pdf">Download PDF</button>
+                    <button id="downloadDocxBtn" class="export-btn docx">Download Word</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Adaptive Suggestion Bar -->
+        <div id="assistantBar" class="assistant-bar">
+            <div class="assistant-icon">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
+                </svg>
+            </div>
+            <div class="suggestion-content">
+                <div class="suggestion-header">
+                    <div class="suggestion-label" id="suggestionLabel">SUGGESTION</div>
+                    <div class="suggestion-counter" id="suggestionCounter"></div>
+                </div>
+                <div class="suggestion-text" id="suggestionText">Loading suggestion...</div>
+            </div>
+            <div class="assistant-actions">
+                <button id="prevSuggestionBtn" class="nav-btn" title="Previous">&#8592;</button>
+                <button id="nextSuggestionBtn" class="nav-btn" title="Next">&#8594;</button>
+                <button id="applySuggestionBtn" class="apply-btn">Apply</button>
+            </div>
         </div>
+
     </div>
 
-    <script>
-        // Copying the latest app logic for the root deployment
-        const CONFIG = {
-            PRODUCTION_API_URL: "", 
-            API_VERSION: "/api/v1"
-        };
-
-        const getBaseUrl = () => {
-            if (CONFIG.PRODUCTION_API_URL) return CONFIG.PRODUCTION_API_URL + CONFIG.API_VERSION;
-            return `http://localhost:3000${CONFIG.API_VERSION}`;
-        };
-
-        const UI = {
-            inputText: document.getElementById("inputText"),
-            assistantBar: document.getElementById("assistantBar"),
-            suggestionText: document.getElementById("suggestionText"),
-            suggestionLabel: document.getElementById("suggestionLabel"),
-            applyBtn: document.getElementById("applySuggestionBtn"),
-            styleSelect: document.getElementById("styleSelect"),
-            toneSelect: document.getElementById("toneSelect"),
-            languageSelect: document.getElementById("languageSelect"),
-            humanizeToggle: document.getElementById("humanizeToggle"),
-            rewriteBtn: document.getElementById("rewriteBtn"),
-            fixGrammarBtn: document.getElementById("fixGrammarBtn"),
-            resultsList: document.getElementById("resultsList"),
-            outputSection: document.getElementById("outputSection")
-        };
-
-        const callAPI = async (endpoint, payload) => {
-            try {
-                const res = await fetch(`${getBaseUrl()}${endpoint}`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-                return await res.json();
-            } catch (e) { return { success: false, error: { message: "Connection error" } }; }
-        };
-
-        UI.rewriteBtn.onclick = async () => {
-            UI.outputSection.classList.remove("hidden");
-            UI.resultsList.innerHTML = "Processing...";
-            const data = await callAPI("/rewrite", {
-                text: UI.inputText.value,
-                style: UI.styleSelect.value,
-                tone: UI.toneSelect.value,
-                language: UI.languageSelect.value,
-                humanize: UI.humanizeToggle.checked
-            });
-            if (data.success) {
-                UI.resultsList.innerHTML = "";
-                const items = Array.isArray(data.data) ? data.data : [data.data];
-                items.forEach(item => {
-                    const div = document.createElement("div");
-                    div.className = "result-card";
-                    div.innerText = item;
-                    UI.resultsList.appendChild(div);
-                });
-            }
-        };
-
-        UI.inputText.addEventListener("input", () => {
-            clearTimeout(window.timer);
-            window.timer = setTimeout(async () => {
-                const text = UI.inputText.value.trim();
-                if (text.length < 5) return;
-                const data = await callAPI("/analyze-realtime", {
-                    text, language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
-                });
-                if (data.success && data.data.length > 0) {
-                    const sug = data.data[0];
-                    UI.suggestionText.innerHTML = `Change "<b>${sug.original}</b>" to "<b>${sug.suggestion}</b>"`;
-                    UI.assistantBar.classList.add("visible");
-                    UI.applyBtn.onclick = () => {
-                        UI.inputText.value = UI.inputText.value.replace(sug.original, sug.suggestion);
-                        UI.assistantBar.classList.remove("visible");
-                    };
-                }
-            }, 1500);
-        });
-    </script>
+    <script src="app.js?v=4.5"></script>
 </body>
 </html>
