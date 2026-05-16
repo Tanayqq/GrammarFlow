@@ -55,13 +55,14 @@ OUTPUT LANGUAGE: Telugu.
 
     if (lang.includes('kannada')) {
         return `### ⚠️ LANGUAGE ENFORCEMENT — ABSOLUTE HIGHEST PRIORITY ⚠️
-OUTPUT LANGUAGE: Kannada.
-- Every sentence MUST be in Kannada.
-- If the input uses romanized Kannada (Latin script), output in the SAME romanized Kannada style.
-- If the input uses Kannada script (ಕನ್ನಡ), output in Kannada script.
-- Do NOT convert Kannada content into English or Hindi.
-- If the input is in another language, TRANSLATE it fully into Kannada.
-- This rule OVERRIDES all other instructions. Non-compliant output = FAILURE.`;
+OUTPUT LANGUAGE: Kannada script (ಕನ್ನಡ) ONLY.
+- You MUST output EVERY word in Kannada script (ಕನ್ನಡ).
+- The input may be in Hindi, Hinglish, English, or Roman script — it does NOT matter. You MUST TRANSLATE and rewrite it into Kannada script.
+- ZERO Roman letters, ZERO English words, ZERO Hindi words allowed in the output.
+- Technical terms that cannot be translated should be transliterated into Kannada script.
+- Example: if input is "project complete ho gaya hai", output MUST be "ಪ್ರಾಜೆಕ್ಟ್ ಪೂರ್ಣಗೊಂಡಿದೆ" — NOT in Roman script.
+- VERIFY: Before returning, confirm every word uses Kannada Unicode characters (ಕ,ಖ,ಗ...). If ANY Roman letters appear in the output (except numbers like 12:30), REGENERATE entirely.
+- This rule OVERRIDES all other instructions. Non-compliant output = COMPLETE FAILURE.`;
     }
 
     // Auto-detect and mixed language modes
@@ -113,12 +114,13 @@ You are a professional multilingual writing assistant specializing in Indian com
 ### TASK ###
 Provide exactly 3 numbered rewrites (1., 2., 3.) of the user's text.
 ALL 3 rewrites MUST be entirely in ${language}.
+If the input is in a DIFFERENT language (e.g. Hinglish, English, Hindi), TRANSLATE it to ${language} first, then rewrite.
 
 ### CONSTRAINTS ###
 1. Do NOT include any explanations, disclaimers, or conversational filler.
-2. If you cannot process the text perfectly, provide the best possible natural rewrite in ${language} anyway.
+2. NEVER output in a language different from ${language}, even if the input is in another language.
 3. Ensure linguistic fluidity and emotional authenticity.
-4. VERIFY: Before returning, confirm every rewrite is 100% in ${language}. If not, regenerate.`;
+4. FINAL VERIFY (MANDATORY): Scan every word of your output. If ANY word is not in ${language} script (or Kannada script if language is Kannada), DELETE it and replace with the correct ${language} word. Return ONLY when 100% compliant.`;
 };
 
 
