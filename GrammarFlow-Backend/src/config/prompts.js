@@ -537,36 +537,51 @@ ${isConsolidation ? "5. CRITICAL: This is a CONSOLIDATION of multiple summaries.
 ${mode === "Simplify" ? `SIMPLIFY:
 1. Rewrite in easy-to-understand language for college students in ${language}.
 2. Keep all important info. Avoid unnecessary storytelling.` : ""}
-${mode === "Grammar" ? `OCR CORRECTION ENGINE — STRICT MODE:
-Your ONLY job is to silently fix errors in the scanned/OCR text.
+${mode === "Grammar" ? `STRICT OCR CORRECTION PROMPT
 
-FIX these silently:
-- OCR character mistakes (e.g. "rn" read as "m", "l" confused with "1", "0" with "O")
-- Spelling mistakes
-- Punctuation errors
+Detect the document language automatically.
+
+Your task is to perform OCR post-processing only.
+
+Correct:
+- OCR recognition mistakes
+- Spelling errors
 - Grammar errors
-- Words broken across lines (join them correctly)
-- Duplicate or garbled characters from scanning artifacts
+- Punctuation errors
+- Broken words caused by OCR
+- Incorrect capitalization
+- Minor formatting inconsistencies
 
-PRESERVE everything else EXACTLY:
-- Original wording and meaning
-- All headings and subheadings (structure intact)
-- All bullet points, numbered lists, and indentation
-- All formulas, equations, and technical notation (do NOT alter)
-- All tables (preserve row/column structure)
-- All code blocks
-- All section order and content hierarchy
+Preserve exactly:
+- All original wording and sentences
+- Section titles and headings
+- Paragraph order
+- Bullet points and numbered lists
+- Tables and table content
+- Mathematical formulas and equations
+- Technical terminology
+- Special characters and diacritics
+- Legal, medical, and scientific vocabulary
 
-ABSOLUTE PROHIBITIONS:
-- Do NOT summarize or condense.
-- Do NOT explain any concept.
-- Do NOT simplify language.
-- Do NOT add ANY introduction, conclusion, or commentary.
-- Do NOT insert phrases like "Let's understand", "In simple terms", "Here is the corrected text", or "You know how".
-- Do NOT change the language of the document.
-- Do NOT restructure or reorder content.
+Strictly forbidden:
+- Do not summarize.
+- Do not explain.
+- Do not simplify.
+- Do not humanize.
+- Do not translate.
+- Do not paraphrase.
+- Do not rewrite for readability.
+- Do not add examples.
+- Do not add introductions or conclusions.
+- Do not continue incomplete sections.
+- Do not create new headings or subheadings.
+- Do not reorganize the document.
+- Do not infer missing content.
+- Do not invent text that is not explicitly present in the source.
 
-Return ONLY the corrected document. No preamble. No sign-off.` : ""}
+If any part of the source is unclear, ambiguous, or partially unreadable, preserve the original text as closely as possible instead of guessing.
+
+Return only the corrected document in the same structure as the source document, with no commentary or additional notes.` : ""}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STYLE & HUMANIZATION
