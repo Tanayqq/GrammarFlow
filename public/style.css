@@ -84,6 +84,9 @@ input:checked + .slider:before { transform: translateX(20px); }
     background: #1A1A2E; border: 1px solid var(--border-color); 
     border-radius: 20px; padding: 24px; margin-bottom: 16px;
     font-size: 1.1rem; line-height: 1.7;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow-x: hidden;
 }
 
 /* Assistant Bar & Suggestions */
