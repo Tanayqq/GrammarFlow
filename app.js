@@ -501,19 +501,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         updateOCRMode() {
-            const isOCR = UI.documentModeSelect && UI.documentModeSelect.value === 'Grammar';
-            const banner = document.getElementById('ocrModeBanner');
+            const modeEl    = document.getElementById('documentModeSelect');
+            const controls  = document.getElementById('globalControls');
+            const banner    = document.getElementById('ocrModeBanner');
+            const isOCR     = modeEl && modeEl.value === 'Grammar';
 
             if (isOCR) {
-                // Hide style controls
-                if (UI.globalControls) UI.globalControls.classList.add('hidden');
-                // Show info banner
-                if (banner) { banner.classList.remove('hidden'); banner.style.display = 'flex'; }
+                if (controls) controls.style.display = 'none';
+                if (banner)   { banner.style.display = 'flex'; }
             } else {
-                // Restore style controls
-                if (UI.globalControls) UI.globalControls.classList.remove('hidden');
-                // Hide info banner
-                if (banner) { banner.classList.add('hidden'); banner.style.display = ''; }
+                if (controls) controls.style.display = '';
+                if (banner)   { banner.style.display = 'none'; }
             }
         }
 
