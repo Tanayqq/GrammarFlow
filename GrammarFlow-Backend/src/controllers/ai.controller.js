@@ -104,21 +104,23 @@ const rewrite = async (req, res, next) => {
         resultText = resultText.replace(/^(STRICT COMMAND|IMPORTANT|CRITICAL|STRICT|Note):.*?\n/gsi, '').trim();
         let rewrites = [];
 
-        // Strip ALL markdown headers (### 1. REWRITE 1, ## etc.) before parsing
+        // Aggressively strip ALL markdown headers and AI self-commentary before parsing
         const cleaned = resultText
-            .replace(/###?\s*\d*\.?\s*(REWRITE\s*\d*)?\s*/gi, '')  // remove ### 1. REWRITE 1
-            .replace(/^#{1,3}\s*/gm, '')                             // remove any remaining # headers
+            .replace(/#{1,3}\s*(HUMAN TONE MODE|CONVERSATIONAL|TRANSLATION|MANDATORY|TASK|OUTPUT FORMAT|CONSTRAINTS|REWRITE\s*\d*)[^\n]*/gi, '') // strip ### HUMAN TONE MODE etc.
+            .replace(/^(HUMAN TONE MODE|CONVERSATIONAL REALISM|TRANSLATION:|EMOTIONAL INTENT|AUTHENTICITY)[^\n]*/gim, '')  // strip bare preamble lines
+            .replace(/#{1,3}\s*\d*\.?\s*(REWRITE\s*\d*)?/gi, '')  // strip ### 1. REWRITE 1
+            .replace(/^#{1,3}\s*/gm, '')                           // strip any remaining # headers
+            .replace(/\n{3,}/g, '\n\n')                            // collapse excess blank lines
             .trim();
 
-        // Try splitting on numbered list: "1.", "2.", "3." or "1)", "2)"
-        const parts = cleaned.split(/(?:^|\s)(?=[1-9][.)\s])/);
-        const numbered = cleaned.split(/^[1-9][.\)]\s+/m);
+        // Split on numbered list: "1." "2." "3."
+        const numbered = cleaned.split(/^[1-9][.)]\s+/m);
 
         if (numbered.length > 1) {
             rewrites = numbered.slice(1).map(p => p.trim()).filter(p => p.length > 2);
         } else {
-            // fallback: split by newlines and filter empty lines
-            rewrites = cleaned.split(/\n+/).map(p => p.trim()).filter(p => p.length > 5);
+            // fallback: split by double newlines
+            rewrites = cleaned.split(/\n\n+/).map(p => p.trim()).filter(p => p.length > 5);
         }
 
         sendResponse(res, true, rewrites.slice(0, 3), null, { language, humanize });

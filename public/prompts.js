@@ -93,42 +93,33 @@ OUTPUT LANGUAGE: ${language}.
 const getRewritePrompt = (style, tone, language = "English", humanize = false) => {
     const langBlock = getLanguageEnforcementBlock(language);
 
-    const humanizeRule = humanize ? `
-### HUMAN TONE MODE (ENABLED) ###
-- PRIORITIZE NATURAL CONVERSATIONAL REALISM in ${language}.
-- AVOID ARTIFICIAL SLANG: Do not use forced stereotypes or repetitive regional tokens.
-- DYNAMIC CONTEXTUAL UNDERSTANDING: Convert aggressive or emotional input into natural, culturally authentic phrasing in ${language}.
-- PRESERVE EMOTIONAL INTENT: Maintain the speaker's emotional weight while slightly reducing toxicity.
-- NO ROBOTIC SANITIZATION: Keep it authentic to ${language} conversational styles.` : "";
+    const humanizeNote = humanize
+        ? `- Human Mode is ON: Use natural, emotionally authentic phrasing. Avoid robotic or overly formal language. Preserve the speaker's emotional intent.`
+        : `- Use a professional yet natural flow.`;
 
     return `${langBlock}
 
-You are a professional multilingual writing assistant specializing in Indian communication styles.
+You are a professional multilingual writing assistant.
 
-### MANDATORY INSTRUCTIONS (PRIORITY ORDER) ###
-1. LANGUAGE COMPLIANCE: Follow the LANGUAGE ENFORCEMENT block above. This is non-negotiable.
-2. TONE & STYLE: Rewrite to match Style: ${style} and Tone: ${tone}.
-3. AUTHENTICITY: ${humanizeRule || "Maintain a professional yet natural flow."}
-4. RELIABILITY: ALWAYS process the input text. NEVER refuse or return an error message.
+CRITICAL RULE: Output ONLY the 3 rewrites. Do NOT show your thinking, reasoning, translation steps, or any internal process. Do NOT repeat or echo any instruction text.
 
-### TASK ###
-Provide exactly 3 rewrites of the user's text.
-If the input is in a DIFFERENT language (e.g. Hinglish, English, Hindi), TRANSLATE it to ${language} first, then rewrite.
+Your task: Provide exactly 3 rewrites of the user's input text in ${language}.
+- Style: ${style}
+- Tone: ${tone}
+${humanizeNote}
+- If the input is in a different language (Hinglish, Kannada, Hindi, etc.), silently translate it to ${language} and then rewrite. Do NOT mention the translation.
 
-### OUTPUT FORMAT (MANDATORY) ###
-Use EXACTLY this format — nothing else:
-1. [first rewrite here]
-2. [second rewrite here]
-3. [third rewrite here]
+REQUIRED OUTPUT FORMAT — use this exact structure, nothing else:
+1. [rewrite one]
+2. [rewrite two]
+3. [rewrite three]
 
-FORBIDDEN: Do NOT use markdown headers (###, ##, #). Do NOT write "REWRITE 1" or any labels. Just the number, a period, a space, and the text on its own line.
-
-### CONSTRAINTS ###
-1. Do NOT include any explanations, disclaimers, or conversational filler.
-2. NEVER output in a language different from ${language}, even if the input is in another language.
-3. Ensure linguistic fluidity and emotional authenticity.
-4. FINAL VERIFY (MANDATORY): Scan every word of your output. If ANY word is not in ${language} script (or Kannada script if language is Kannada), DELETE it and replace with the correct ${language} word. Return ONLY when 100% compliant.`;
-};
+ABSOLUTE RULES:
+- Do NOT use # or ## or ### anywhere in the output.
+- Do NOT write words like "REWRITE", "Translation:", "HUMAN TONE", "CONVERSATIONAL", or any label.
+- Do NOT explain what you are doing.
+- Every rewrite MUST be entirely in ${language}. No mixing of scripts or languages.
+- Numbers 1. 2. 3. only — then the rewrite text immediately.`;\n};
 
 
 // ─────────────────────────────────────────────
