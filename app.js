@@ -477,6 +477,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // Rebuild language options for Document AI (Hides Kannada/Telugu)
                 this.updateLanguageOptions(['Auto', 'English', 'Hindi', 'Hinglish']);
+                // Apply OCR mode state for current selection
+                this.updateOCRMode();
             }
         }
 
@@ -495,6 +497,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 UI.languageSelect.value = currentVal;
             } else {
                 UI.languageSelect.value = 'English';
+            }
+        }
+
+        updateOCRMode() {
+            const isOCR = UI.documentModeSelect && UI.documentModeSelect.value === 'Grammar';
+            const banner = document.getElementById('ocrModeBanner');
+
+            if (isOCR) {
+                // Hide style controls
+                if (UI.globalControls) UI.globalControls.classList.add('hidden');
+                // Show info banner
+                if (banner) { banner.classList.remove('hidden'); banner.style.display = 'flex'; }
+            } else {
+                // Restore style controls
+                if (UI.globalControls) UI.globalControls.classList.remove('hidden');
+                // Hide info banner
+                if (banner) { banner.classList.add('hidden'); banner.style.display = ''; }
             }
         }
 
@@ -638,7 +657,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             const mainFile = this.files[0];
             const mode = UI.documentModeSelect.value;
-            const lang = UI.languageSelect.value;
+            const isOCR = mode === 'Grammar';
+
+            // OCR mode forces auto-language, no humanize, no tone
+            const lang = isOCR ? 'Auto' : UI.languageSelect.value;
+            const humanizeActive = isOCR ? false : UI.humanizeToggle.checked;
+
             const cacheKey = this.getCacheKey(mainFile, mode, lang);
             
             let intermediateResults = [];
@@ -671,7 +695,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     renderResults([...intermediateResults, `Processing part ${i + 1} of ${chunks.length}...`]);
                     
-                    const chunkResult = await this.requestWithRetry(chunks[i], mode, lang);
+                    const chunkResult = await this.requestWithRetry(chunks[i], mode, lang, false, humanizeActive);
                     intermediateResults.push(chunkResult);
                     
                     // Save to Cache
@@ -712,14 +736,16 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        async requestWithRetry(text, mode, lang, isConsolidation = false) {
+        async requestWithRetry(text, mode, lang, isConsolidation = false, humanize = null) {
             let retries = 0;
+            // Use explicitly passed humanize value, else read from UI
+            const humanizeVal = (humanize !== null) ? humanize : UI.humanizeToggle.checked;
             while (retries < 5) {
                 try {
                     const res = await GrammarFlowAPI.request("/process-document", {
-                        text, mode, language: lang, 
-                        style: UI.styleSelect.value, tone: UI.toneSelect.value, 
-                        humanize: UI.humanizeToggle.checked, isConsolidation
+                        text, mode, language: lang,
+                        style: UI.styleSelect.value, tone: UI.toneSelect.value,
+                        humanize: humanizeVal, isConsolidation
                     });
                     return res.data[0];
                 } catch (err) {
@@ -790,6 +816,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("downloadPdfBtn").onclick = () => window.documentProcessor.exportToPDF();
     document.getElementById("downloadDocxBtn").onclick = () => window.documentProcessor.exportToDOCX();
     
+    // Wire documentModeSelect change to toggle OCR mode UI
+    if (UI.documentModeSelect) {
+        UI.documentModeSelect.addEventListener('change', () => window.documentProcessor.updateOCRMode());
+    }
+
     // Set initial tab state
     window.documentProcessor.switchTab('text');
 });

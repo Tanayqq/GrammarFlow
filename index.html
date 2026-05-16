@@ -67,6 +67,12 @@
                     <button id="processDocumentBtn" class="primary-btn full-width" disabled>Process Document</button>
                 </div>
             </div>
+
+            <!-- OCR Mode Info Banner (shown only when OCR Fix mode is selected) -->
+            <div id="ocrModeBanner" class="hidden" style="background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15)); border: 1px solid rgba(99,102,241,0.4); border-radius: 10px; padding: 10px 14px; font-size: 0.82rem; color: #a5b4fc; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 1.1rem;">🔍</span>
+                <span><strong>OCR Correction Mode</strong> — Auto-detects language. Fixes OCR errors &amp; grammar only. Stylistic options are disabled to preserve original document structure.</span>
+            </div>
             
             <div class="controls" id="globalControls">
                 <select id="styleSelect"><option>Casual</option><option>Formal</option><option>Concise</option></select>
