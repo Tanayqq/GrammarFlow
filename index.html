@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=6.0">
+    <link rel="stylesheet" href="style.css?v=7.0">
     <!-- Document Processing Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
@@ -75,9 +75,15 @@
             </div>
             
             <div class="controls" id="globalControls">
-                <select id="styleSelect"><option>Casual</option><option>Formal</option><option>Concise</option></select>
-                <select id="toneSelect"><option>Friendly</option><option>Polite</option><option>Direct</option></select>
-                <select id="languageSelect">
+                <!-- Visual Chips -->
+                <button type="button" class="tone-chip" onclick="toggleDropdown('styleSelect')">Casual</button>
+                <button type="button" class="tone-chip" onclick="toggleDropdown('toneSelect')">Friendly</button>
+                <button type="button" class="tone-chip" onclick="toggleDropdown('languageSelect')">Auto-Detect</button>
+
+                <!-- Hidden selects for app.js compatibility -->
+                <select id="styleSelect" class="hidden"><option value="Casual">Casual</option><option value="Formal">Formal</option><option value="Concise">Concise</option></select>
+                <select id="toneSelect" class="hidden"><option value="Friendly">Friendly</option><option value="Polite">Polite</option><option value="Direct">Direct</option></select>
+                <select id="languageSelect" class="hidden">
                     <option value="Auto">Auto-Detect</option>
                     <option value="English">English</option>
                     <option value="Hindi">Hindi</option>
@@ -85,6 +91,7 @@
                     <option value="Kannada">Kannada</option>
                     <option value="Telugu">Telugu</option>
                 </select>
+
                 <div class="humanize-wrapper">
                     <span style="font-size: 0.85rem; font-weight: 500;">Human Mode</span>
                     <label class="switch">
@@ -139,6 +146,32 @@
 
     </div>
 
+    <script>
+        function toggleDropdown(selectId) {
+            const selectEl = document.getElementById(selectId);
+            const options = Array.from(selectEl.options);
+            let selectedIndex = selectEl.selectedIndex;
+            
+            // Cycle to the next option
+            selectedIndex = (selectedIndex + 1) % options.length;
+            selectEl.selectedIndex = selectedIndex;
+            
+            // Update the chip text
+            const newText = options[selectedIndex].text;
+            const chips = document.querySelectorAll('.tone-chip');
+            chips.forEach(chip => {
+                if (chip.getAttribute('onclick').includes(selectId)) {
+                    chip.innerText = newText;
+                    // Add a tiny animation effect to show it was clicked
+                    chip.style.transform = 'scale(0.95)';
+                    setTimeout(() => chip.style.transform = 'scale(1)', 150);
+                }
+            });
+            
+            // Trigger change event for app.js if needed
+            selectEl.dispatchEvent(new Event('change'));
+        }
+    </script>
     <script src="app.js?v=4.5"></script>
 </body>
 </html>
