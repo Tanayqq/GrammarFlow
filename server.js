@@ -91,13 +91,13 @@ app.use('/api', (req, res, next) => {
 app.use('/api/v1', aiRoutes);
 
 // 6. Static Frontend Serving (Phase 3 Unified Architecture)
-// Serves the web app from the root directory
-app.use(express.static(path.join(__dirname)));
+// Serves the web app from the GRAMMARFLOW_LIVE directory
+app.use(express.static(path.join(__dirname, 'GRAMMARFLOW_LIVE')));
 
 // Fallback to index.html for SPA-like behavior (Phase 3 Final Middleware)
 app.use((req, res) => {
     if (req.url.startsWith('/api')) return res.status(404).json({ success: false, error: { message: 'API route not found' } });
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'GRAMMARFLOW_LIVE', 'index.html'));
 });
 
 // 6. Global Error Handling
