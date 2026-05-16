@@ -103,12 +103,24 @@ const rewrite = async (req, res, next) => {
 
         resultText = resultText.replace(/^(STRICT COMMAND|IMPORTANT|CRITICAL|STRICT|Note):.*?\n/gsi, '').trim();
         let rewrites = [];
-        const parts = resultText.split(/^[1-9][.\)]\s+/m);
-        if (parts.length > 1) {
-            rewrites = parts.slice(1).map(p => p.trim()).filter(p => p);
+
+        // Strip ALL markdown headers (### 1. REWRITE 1, ## etc.) before parsing
+        const cleaned = resultText
+            .replace(/###?\s*\d*\.?\s*(REWRITE\s*\d*)?\s*/gi, '')  // remove ### 1. REWRITE 1
+            .replace(/^#{1,3}\s*/gm, '')                             // remove any remaining # headers
+            .trim();
+
+        // Try splitting on numbered list: "1.", "2.", "3." or "1)", "2)"
+        const parts = cleaned.split(/(?:^|\s)(?=[1-9][.)\s])/);
+        const numbered = cleaned.split(/^[1-9][.\)]\s+/m);
+
+        if (numbered.length > 1) {
+            rewrites = numbered.slice(1).map(p => p.trim()).filter(p => p.length > 2);
         } else {
-            rewrites = [resultText.trim()];
+            // fallback: split by newlines and filter empty lines
+            rewrites = cleaned.split(/\n+/).map(p => p.trim()).filter(p => p.length > 5);
         }
+
         sendResponse(res, true, rewrites.slice(0, 3), null, { language, humanize });
     } catch (error) {
         console.error("[API v1] Rewrite error:", error.message);
