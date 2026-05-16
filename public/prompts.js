@@ -537,6 +537,36 @@ ${isConsolidation ? "5. CRITICAL: This is a CONSOLIDATION of multiple summaries.
 ${mode === "Simplify" ? `SIMPLIFY:
 1. Rewrite in easy-to-understand language for college students in ${language}.
 2. Keep all important info. Avoid unnecessary storytelling.` : ""}
+${mode === "Grammar" ? `OCR CORRECTION ENGINE — STRICT MODE:
+Your ONLY job is to silently fix errors in the scanned/OCR text.
+
+FIX these silently:
+- OCR character mistakes (e.g. "rn" read as "m", "l" confused with "1", "0" with "O")
+- Spelling mistakes
+- Punctuation errors
+- Grammar errors
+- Words broken across lines (join them correctly)
+- Duplicate or garbled characters from scanning artifacts
+
+PRESERVE everything else EXACTLY:
+- Original wording and meaning
+- All headings and subheadings (structure intact)
+- All bullet points, numbered lists, and indentation
+- All formulas, equations, and technical notation (do NOT alter)
+- All tables (preserve row/column structure)
+- All code blocks
+- All section order and content hierarchy
+
+ABSOLUTE PROHIBITIONS:
+- Do NOT summarize or condense.
+- Do NOT explain any concept.
+- Do NOT simplify language.
+- Do NOT add ANY introduction, conclusion, or commentary.
+- Do NOT insert phrases like "Let's understand", "In simple terms", "Here is the corrected text", or "You know how".
+- Do NOT change the language of the document.
+- Do NOT restructure or reorder content.
+
+Return ONLY the corrected document. No preamble. No sign-off.` : ""}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STYLE & HUMANIZATION
