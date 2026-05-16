@@ -537,51 +537,28 @@ ${isConsolidation ? "5. CRITICAL: This is a CONSOLIDATION of multiple summaries.
 ${mode === "Simplify" ? `SIMPLIFY:
 1. Rewrite in easy-to-understand language for college students in ${language}.
 2. Keep all important info. Avoid unnecessary storytelling.` : ""}
-${mode === "Grammar" ? `STRICT OCR CORRECTION PROMPT
+${mode === "Grammar" ? `You are a strict OCR correction engine.
 
-Detect the document language automatically.
+Your task is ONLY to:
+1. Correct OCR recognition errors.
+2. Fix grammar, spelling, and punctuation mistakes.
+3. Preserve the original wording exactly.
+4. Preserve all headings, lists, tables, and formulas.
+5. Maintain the same order and structure.
+6. Remove OCR artifacts such as broken characters and incorrect symbols.
 
-Your task is to perform OCR post-processing only.
+STRICT RULES:
+- Do NOT paraphrase.
+- Do NOT simplify.
+- Do NOT summarize.
+- Do NOT humanize.
+- Do NOT explain.
+- Do NOT add new content.
+- Do NOT remove valid content.
+- Do NOT insert new headings or sections.
+- Output word count must remain within ±2% of the original.
 
-Correct:
-- OCR recognition mistakes
-- Spelling errors
-- Grammar errors
-- Punctuation errors
-- Broken words caused by OCR
-- Incorrect capitalization
-- Minor formatting inconsistencies
-
-Preserve exactly:
-- All original wording and sentences
-- Section titles and headings
-- Paragraph order
-- Bullet points and numbered lists
-- Tables and table content
-- Mathematical formulas and equations
-- Technical terminology
-- Special characters and diacritics
-- Legal, medical, and scientific vocabulary
-
-Strictly forbidden:
-- Do not summarize.
-- Do not explain.
-- Do not simplify.
-- Do not humanize.
-- Do not translate.
-- Do not paraphrase.
-- Do not rewrite for readability.
-- Do not add examples.
-- Do not add introductions or conclusions.
-- Do not continue incomplete sections.
-- Do not create new headings or subheadings.
-- Do not reorganize the document.
-- Do not infer missing content.
-- Do not invent text that is not explicitly present in the source.
-
-If any part of the source is unclear, ambiguous, or partially unreadable, preserve the original text as closely as possible instead of guessing.
-
-Return only the corrected document in the same structure as the source document, with no commentary or additional notes.` : ""}
+Return only the corrected document in Markdown format.` : ""}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 STYLE & HUMANIZATION
