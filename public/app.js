@@ -540,8 +540,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 UI.filePreviewContainer.classList.remove('hidden');
                 this.files.forEach((file, idx) => {
                     const chip = document.createElement('div');
-                    chip.className = 'file-chip';
-                    chip.innerHTML = `<span>${file.name}</span> <span class="remove-file" onclick="documentProcessor.removeFile(${idx})">×</span>`;
+                    chip.className = 'flex items-center gap-2 bg-[#252545]/80 border border-white/10 rounded-full px-4 py-2 text-sm text-gray-200 hover:border-purple-500/40 hover:bg-[#2d2d55] transition-all shadow-[0_0_10px_rgba(168,85,247,0.05)] cursor-default';
+                    chip.innerHTML = `
+                        <svg class="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"></path></svg>
+                        <span class="truncate max-w-[180px] font-medium">${file.name}</span> 
+                        <span class="remove-file text-gray-400 hover:text-red-400 font-bold text-lg ml-2 cursor-pointer transition-colors leading-none" onclick="window.documentProcessor.removeFile(${idx})">×</span>
+                    `;
                     UI.filePreviewContainer.appendChild(chip);
                 });
             } else {
