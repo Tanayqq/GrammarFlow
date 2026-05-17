@@ -17,6 +17,10 @@
       color: #e2e8f0;
       overflow-y: auto;
       overflow-x: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
     }
 
     /* Cosmic Nebula Background */
@@ -133,7 +137,7 @@
 <div class="nebula-glow" style="top: -100px; right: -100px;"></div>
 <div class="nebula-glow" style="bottom: -150px; left: -100px; background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);"></div>
 
-<main class="w-full max-w-5xl" data-purpose="editor-main-container">
+<main class="w-full max-w-5xl mx-auto" data-purpose="editor-main-container">
     <div class="glass-panel rounded-3xl overflow-hidden p-6 md:p-8 flex flex-col gap-6 relative">
         
         <!-- Tabs Navigation -->
