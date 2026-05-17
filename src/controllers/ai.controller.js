@@ -93,7 +93,7 @@ const rewrite = async (req, res, next) => {
             let prompt = prompts.getRewritePrompt(style, tone, language, humanize);
             if (attempts > 0) prompt = `CRITICAL: Previous response was invalid. Provide exactly 3 numbered rewrites in ${language} now.\n\n${prompt}`;
             try {
-                resultText = await aiService.callGroqAPI(prompt, text, 0.7);
+                resultText = await aiService.callGroqAPI(prompt, text, 0.7, aiService.PREM_MODEL);
                 if (resultText.trim().length > 0 && !resultText.toLowerCase().includes("sorry")) break;
             } catch (err) {
                 if (attempts === 1) throw err;
@@ -131,7 +131,7 @@ const grammarFix = async (req, res, next) => {
         const { text, language = "English", humanize = false } = req.body;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required" } });
         const prompt = prompts.getGrammarFixPrompt(language, humanize);
-        const resultText = await aiService.callGroqAPI(prompt, text, 0.2);
+        const resultText = await aiService.callGroqAPI(prompt, text, 0.2, aiService.PREM_MODEL);
         sendResponse(res, true, resultText, null, { language, humanize });
     } catch (error) {
         res.status(500).json({ success: false, error: { message: error.message } });
