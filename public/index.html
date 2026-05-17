@@ -157,6 +157,23 @@
                 <!-- Active Textarea -->
                 <textarea class="w-full h-80 md:h-96 bg-transparent text-lg text-white/90 p-6 placeholder:text-gray-600 focus:outline-none resize-none custom-scrollbar transition-all relative z-10 leading-relaxed" id="inputText" placeholder="Start typing naturally..."></textarea>
             </div>
+
+            <!-- TEXT EDITOR LOADING INDICATOR & OUTPUT CONTAINER -->
+            <div id="loadingIndicator" class="hidden mt-6 flex flex-col items-center justify-center p-8 gap-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl">
+                <div class="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin shadow-[0_0_15px_rgba(168,85,247,0.5)]"></div>
+                <span class="text-purple-400 font-medium tracking-wider text-sm uppercase">Analyzing Text & Processing AI...</span>
+                <button id="cancelProcessBtn" class="hidden px-5 py-2.5 rounded-xl text-xs font-bold text-red-400 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" stroke-width="2"></rect></svg>
+                    Stop Process
+                </button>
+            </div>
+
+            <div id="outputSection" class="hidden mt-6">
+                <div class="bg-black/30 border border-white/10 rounded-2xl p-6 relative group overflow-y-auto max-h-[350px] custom-scrollbar">
+                    <div class="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div id="resultsList" class="relative z-10 text-white/90 text-lg leading-relaxed flex flex-col gap-4"></div>
+                </div>
+            </div>
         </div>
 
         <!-- DOCUMENT AI MODE CONTAINER -->
@@ -198,26 +215,21 @@
         </div>
     </div>
 </div>
+            <!-- DOCUMENT AI LOADING INDICATOR & OUTPUT CONTAINER -->
+            <div id="docLoadingIndicator" class="hidden mt-6 flex flex-col items-center justify-center p-8 gap-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl">
+                <div class="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin shadow-[0_0_15px_rgba(168,85,247,0.5)]"></div>
+                <span class="text-purple-400 font-medium tracking-wider text-sm uppercase">Analyzing Document & Processing AI...</span>
+                <button id="docCancelProcessBtn" class="hidden px-5 py-2.5 rounded-xl text-xs font-bold text-red-400 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" stroke-width="2"></rect></svg>
+                    Stop Process
+                </button>
+            </div>
 
-</section>
-
-
-        </div>
-
-        <!-- SHARED LOADING INDICATOR & OUTPUT CONTAINER -->
-        <div id="loadingIndicator" class="hidden mt-6 flex flex-col items-center justify-center p-8 gap-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl">
-            <div class="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin shadow-[0_0_15px_rgba(168,85,247,0.5)]"></div>
-            <span class="text-purple-400 font-medium tracking-wider text-sm uppercase">Analyzing Document & Processing AI...</span>
-            <button id="cancelProcessBtn" class="hidden px-5 py-2.5 rounded-xl text-xs font-bold text-red-400 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" stroke-width="2"></rect></svg>
-                Stop Process
-            </button>
-        </div>
-
-        <div id="outputSection" class="hidden mt-6">
-            <div class="bg-black/30 border border-white/10 rounded-2xl p-6 relative group overflow-y-auto max-h-[350px] custom-scrollbar">
-                <div class="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <div id="resultsList" class="relative z-10 text-white/90 text-lg leading-relaxed flex flex-col gap-4"></div>
+            <div id="docOutputSection" class="hidden mt-6">
+                <div class="bg-black/30 border border-white/10 rounded-2xl p-6 relative group overflow-y-auto max-h-[350px] custom-scrollbar">
+                    <div class="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                    <div id="docResultsList" class="relative z-10 text-white/90 text-lg leading-relaxed flex flex-col gap-4"></div>
+                </div>
             </div>
         </div>
 

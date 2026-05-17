@@ -299,17 +299,27 @@ document.addEventListener("DOMContentLoaded", () => {
     const setBusy = (busy) => {
         UI.rewriteBtn.disabled  = busy;
         UI.fixGrammarBtn.disabled = busy;
+        
+        const tab = (window.documentProcessor && window.documentProcessor.currentTab) || 'text';
+        const loadingIndicator = tab === 'text' ? document.getElementById("loadingIndicator") : document.getElementById("docLoadingIndicator");
+        const outputSection = tab === 'text' ? document.getElementById("outputSection") : document.getElementById("docOutputSection");
+        const resultsList = tab === 'text' ? document.getElementById("resultsList") : document.getElementById("docResultsList");
+
         if (busy) {
-            UI.loadingIndicator.classList.remove("hidden");
-            UI.outputSection.classList.remove("hidden");
-            UI.resultsList.innerHTML = "";
+            if (loadingIndicator) loadingIndicator.classList.remove("hidden");
+            if (outputSection) outputSection.classList.remove("hidden");
+            if (resultsList) resultsList.innerHTML = "";
         } else {
-            UI.loadingIndicator.classList.add("hidden");
+            if (loadingIndicator) loadingIndicator.classList.add("hidden");
         }
     };
 
     const renderResults = (results) => {
-        UI.resultsList.innerHTML = "";
+        const tab = (window.documentProcessor && window.documentProcessor.currentTab) || 'text';
+        const resultsList = tab === 'text' ? document.getElementById("resultsList") : document.getElementById("docResultsList");
+        if (!resultsList) return;
+
+        resultsList.innerHTML = "";
         const data = Array.isArray(results) ? results : [results];
         data.forEach(text => {
             const card = document.createElement("div");
@@ -322,7 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                     </svg>
                 </button>`;
-            UI.resultsList.appendChild(card);
+            resultsList.appendChild(card);
         });
     };
 
@@ -430,6 +440,7 @@ document.addEventListener("DOMContentLoaded", () => {
         constructor() {
             this.files = [];
             this.extractedText = "";
+            this.currentTab = 'text';
             this.initWorker();
             this.bindEvents();
         }
@@ -461,6 +472,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         switchTab(tab) {
+            this.currentTab = tab;
             if (tab === 'text') {
                 UI.tabText.classList.add('active');
                 UI.tabDocument.classList.remove('active');
@@ -648,12 +660,10 @@ document.addEventListener("DOMContentLoaded", () => {
             
             setBusy(true);
             this.isCanceled = false;
-            UI.loadingIndicator.classList.remove("hidden");
-            UI.resultsList.innerHTML = '';
-            UI.outputSection.classList.remove("hidden");
             document.getElementById("exportControls").classList.add("hidden");
             
-            const cancelBtn = document.getElementById("cancelProcessBtn");
+            const tab = this.currentTab || 'document';
+            const cancelBtn = tab === 'text' ? document.getElementById("cancelProcessBtn") : document.getElementById("docCancelProcessBtn");
             if (cancelBtn) {
                 cancelBtn.classList.remove("hidden");
                 cancelBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" stroke-width="2"></rect></svg> Stop Process`;
