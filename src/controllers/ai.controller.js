@@ -102,10 +102,20 @@ const rewrite = async (req, res, next) => {
         }
 
         resultText = resultText.replace(/^(STRICT COMMAND|IMPORTANT|CRITICAL|STRICT|Note):.*?\n/gsi, '').trim();
+        
+        // Defensive cleanup for any leaked markdown headers or label lines
+        resultText = resultText.replace(/###\s*[0-9]?\s*Rewrite.*/gi, '');
+        resultText = resultText.replace(/###.*/g, '');
+        resultText = resultText.replace(/Rewrite\s*[0-9]?:?/gi, '');
+
         let rewrites = [];
         const parts = resultText.split(/^[1-9][.\)]\s+/m);
         if (parts.length > 1) {
-            rewrites = parts.slice(1).map(p => p.trim()).filter(p => p);
+            rewrites = parts.slice(1).map(p => {
+                return p.replace(/###.*/g, '')
+                        .replace(/Rewrite\s*[0-9]?:?/gi, '')
+                        .trim();
+            }).filter(p => p);
         } else {
             rewrites = [resultText.trim()];
         }
