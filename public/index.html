@@ -1,220 +1,224 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GrammarFlow - AI Writing Companion</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=7.0">
-    <!-- Document Processing Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-    <!-- Export Libraries -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/docx@8.1.0/build/index.js"></script>
-</head>
-<body>
-    <div class="dashboard-layout">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo-icon"></div>
-                <h2>GrammarFlow</h2>
-            </div>
-            
-            <nav class="sidebar-nav">
-                <a href="#" class="nav-item active">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                    Home
-                </a>
-                <a href="#" class="nav-item">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    Documents
-                </a>
-                <a href="#" class="nav-item">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
-                    Templates
-                </a>
-                <a href="#" class="nav-item">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                    Settings
-                </a>
-            </nav>
 
-            <div class="sidebar-footer">
-                <a href="#" class="nav-item">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                    Log out
-                </a>
-            </div>
-        </aside>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GrammarFlow Focused Editor</title>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts for Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<style data-purpose="custom-theme">
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #080312; /* Deep cosmic dark */
+      color: #e2e8f0;
+      overflow: hidden; /* Prevent scrolling for the focused UI */
+    }
 
-        <!-- Main Content Area -->
-        <div class="main-content">
-            <!-- Top Navigation Bar -->
-            <header class="top-nav">
-                <div class="search-bar">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <input type="text" placeholder="Search documents...">
-                </div>
-                <button class="new-doc-btn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    New Document
-                </button>
-            </header>
+    /* Cosmic Nebula Background */
+    .cosmic-bg {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+                  radial-gradient(circle at 20% 80%, rgba(30, 64, 175, 0.1) 0%, transparent 40%);
+      background-color: #080312;
+    }
 
-        <main class="panel glass-card">
-            
-            <div class="tabs">
-                <button class="tab-btn active" id="tabText">Text Editor</button>
-                <button class="tab-btn" id="tabDocument">Document AI</button>
-            </div>
+    /* Floating Nebula Glows */
+    .nebula-glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(168, 85, 247, 0.2) 0%, transparent 70%);
+      filter: blur(80px);
+      z-index: -1;
+    }
 
-            <!-- Text Editor Mode -->
-            <div id="textModeContainer">
-                <div class="editor-container">
-                    <div id="highlighterOverlay" class="highlighter-overlay"></div>
-                    <textarea id="inputText" placeholder="Start typing naturally..." spellcheck="false"></textarea>
-                </div>
-            </div>
+    /* Glassmorphism Panel */
+    .glass-panel {
+      background: rgba(23, 23, 33, 0.6);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
 
-            <!-- Document AI Mode -->
-            <div id="documentModeContainer" class="hidden">
-                <div class="document-upload-zone" id="documentUploadZone">
-                    <div class="upload-icon">
-                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                    </div>
-                    <p class="upload-title">Drop an image or PDF here</p>
-                    <p class="upload-subtitle">or click to browse files</p>
-                    <input type="file" id="fileInput" accept="image/*,application/pdf" multiple class="hidden-file-input">
-                </div>
-                
-                <div id="filePreviewContainer" class="file-preview-container hidden"></div>
+    /* Specific Inner Glows and Borders */
+    .glow-border-purple {
+      border: 1.5px solid rgba(168, 85, 247, 0.4);
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.2);
+    }
 
-                <div class="button-group document-buttons">
-                    <button id="cancelProcessBtn" class="secondary-btn hidden">Cancel</button>
-                    <button id="processDocBtn" class="primary-btn fluid-btn">Process Document</button>
-                </div>
+    .btn-gradient {
+      background: linear-gradient(90deg, #a855f7 0%, #3b82f6 100%);
+      transition: all 0.3s ease;
+    }
 
-                <div class="controls document-controls">
-                    <select id="documentModeSelect">
-                        <option value="Summarize">Summarize Key Points</option>
-                        <option value="Simplify">Simplify Language</option>
-                        <option value="ExamPrep">Exam Prep (Academic Rewriter)</option>
-                        <option value="Translate">Translate</option>
-                        <option value="Explain">Explain to a 10-year-old</option>
-                        <option value="Grammar">OCR Fix &amp; Grammar Correct</option>
-                    </select>
-                    <button id="processDocumentBtn" class="primary-btn full-width" disabled>Process Document</button>
-                </div>
-            </div>
+    .btn-gradient:hover {
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.5);
+      transform: translateY(-1px);
+    }
 
-            <!-- OCR Mode Info Banner (shown only when OCR Fix mode is selected) -->
-            <div id="ocrModeBanner" class="hidden" style="background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15)); border: 1px solid rgba(99,102,241,0.4); border-radius: 10px; padding: 10px 14px; font-size: 0.82rem; color: #a5b4fc; margin-bottom: 4px; display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 1.1rem;">🔍</span>
-                <span><strong>OCR Correction Mode</strong> — Auto-detects language. Fixes OCR errors &amp; grammar only. Stylistic options are disabled to preserve original document structure.</span>
-            </div>
-            
-            <div class="controls" id="globalControls">
-                <!-- Visual Chips -->
-                <button type="button" class="tone-chip" onclick="toggleDropdown('styleSelect')">Casual</button>
-                <button type="button" class="tone-chip" onclick="toggleDropdown('toneSelect')">Friendly</button>
-                <button type="button" class="tone-chip" onclick="toggleDropdown('languageSelect')">Auto-Detect</button>
-
-                <!-- Hidden selects for app.js compatibility -->
-                <select id="styleSelect" class="hidden"><option value="Casual">Casual</option><option value="Formal">Formal</option><option value="Concise">Concise</option></select>
-                <select id="toneSelect" class="hidden"><option value="Friendly">Friendly</option><option value="Polite">Polite</option><option value="Direct">Direct</option></select>
-                <select id="languageSelect" class="hidden">
-                    <option value="Auto">Auto-Detect</option>
-                    <option value="English">English</option>
-                    <option value="Hindi">Hindi</option>
-                    <option value="Hinglish">Hinglish</option>
-                    <option value="Kannada">Kannada</option>
-                    <option value="Telugu">Telugu</option>
-                </select>
-
-                <div class="humanize-wrapper">
-                    <span style="font-size: 0.85rem; font-weight: 500;">Human Mode</span>
-                    <label class="switch">
-                        <input type="checkbox" id="humanizeToggle" checked>
-                        <span class="slider"></span>
-                    </label>
-                </div>
-            </div>
-
-            <div class="button-group" id="textActionButtons">
-                <button id="fixGrammarBtn" class="secondary-btn">Fix Grammar</button>
-                <button id="rewriteBtn" class="primary-btn">Rewrite Paragraph</button>
-            </div>
-
-            <div id="outputSection" class="output-section hidden">
-                <div id="loadingIndicator" class="spinner hidden"></div>
-                <div id="resumePrompt" class="resume-prompt hidden">
-                    <p>Found a previous session for this file. Resume from where you left off?</p>
-                    <div class="button-group mini">
-                        <button id="resumeYesBtn" class="primary-btn">Yes, Resume</button>
-                        <button id="resumeNoBtn" class="secondary-btn">Start Fresh</button>
-                    </div>
-                </div>
-                <div class="results-list" id="resultsList"></div>
-                <div id="exportControls" class="export-controls hidden">
-                    <button id="downloadPdfBtn" class="export-btn pdf">Download PDF</button>
-                    <button id="downloadDocxBtn" class="export-btn docx">Download Word</button>
-                </div>
-            </div>
-        </main>
-
-        <!-- Adaptive Suggestion Bar -->
-        <div id="assistantBar" class="assistant-bar">
-            <div class="assistant-icon">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                    <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/>
-                </svg>
-            </div>
-            <div class="suggestion-content">
-                <div class="suggestion-header">
-                    <div class="suggestion-label" id="suggestionLabel">SUGGESTION</div>
-                    <div class="suggestion-counter" id="suggestionCounter"></div>
-                </div>
-                <div class="suggestion-text" id="suggestionText">Loading suggestion...</div>
-            </div>
-            <div class="assistant-actions">
-                <button id="prevSuggestionBtn" class="nav-btn" title="Previous">&#8592;</button>
-                <button id="nextSuggestionBtn" class="nav-btn" title="Next">&#8594;</button>
-                <button id="applySuggestionBtn" class="apply-btn">Apply</button>
-            </div>
-        </div>
-
-    </div>
-    </div>
-    <script>
-        function toggleDropdown(selectId) {
-            const selectEl = document.getElementById(selectId);
-            const options = Array.from(selectEl.options);
-            let selectedIndex = selectEl.selectedIndex;
-            
-            // Cycle to the next option
-            selectedIndex = (selectedIndex + 1) % options.length;
-            selectEl.selectedIndex = selectedIndex;
-            
-            // Update the chip text
-            const newText = options[selectedIndex].text;
-            const chips = document.querySelectorAll('.tone-chip');
-            chips.forEach(chip => {
-                if (chip.getAttribute('onclick').includes(selectId)) {
-                    chip.innerText = newText;
-                    // Add a tiny animation effect to show it was clicked
-                    chip.style.transform = 'scale(0.95)';
-                    setTimeout(() => chip.style.transform = 'scale(1)', 150);
-                }
-            });
-            
-            // Trigger change event for app.js if needed
-            selectEl.dispatchEvent(new Event('change'));
+    /* Custom Scrollbar for Textarea */
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+    }
+  </style>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cosmic: {
+              900: '#080312',
+              800: '#13111c',
+              700: '#1f1d2b',
+            }
+          }
         }
-    </script>
-    <script src="app.js?v=4.5"></script>
-</body>
-</html>
+      }
+    }
+  </script>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 md:p-8">
+<!-- BEGIN: Background Elements -->
+<div class="cosmic-bg"></div>
+<div class="nebula-glow" style="top: -100px; right: -100px;"></div>
+<div class="nebula-glow" style="bottom: -150px; left: -100px; background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);"></div>
+<!-- END: Background Elements -->
+<!-- BEGIN: Focused Editor Container -->
+
+<div class="dashboard-layout" style="display: grid; grid-template-columns: 240px 1fr; min-height: 100vh;">
+<aside class="sidebar" style="background: rgba(10, 10, 15, 0.8); border-right: 1px solid rgba(255, 255, 255, 0.1); padding: 24px; display: flex; flex-direction: column;">
+    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 48px;">
+        <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #A855F7 0%, #3B82F6 100%); border-radius: 8px;"></div>
+        <h2 style="font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; color: white;">GrammarFlow</h2>
+    </div>
+    <nav style="display: flex; flex-direction: column; gap: 8px; flex-grow: 1;">
+        <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: #A855F7; background: rgba(168, 85, 247, 0.1); text-decoration: none; border-radius: 12px; font-weight: 500;">Home</a>
+        <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: #94A3B8; text-decoration: none; border-radius: 12px; font-weight: 500;">Documents</a>
+        <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: #94A3B8; text-decoration: none; border-radius: 12px; font-weight: 500;">Templates</a>
+    </nav>
+</aside>
+<div class="main-content" style="display: flex; flex-direction: column; padding: 24px 40px;">
+<header class="top-nav" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;">
+    <div style="display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); padding: 12px 20px; border-radius: 12px; width: 400px;">
+        <span style="color: #94A3B8;">Search documents...</span>
+    </div>
+    <button style="background: linear-gradient(135deg, #A855F7 0%, #3B82F6 100%); color: white; border: none; padding: 12px 20px; border-radius: 12px; font-weight: 600;">New Document</button>
+</header>
+<main class="w-full max-w-5xl" data-purpose="editor-main-container">
+<div class="glass-panel rounded-3xl overflow-hidden p-6 md:p-8 flex flex-col gap-6 relative">
+<!-- BEGIN: Navigation Tabs -->
+<nav class="flex justify-center items-center mb-2" data-purpose="editor-tabs">
+<div class="bg-[#1a1a2e] rounded-xl p-1.5 flex gap-2 border border-white/5">
+<button class="px-8 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 bg-[#252545] text-white glow-border-purple shadow-lg">
+            Text Editor
+          </button>
+<button class="px-8 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5">
+            Document AI
+          </button>
+</div>
+</nav>
+<!-- END: Navigation Tabs -->
+<!-- BEGIN: Text Area -->
+<div class="relative group" data-purpose="editor-canvas">
+<textarea class="w-full h-80 md:h-96 bg-black/20 rounded-2xl p-6 text-lg text-white/90 placeholder:text-gray-600 focus:outline-none focus:ring-1 focus:ring-purple-500/50 border border-white/5 resize-none custom-scrollbar transition-all" id="inputText" placeholder="Start typing naturally..."></textarea>
+<!-- Subtle corner accents could go here -->
+</div>
+<!-- END: Text Area -->
+<!-- BEGIN: Controls Footer -->
+<div class="flex flex-wrap items-center justify-between gap-6 pt-2" data-purpose="editor-controls">
+<!-- Tone Selection and Toggle Group -->
+<div class="flex flex-wrap items-center gap-6">
+<div class="flex items-center gap-3">
+<span class="text-sm font-medium text-gray-400">Tone:</span>
+<div class="flex gap-2">
+<button class="px-5 py-2 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+                Casual
+              </button>
+<button class="px-5 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 transition-colors">
+                Friendly
+              </button>
+<button class="px-5 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 transition-colors">
+                Auto-Detect
+              </button>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<span class="text-sm font-medium text-gray-400">Human Mode</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+</label>
+</div>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-1 md:flex-none gap-3">
+<button class="flex-1 md:flex-none px-10 py-4 rounded-2xl font-semibold text-gray-300 bg-[#252545] border border-white/5 hover:bg-[#2d2d55] transition-all">
+            <span id="fixGrammarBtn" style="display:block;width:100%;height:100%;">Fix Grammar</span>
+          </button>
+<button class="flex-1 md:flex-none px-10 py-4 rounded-2xl font-bold text-white btn-gradient shadow-lg">
+            <span id="rewriteBtn" style="display:block;width:100%;height:100%;">Rewrite Paragraph</span>
+          </button>
+</div>
+</div>
+<!-- END: Controls Footer -->
+</div>
+<!-- Branding Footer (Optional) -->
+<div class="mt-8 text-center opacity-30 select-none">
+<span class="text-xs uppercase tracking-widest text-white">Powered by GrammarFlow AI Engine</span>
+</div>
+
+<div class="hidden" style="display:none;">
+    <select id="toneSelect"><option value="Casual">Casual</option></select>
+    <select id="styleSelect"><option value="Casual">Casual</option></select>
+    <select id="languageSelect"><option value="Auto">Auto-Detect</option></select>
+    <input type="checkbox" id="humanizeToggle" checked>
+    <div id="outputSection"><div id="resultsList"></div></div>
+    <div id="assistantBar"><div id="suggestionText"></div><div id="suggestionLabel"></div><button id="applySuggestionBtn"></button></div>
+</div>
+
+</main>
+<!-- END: Focused Editor Container -->
+<!-- BEGIN: Interactive Logic (Non-functional placeholders for UI state) -->
+<script data-purpose="ui-interactivity">
+    // Simple state management for the demo buttons
+    document.querySelectorAll('[data-purpose="editor-tabs"] button').forEach(btn => {
+      btn.addEventListener('click', function() {
+        document.querySelectorAll('[data-purpose="editor-tabs"] button').forEach(b => {
+          b.classList.remove('bg-[#252545]', 'text-white', 'glow-border-purple', 'shadow-lg');
+          b.classList.add('text-gray-400', 'hover:text-white', 'hover:bg-white/5');
+        });
+        this.classList.add('bg-[#252545]', 'text-white', 'glow-border-purple', 'shadow-lg');
+        this.classList.remove('text-gray-400', 'hover:text-white', 'hover:bg-white/5');
+      });
+    });
+
+    document.querySelectorAll('.flex.gap-2 button').forEach(btn => {
+      btn.addEventListener('click', function() {
+        if (this.parentElement.previousElementSibling?.textContent === 'Tone:') {
+           this.parentElement.querySelectorAll('button').forEach(b => {
+             b.classList.remove('bg-purple-500/10', 'text-purple-400', 'border-purple-500/50', 'shadow-[0_0_10px_rgba(168,85,247,0.2)]');
+             b.classList.add('bg-white/5', 'text-gray-400', 'border-white/10');
+           });
+           this.classList.add('bg-purple-500/10', 'text-purple-400', 'border-purple-500/50', 'shadow-[0_0_10px_rgba(168,85,247,0.2)]');
+           this.classList.remove('bg-white/5', 'text-gray-400', 'border-white/10');
+        }
+      });
+    });
+  </script>
+<!-- END: Interactive Logic -->
+</div></div>
+<script src="app.js?v=4.6"></script>
+</body></html>
