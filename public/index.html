@@ -91,116 +91,111 @@
   </script>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4 md:p-8">
-<!-- BEGIN: Background Elements -->
+
 <div class="cosmic-bg"></div>
 <div class="nebula-glow" style="top: -100px; right: -100px;"></div>
 <div class="nebula-glow" style="bottom: -150px; left: -100px; background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);"></div>
-<!-- END: Background Elements -->
-<!-- BEGIN: Focused Editor Container -->
-
 
 <main class="w-full max-w-5xl" data-purpose="editor-main-container">
-<div class="glass-panel rounded-3xl overflow-hidden p-6 md:p-8 flex flex-col gap-6 relative">
-<!-- BEGIN: Navigation Tabs -->
-<nav class="flex justify-center items-center mb-2" data-purpose="editor-tabs">
-<div class="bg-[#1a1a2e] rounded-xl p-1.5 flex gap-2 border border-white/5">
-<button class="px-8 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 bg-[#252545] text-white glow-border-purple shadow-lg">
-            Text Editor
-          </button>
-<button class="px-8 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5">
-            Document AI
-          </button>
-</div>
-</nav>
-<!-- END: Navigation Tabs -->
-<!-- BEGIN: Text Area -->
-<div class="relative group" data-purpose="editor-canvas">
-<textarea class="w-full h-80 md:h-96 bg-black/20 rounded-2xl p-6 text-lg text-white/90 placeholder:text-gray-600 focus:outline-none focus:ring-1 focus:ring-purple-500/50 border border-white/5 resize-none custom-scrollbar transition-all" id="inputText" placeholder="Start typing naturally..."></textarea>
-<!-- Subtle corner accents could go here -->
-</div>
-<!-- END: Text Area -->
-<!-- BEGIN: Controls Footer -->
-<div class="flex flex-wrap items-center justify-between gap-6 pt-2" data-purpose="editor-controls">
-<!-- Tone Selection and Toggle Group -->
-<div class="flex flex-wrap items-center gap-6">
-<div class="flex items-center gap-3">
-<span class="text-sm font-medium text-gray-400">Tone:</span>
-<div class="flex gap-2">
-<button class="px-5 py-2 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
-                Casual
-              </button>
-<button class="px-5 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 transition-colors">
-                Friendly
-              </button>
-<button class="px-5 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 transition-colors">
-                Auto-Detect
-              </button>
-</div>
-</div>
-<div class="flex items-center gap-3">
-<span class="text-sm font-medium text-gray-400">Human Mode</span>
-<label class="relative inline-flex items-center cursor-pointer">
-<input class="sr-only peer" type="checkbox" value=""/>
-<div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
-</label>
-</div>
-</div>
-<!-- Action Buttons -->
-<div class="flex flex-1 md:flex-none gap-3">
-<button class="flex-1 md:flex-none px-10 py-4 rounded-2xl font-semibold text-gray-300 bg-[#252545] border border-white/5 hover:bg-[#2d2d55] transition-all">
-            <span id="fixGrammarBtn" style="display:block;width:100%;height:100%;">Fix Grammar</span>
-          </button>
-<button class="flex-1 md:flex-none px-10 py-4 rounded-2xl font-bold text-white btn-gradient shadow-lg">
-            <span id="rewriteBtn" style="display:block;width:100%;height:100%;">Rewrite Paragraph</span>
-          </button>
-</div>
-</div>
-<!-- END: Controls Footer -->
-</div>
-<!-- Branding Footer (Optional) -->
-<div class="mt-8 text-center opacity-30 select-none">
-<span class="text-xs uppercase tracking-widest text-white">Powered by GrammarFlow AI Engine</span>
-</div>
+    <div class="glass-panel rounded-3xl overflow-hidden p-6 md:p-8 flex flex-col gap-6 relative">
+        
+        <!-- Tabs Navigation -->
+        <nav class="flex justify-center items-center mb-2" data-purpose="editor-tabs">
+            <div class="bg-[#1a1a2e] rounded-xl p-1.5 flex gap-2 border border-white/5">
+                <button id="tabText" class="px-8 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 bg-[#252545] text-white glow-border-purple shadow-lg">Text Editor</button>
+                <button id="tabDocument" class="px-8 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5">Document AI</button>
+            </div>
+        </nav>
 
-<div class="hidden" style="display:none;">
-    <select id="toneSelect"><option value="Casual">Casual</option></select>
-    <select id="styleSelect"><option value="Casual">Casual</option></select>
-    <select id="languageSelect"><option value="Auto">Auto-Detect</option></select>
-    <input type="checkbox" id="humanizeToggle" checked>
-    <div id="outputSection"><div id="resultsList"></div></div>
-    <div id="assistantBar"><div id="suggestionText"></div><div id="suggestionLabel"></div><button id="applySuggestionBtn"></button></div>
-</div>
+        <!-- TEXT MODE CONTAINER -->
+        <div id="textModeContainer">
+            <div class="relative group" data-purpose="editor-canvas">
+                <textarea class="w-full h-80 md:h-96 bg-black/20 rounded-2xl p-6 text-lg text-white/90 placeholder:text-gray-600 focus:outline-none focus:ring-1 focus:ring-purple-500/50 border border-white/5 resize-none custom-scrollbar transition-all" id="inputText" placeholder="Start typing naturally..."></textarea>
+            </div>
+        </div>
 
+        <!-- DOCUMENT AI MODE CONTAINER -->
+        <div id="documentModeContainer" class="hidden">
+            ${docUploadHtml}
+            ${docInputHtml}
+        </div>
+
+        <!-- SHARED FOOTER CONTROLS -->
+        <div class="flex flex-wrap items-center justify-between gap-6 pt-2" data-purpose="editor-controls">
+            ${globalControlsHtml}
+            
+            <!-- Text Actions -->
+            <div id="textActionContainer">
+                ${finalActionBtnsHtml}
+            </div>
+
+            <!-- Document Actions -->
+            <div id="documentActionContainer" class="hidden">
+                ${docActionHtml}
+            </div>
+        </div>
+
+        <!-- HIDDEN APP.JS BINDINGS -->
+        <div class="hidden" style="display:none;">
+            <select id="toneSelect"><option value="Casual">Casual</option><option value="Friendly">Friendly</option></select>
+            <select id="styleSelect"><option value="Casual">Casual</option></select>
+            <select id="languageSelect"><option value="Auto">Auto-Detect</option></select>
+            <input type="file" id="fileInput" accept="image/*,application/pdf" multiple>
+            <select id="documentModeSelect"><option value="Summarize">Summarize</option></select>
+            
+            <div id="highlighterOverlay"></div>
+            <div id="appLogo"></div>
+            <div id="filePreviewContainer"></div>
+            <button id="processDocBtn"></button>
+            <button id="cancelProcessBtn"></button>
+            
+            <div id="loadingIndicator"></div>
+            <div id="suggestionCounter"></div>
+            <button id="prevSuggestionBtn"></button>
+            <button id="nextSuggestionBtn"></button>
+            <div id="resumePrompt"></div>
+            <button id="resumeYesBtn"></button>
+            <button id="resumeNoBtn"></button>
+            <div id="exportControls"></div>
+            <button id="downloadPdfBtn"></button>
+            <button id="downloadDocxBtn"></button>
+            
+            <div id="outputSection"><div id="resultsList"></div></div>
+            <div id="assistantBar"><div id="suggestionText"></div><div id="suggestionLabel"></div><button id="applySuggestionBtn"></button></div>
+        </div>
+
+    </div>
 </main>
-<!-- END: Focused Editor Container -->
-<!-- BEGIN: Interactive Logic (Non-functional placeholders for UI state) -->
-<script data-purpose="ui-interactivity">
-    // Simple state management for the demo buttons
-    document.querySelectorAll('[data-purpose="editor-tabs"] button').forEach(btn => {
-      btn.addEventListener('click', function() {
-        document.querySelectorAll('[data-purpose="editor-tabs"] button').forEach(b => {
-          b.classList.remove('bg-[#252545]', 'text-white', 'glow-border-purple', 'shadow-lg');
-          b.classList.add('text-gray-400', 'hover:text-white', 'hover:bg-white/5');
-        });
+<script src="app.js?v=4.7"></script>
+<script>
+    // Tab Switching Logic for Tailwind UI
+    document.getElementById('tabText').addEventListener('click', function() {
         this.classList.add('bg-[#252545]', 'text-white', 'glow-border-purple', 'shadow-lg');
-        this.classList.remove('text-gray-400', 'hover:text-white', 'hover:bg-white/5');
-      });
+        this.classList.remove('text-gray-400');
+        
+        const docTab = document.getElementById('tabDocument');
+        docTab.classList.remove('bg-[#252545]', 'text-white', 'glow-border-purple', 'shadow-lg');
+        docTab.classList.add('text-gray-400');
+        
+        document.getElementById('textModeContainer').classList.remove('hidden');
+        document.getElementById('textActionContainer').classList.remove('hidden');
+        document.getElementById('documentModeContainer').classList.add('hidden');
+        document.getElementById('documentActionContainer').classList.add('hidden');
     });
 
-    document.querySelectorAll('.flex.gap-2 button').forEach(btn => {
-      btn.addEventListener('click', function() {
-        if (this.parentElement.previousElementSibling?.textContent === 'Tone:') {
-           this.parentElement.querySelectorAll('button').forEach(b => {
-             b.classList.remove('bg-purple-500/10', 'text-purple-400', 'border-purple-500/50', 'shadow-[0_0_10px_rgba(168,85,247,0.2)]');
-             b.classList.add('bg-white/5', 'text-gray-400', 'border-white/10');
-           });
-           this.classList.add('bg-purple-500/10', 'text-purple-400', 'border-purple-500/50', 'shadow-[0_0_10px_rgba(168,85,247,0.2)]');
-           this.classList.remove('bg-white/5', 'text-gray-400', 'border-white/10');
-        }
-      });
+    document.getElementById('tabDocument').addEventListener('click', function() {
+        this.classList.add('bg-[#252545]', 'text-white', 'glow-border-purple', 'shadow-lg');
+        this.classList.remove('text-gray-400');
+        
+        const txtTab = document.getElementById('tabText');
+        txtTab.classList.remove('bg-[#252545]', 'text-white', 'glow-border-purple', 'shadow-lg');
+        txtTab.classList.add('text-gray-400');
+        
+        document.getElementById('documentModeContainer').classList.remove('hidden');
+        document.getElementById('documentActionContainer').classList.remove('hidden');
+        document.getElementById('textModeContainer').classList.add('hidden');
+        document.getElementById('textActionContainer').classList.add('hidden');
     });
-  </script>
-<!-- END: Interactive Logic -->
+</script>
 
-<script src="app.js?v=4.6"></script>
 </body></html>
