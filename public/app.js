@@ -652,7 +652,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const cancelBtn = document.getElementById("cancelProcessBtn");
             if (cancelBtn) {
                 cancelBtn.classList.remove("hidden");
-                cancelBtn.onclick = () => { this.isCanceled = true; cancelBtn.innerText = "Canceling..."; };
+                cancelBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" stroke-width="2"></rect></svg> Stop Process`;
+                cancelBtn.onclick = () => { 
+                    this.isCanceled = true; 
+                    cancelBtn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2" stroke-dasharray="25"></circle></svg> Stopping...`; 
+                };
             }
 
             const mainFile = this.files[0];
@@ -732,7 +736,10 @@ document.addEventListener("DOMContentLoaded", () => {
                 renderResults([...intermediateResults, `Error: ${e.message}`]);
             } finally {
                 setBusy(false);
-                if (cancelBtn) { cancelBtn.classList.add("hidden"); cancelBtn.innerText = "Cancel"; }
+                if (cancelBtn) { 
+                    cancelBtn.classList.add("hidden"); 
+                    cancelBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" stroke-width="2"></rect></svg> Stop Process`; 
+                }
             }
         }
 
