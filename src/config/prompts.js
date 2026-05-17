@@ -118,6 +118,9 @@ You are a professional multilingual writing assistant specializing in Indian com
 
 ### TASK ###
 Provide exactly 3 numbered rewrites (1., 2., 3.) of the user's text.
+Each of the 3 rewrites MUST be a complete, fully written version of the ENTIRE input text from start to finish.
+Do NOT split the input text into sentences or fragments, and do NOT translate sentence-by-sentence.
+Every single numbered option (1., 2., and 3.) MUST contain the full translated meaning of the entire input text, so the user gets 3 complete alternative versions of the whole paragraph.
 ALL 3 rewrites MUST be entirely in ${language}.
 
 ### CONSTRAINTS ###

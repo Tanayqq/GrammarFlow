@@ -107,6 +107,9 @@ You are a professional multilingual writing assistant.
 CRITICAL RULE: Output ONLY the 3 rewrites. Do NOT show your thinking, reasoning, translation steps, or any internal process. Do NOT repeat or echo any instruction text.
 
 Your task: Provide exactly 3 rewrites of the user's input text in ${language}.
+Each of the 3 rewrites MUST be a complete, fully written version of the ENTIRE input text from start to finish.
+Do NOT split the input text into sentences or fragments, and do NOT translate sentence-by-sentence.
+Every single numbered option (1., 2., and 3.) MUST contain the full translated meaning of the entire input text, so the user gets 3 complete alternative versions of the whole paragraph.
 - Style: ${style}
 - Tone: ${tone}
 ${humanizeNote}
@@ -122,7 +125,8 @@ ABSOLUTE RULES:
 - Do NOT write labels, subtitles, or tags like "Rewrite 1", "REWRITE:", "Translation:", "HUMAN TONE", or "CONVERSATIONAL".
 - Do NOT explain what you are doing, do NOT show notes, and do NOT output any introductory or concluding text.
 - Every rewrite MUST be entirely in ${language} and matching script. No mixing of scripts.
-- Output EXACTLY 3 lines, starting with the numbers "1. ", "2. ", "3. " respectively, followed immediately by the rewrite text. Do NOT double-space or put empty lines between them.`;\n};
+- Output EXACTLY 3 lines, starting with the numbers "1. ", "2. ", "3. " respectively, followed immediately by the rewrite text. Do NOT double-space or put empty lines between them.`;
+};
 
 
 // ─────────────────────────────────────────────
