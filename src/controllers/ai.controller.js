@@ -47,10 +47,10 @@ const KANNADA_WORDS = [
 ];
 
 const HINGLISH_WORDS = [
-    "hai", "hain", "hoon", "tha", "thi", "the", "kya", "toh",
+    "hai", "hain", "hoon", "tha", "thi", "kya", "toh",
     "yaar", "bhai", "acha", "accha", "nahi", "nahin",
     "mein", "kar", "hota", "hoti", "hote", "karo", "karna",
-    "aur", "lekin", "par", "phir", "abhi", "kal", "aaj",
+    "aur", "lekin", "phir", "abhi", "kal", "aaj",
     "matlab", "bilkul", "zaroor", "theek", "arre", "yeh", "woh"
 ];
 
@@ -63,14 +63,14 @@ const detectLanguage = (text) => {
     const words = text.toLowerCase().split(/\W+/).filter(Boolean);
     const count = (list) => words.filter(w => list.includes(w)).length;
 
-    const teluguScore   = count(TELUGU_WORDS);
-    const kannadaScore  = count(KANNADA_WORDS);
+    const teluguScore = count(TELUGU_WORDS);
+    const kannadaScore = count(KANNADA_WORDS);
     const hinglishScore = count(HINGLISH_WORDS);
 
     const maxScore = Math.max(teluguScore, kannadaScore, hinglishScore);
     if (maxScore < 1) return 'English';
 
-    if (teluguScore === maxScore  && teluguScore >= 1)  return 'Telugu-English';
+    if (teluguScore === maxScore && teluguScore >= 1) return 'Telugu-English';
     if (kannadaScore === maxScore && kannadaScore >= 1) return 'Kannada-English';
     if (hinglishScore >= 1) return 'Hinglish';
 
@@ -102,7 +102,7 @@ const rewrite = async (req, res, next) => {
         }
 
         resultText = resultText.replace(/^(STRICT COMMAND|IMPORTANT|CRITICAL|STRICT|Note):.*?\n/gsi, '').trim();
-        
+
         // Defensive cleanup for any leaked markdown headers or label lines
         resultText = resultText.replace(/###\s*[0-9]?\s*Rewrite.*/gi, '');
         resultText = resultText.replace(/###.*/g, '');
@@ -113,8 +113,8 @@ const rewrite = async (req, res, next) => {
         if (parts.length > 1) {
             rewrites = parts.slice(1).map(p => {
                 return p.replace(/###.*/g, '')
-                        .replace(/Rewrite\s*[0-9]?:?/gi, '')
-                        .trim();
+                    .replace(/Rewrite\s*[0-9]?:?/gi, '')
+                    .trim();
             }).filter(p => p);
         } else {
             rewrites = [resultText.trim()];
@@ -202,9 +202,9 @@ const analyzeRealtime = async (req, res, next) => {
 
 const INTENT_PRIORITY = {
     professional: { Grammar: 5, Clarity: 5, Flow: 4, Transition: 3, Tone: 2, Authenticity: 1 },
-    casual:       { Authenticity: 5, Tone: 4, Flow: 4, Clarity: 3, Grammar: 2, Transition: 2 },
-    emotional:    { Tone: 5, Authenticity: 5, Flow: 3, Clarity: 2, Transition: 2, Grammar: 1 },
-    neutral:      { Clarity: 4, Flow: 4, Grammar: 3, Tone: 3, Authenticity: 3, Transition: 2 }
+    casual: { Authenticity: 5, Tone: 4, Flow: 4, Clarity: 3, Grammar: 2, Transition: 2 },
+    emotional: { Tone: 5, Authenticity: 5, Flow: 3, Clarity: 2, Transition: 2, Grammar: 1 },
+    neutral: { Clarity: 4, Flow: 4, Grammar: 3, Tone: 3, Authenticity: 3, Transition: 2 }
 };
 
 const rankSuggestions = (suggestions, writingContext = {}) => {
@@ -263,7 +263,7 @@ const analyzeSmartSuggestions = async (req, res, next) => {
 const processDocument = async (req, res, next) => {
     try {
         const { text, mode = "Summarize", language = "English", style = "Casual", tone = "Friendly", humanize = false, isConsolidation = false } = req.body;
-        
+
         if (!text || text.trim().length === 0) {
             return res.status(400).json({ success: false, error: { message: "Document text is required" } });
         }
@@ -271,10 +271,10 @@ const processDocument = async (req, res, next) => {
         console.log(`[API v1] /process-document. Mode: ${mode}, Lang: ${language}, Consolidation: ${isConsolidation}`);
 
         const prompt = prompts.getDocumentProcessingPrompt(mode, language, style, tone, humanize, isConsolidation);
-        
+
         // Use the fast, high-rate-limit model for the entire document pipeline to prevent 429 errors on large files
         const model = "llama-3.1-8b-instant";
-        
+
         const resultText = await aiService.callGroqAPI(prompt, text, 0.4, model);
 
         // The result is just raw markdown text, we wrap it in an array to match the frontend expectations

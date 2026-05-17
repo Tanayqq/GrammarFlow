@@ -47,10 +47,10 @@ const KANNADA_WORDS = [
 ];
 
 const HINGLISH_WORDS = [
-    "hai", "hain", "hoon", "tha", "thi", "the", "kya", "toh",
+    "hai", "hain", "hoon", "tha", "thi", "kya", "toh",
     "yaar", "bhai", "acha", "accha", "nahi", "nahin",
     "mein", "kar", "hota", "hoti", "hote", "karo", "karna",
-    "aur", "lekin", "par", "phir", "abhi", "kal", "aaj",
+    "aur", "lekin", "phir", "abhi", "kal", "aaj",
     "matlab", "bilkul", "zaroor", "theek", "arre", "yeh", "woh"
 ];
 
