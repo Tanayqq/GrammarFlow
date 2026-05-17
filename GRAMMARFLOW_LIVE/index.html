@@ -71,7 +71,8 @@
                 </div>
 
                 <div class="editor-container">
-                    <textarea id="inputText" placeholder="Start typing naturally..."></textarea>
+                    <div id="highlighterOverlay" class="highlighter-overlay"></div>
+                    <textarea id="inputText" placeholder="Start typing naturally..." spellcheck="false"></textarea>
                 </div>
                 
                 <div class="controls-toolbar">
@@ -100,6 +101,7 @@
             </main>
 
             <div id="assistantBar" class="assistant-bar">
+                <button id="closeAssistantBtn" class="close-assistant-btn" title="Dismiss suggestion">&times;</button>
                 <div class="assistant-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z"/></svg></div>
                 <div class="suggestion-content">
                     <div class="suggestion-label" id="suggestionLabel">AUTHENTICITY</div>

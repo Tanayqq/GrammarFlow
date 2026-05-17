@@ -38,10 +38,13 @@ OUTPUT LANGUAGE: English ONLY.
 
     if (lang.includes('hindi') && !lang.includes('hinglish')) {
         return `### ⚠️ LANGUAGE ENFORCEMENT — ABSOLUTE HIGHEST PRIORITY ⚠️
-OUTPUT LANGUAGE: Hindi (Devanagari script).
-- Every sentence MUST be in Hindi using Devanagari script (हिंदी).
-- Do NOT use English words. Do NOT use Latin script.
-- If the input is in another language, TRANSLATE it fully into Hindi Devanagari.
+OUTPUT LANGUAGE: Hindi (Devanagari script) ONLY.
+- Every sentence MUST be in Hindi using Devanagari script (हिंदी लिपि - जैसे: "कल रात बारिश बहुत अधिक हो रही थी").
+- Absolutely ZERO Roman/Latin script letters allowed (do NOT use "baarish", "shahar", "traffic", "jam", "log").
+- Even if the input is in Hinglish or English (using Latin script), you MUST translate and transliterate it fully into pure Hindi in Devanagari script.
+- Example incorrect output: "Kal raat..." (FAILED)
+- Example correct output: "कल रात..." (PASSED)
+- Verify: Confirm that every single word uses Devanagari characters (क, ख, ग...). If any Latin letter appears (except standard numbers), regenerate.
 - This rule OVERRIDES all other instructions. Non-compliant output = FAILURE.`;
     }
 
@@ -118,10 +121,11 @@ Provide exactly 3 numbered rewrites (1., 2., 3.) of the user's text.
 ALL 3 rewrites MUST be entirely in ${language}.
 
 ### CONSTRAINTS ###
-1. Do NOT include any explanations, disclaimers, or conversational filler.
-2. If you cannot process the text perfectly, provide the best possible natural rewrite in ${language} anyway.
-3. Ensure linguistic fluidity and emotional authenticity.
-4. VERIFY: Before returning, confirm every rewrite is 100% in ${language}. If not, regenerate.`;
+- Do NOT use # or ## or ### or headings of any kind.
+- Do NOT write labels, subtitles, or tags like "Rewrite 1", "REWRITE:", "Translation:", "HUMAN TONE", or "CONVERSATIONAL".
+- Do NOT explain what you are doing, do NOT show notes, and do NOT output any introductory or concluding text.
+- Every rewrite MUST be entirely in ${language} and matching script. No mixing of scripts.
+- Output EXACTLY 3 lines, starting with the numbers "1. ", "2. ", "3. " respectively, followed immediately by the rewrite text. Do NOT double-space or put empty lines between them.`;
 };
 
 

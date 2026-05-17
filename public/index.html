@@ -81,6 +81,35 @@
       opacity: 1;
       pointer-events: auto;
     }
+
+    /* Shadow Highlighter Overlay Underlines */
+    #highlighterOverlay mark {
+      background: transparent !important;
+      color: transparent !important;
+      border-bottom: 2px dashed rgba(168, 85, 247, 0.85); /* Purple glowing dashed underline */
+      box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);
+      padding-bottom: 1px;
+    }
+    
+    #highlighterOverlay .highlight-clarity {
+      border-bottom: 2px dashed rgba(59, 130, 246, 0.85) !important; /* Blue for clarity */
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3) !important;
+    }
+    
+    #highlighterOverlay .highlight-tone {
+      border-bottom: 2px dashed rgba(236, 72, 153, 0.85) !important; /* Pink for tone */
+      box-shadow: 0 2px 8px rgba(236, 72, 153, 0.3) !important;
+    }
+
+    #highlighterOverlay .highlight-flow {
+      border-bottom: 2px dashed rgba(16, 185, 129, 0.85) !important; /* Green for flow */
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3) !important;
+    }
+    
+    #highlighterOverlay .highlight-grammar {
+      border-bottom: 2px dashed rgba(239, 68, 68, 0.85) !important; /* Red for grammar */
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3) !important;
+    }
   </style>
 <script>
     tailwind.config = {
@@ -117,8 +146,12 @@
 
         <!-- TEXT MODE CONTAINER -->
         <div id="textModeContainer">
-            <div class="relative group" data-purpose="editor-canvas">
-                <textarea class="w-full h-80 md:h-96 bg-black/20 rounded-2xl p-6 text-lg text-white/90 placeholder:text-gray-600 focus:outline-none focus:ring-1 focus:ring-purple-500/50 border border-white/5 resize-none custom-scrollbar transition-all" id="inputText" placeholder="Start typing naturally..."></textarea>
+            <div class="relative w-full bg-[#0f0b1e]/50 border border-white/5 rounded-2xl transition-all focus-within:ring-1 focus-within:ring-purple-500/50" data-purpose="editor-canvas">
+                <!-- Shadow Highlighter Overlay for wavy underlining -->
+                <div id="highlighterOverlay" class="absolute inset-0 pointer-events-none text-transparent whitespace-pre-wrap break-words overflow-y-auto w-full h-full p-6 text-lg rounded-2xl border border-transparent custom-scrollbar leading-relaxed"></div>
+                
+                <!-- Active Textarea -->
+                <textarea class="w-full h-80 md:h-96 bg-transparent text-lg text-white/90 p-6 placeholder:text-gray-600 focus:outline-none resize-none custom-scrollbar transition-all relative z-10 leading-relaxed" id="inputText" placeholder="Start typing naturally..."></textarea>
             </div>
         
 <!-- BEGIN: Output & Loading Section -->
@@ -290,9 +323,14 @@
 </main>
 
 <!-- FLOATING AI ASSISTANT BAR (GrammarFlow Writing Assistant) -->
-<div id="assistantBar" class="fixed bottom-8 left-1/2 -translate-x-1/2 translate-y-[150%] w-[90%] max-w-2xl bg-[#13111c]/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_30px_rgba(168,85,247,0.15)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-[1000] opacity-0 pointer-events-none">
+<div id="assistantBar" class="fixed bottom-8 left-1/2 -translate-x-1/2 translate-y-[150%] w-[90%] max-w-2xl bg-[#13111c]/95 backdrop-blur-xl border border-purple-500/30 rounded-2xl p-4 md:p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-[0_20px_50px_rgba(0,0,0,0.5),0_0_30px_rgba(168,85,247,0.15)] transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] z-[1000] opacity-0 pointer-events-none relative">
+    <!-- Dismiss Close Button -->
+    <button id="closeAssistantBtn" class="absolute top-2.5 right-2.5 p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all cursor-pointer" title="Dismiss suggestion">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path></svg>
+    </button>
+
     <!-- Left Section: Status & Suggestion -->
-    <div class="flex items-start gap-4 flex-1">
+    <div class="flex items-start gap-4 flex-1 pr-6 md:pr-4">
         <!-- Magic Wand AI Icon -->
         <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-500 to-blue-500 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.3)] shrink-0 mt-1 md:mt-0">
             <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

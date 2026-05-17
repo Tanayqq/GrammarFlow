@@ -219,6 +219,7 @@ document.addEventListener("DOMContentLoaded", () => {
         applyBtn:           document.getElementById("applySuggestionBtn"),
         prevBtn:            document.getElementById("prevSuggestionBtn"),
         nextBtn:            document.getElementById("nextSuggestionBtn"),
+        closeAssistantBtn:   document.getElementById("closeAssistantBtn"),
         appLogo:            document.getElementById("appLogo"),
         // Document UI
         tabText:            document.getElementById("tabText"),
@@ -277,9 +278,10 @@ document.addEventListener("DOMContentLoaded", () => {
         lastAnalyzedKey = '';  // Reset so next input always re-analyzes
     };
 
-    // ─── NAV BUTTONS ─────────────────────────
+    // ─── NAV & DISMISS BUTTONS ─────────────────
     UI.prevBtn.onclick = () => showSuggestion(currentSugIdx - 1);
     UI.nextBtn.onclick = () => showSuggestion(currentSugIdx + 1);
+    UI.closeAssistantBtn.onclick = () => hideAssistant();
 
     UI.applyBtn.onclick = () => {
         const sug = allSuggestions[currentSugIdx];
