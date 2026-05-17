@@ -160,17 +160,63 @@
         <!-- SHARED FOOTER CONTROLS -->
         <div class="flex flex-wrap items-center justify-between gap-6 pt-2" data-purpose="editor-controls">
             
+
 <div class="flex flex-wrap items-center gap-6" id="globalControls">
+    <!-- Language Dropdown -->
     <div class="flex items-center gap-3">
-        <span class="text-sm font-medium text-gray-400">Tone:</span>
-        <div class="flex gap-2">
-            <button type="button" onclick="selectTone(\'Casual\', this)" class="px-5 py-2 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.2)]">Casual</button>
-            <button type="button" onclick="selectTone(\'Friendly\', this)" class="px-5 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 transition-colors">Friendly</button>
-            <button type="button" onclick="selectTone(\'Auto\', this)" class="px-5 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 transition-colors">Auto-Detect</button>
+        <span class="text-sm font-medium text-gray-400">Language:</span>
+        <div class="relative">
+            <select id="languageSelect" class="appearance-none bg-[#252545] border border-white/10 rounded-full py-2 pl-4 pr-10 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]">
+                <option value="English">English</option>
+                <option value="Hinglish">Hinglish</option>
+                <option value="Hindi">Hindi</option>
+                <option value="Telugu">Telugu</option>
+                <option value="Kannada">Kannada</option>
+                <option value="Auto">Auto-Detect</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
         </div>
     </div>
+
+    <!-- Style Dropdown -->
+    <div class="flex items-center gap-3">
+        <span class="text-sm font-medium text-gray-400">Style:</span>
+        <div class="relative">
+            <select id="styleSelect" class="appearance-none bg-[#252545] border border-white/10 rounded-full py-2 pl-4 pr-10 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]">
+                <option value="Professional">Professional</option>
+                <option value="Academic">Academic</option>
+                <option value="Casual" selected>Casual</option>
+                <option value="Creative">Creative</option>
+                <option value="Direct">Direct</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tone Dropdown -->
+    <div class="flex items-center gap-3">
+        <span class="text-sm font-medium text-gray-400">Tone:</span>
+        <div class="relative">
+            <select id="toneSelect" class="appearance-none bg-[#252545] border border-white/10 rounded-full py-2 pl-4 pr-10 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]">
+                <option value="Neutral">Neutral</option>
+                <option value="Confident">Confident</option>
+                <option value="Friendly" selected>Friendly</option>
+                <option value="Persuasive">Persuasive</option>
+                <option value="Empathetic">Empathetic</option>
+            </select>
+            <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+        </div>
+    </div>
+
     <div class="flex items-center gap-3">
         <span class="text-sm font-medium text-gray-400">Human Mode</span>
+
         <label class="relative inline-flex items-center cursor-pointer">
             <input id="humanizeToggle" type="checkbox" class="sr-only peer" checked>
             <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
@@ -203,9 +249,9 @@
 
         <!-- HIDDEN APP.JS BINDINGS -->
         <div class="hidden" style="display:none;">
-            <select id="toneSelect"><option value="Casual">Casual</option><option value="Friendly">Friendly</option></select>
-            <select id="styleSelect"><option value="Casual">Casual</option></select>
-            <select id="languageSelect"><option value="Auto">Auto-Detect</option></select>
+            
+            
+            
             <input type="file" id="fileInput" accept="image/*,application/pdf" multiple>
             <select id="documentModeSelect"><option value="Summarize">Summarize</option></select>
             
