@@ -116,22 +116,73 @@
 
         <!-- DOCUMENT AI MODE CONTAINER -->
         <div id="documentModeContainer" class="hidden">
-            ${docUploadHtml}
-            ${docInputHtml}
+            
+<section class="mb-6" data-purpose="upload-section">
+<div class="relative group cursor-pointer border-2 border-dashed border-white/20 rounded-3xl py-16 px-6 flex flex-col items-center justify-center transition-all hover:border-white/40 hover:bg-white/5" id="documentUploadZone">
+<!-- Cloud Icon -->
+<div class="mb-4 bg-white/5 p-4 rounded-full border border-white/10">
+<svg class="text-gray-400 group-hover:text-white transition-colors" fill="none" height="48" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="48" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+<path d="M12 12v9"></path>
+<path d="m16 16-4-4-4 4"></path>
+</svg>
+</div>
+<p class="text-xl text-gray-300 text-center font-light tracking-wide">
+          Drag &amp; drop your document (PDF, Image) here, or <span class="text-nebula-purple font-medium">click to browse</span>
+</p>
+</div>
+</section>
+
+            
+<section class="mb-6" data-purpose="input-section">
+<div class="relative">
+<input class="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-white placeholder-gray-500 focus:ring-2 focus:ring-nebula-purple focus:border-transparent outline-none transition-all" placeholder="Summarization (Optional)" type="text"/>
+</div>
+</section>
+
         </div>
 
         <!-- SHARED FOOTER CONTROLS -->
         <div class="flex flex-wrap items-center justify-between gap-6 pt-2" data-purpose="editor-controls">
-            ${globalControlsHtml}
+            
+<div class="flex flex-wrap items-center gap-6" id="globalControls">
+    <div class="flex items-center gap-3">
+        <span class="text-sm font-medium text-gray-400">Tone:</span>
+        <div class="flex gap-2">
+            <button type="button" onclick="document.getElementById('toneSelect').value='Casual';" class="px-5 py-2 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.2)]">Casual</button>
+            <button type="button" onclick="document.getElementById('toneSelect').value='Friendly';" class="px-5 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 transition-colors">Friendly</button>
+            <button type="button" onclick="document.getElementById('languageSelect').value='Auto';" class="px-5 py-2 rounded-full text-xs font-semibold bg-white/5 text-gray-400 border border-white/10 hover:bg-white/10 transition-colors">Auto-Detect</button>
+        </div>
+    </div>
+    <div class="flex items-center gap-3">
+        <span class="text-sm font-medium text-gray-400">Human Mode</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+            <input id="humanizeToggle" type="checkbox" class="sr-only peer" checked>
+            <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+        </label>
+    </div>
+</div>
+
             
             <!-- Text Actions -->
             <div id="textActionContainer">
-                ${finalActionBtnsHtml}
+                
+<div class="flex flex-1 md:flex-none gap-3" id="textActionButtons">
+    <button id="fixGrammarBtn" class="flex-1 md:flex-none px-10 py-4 rounded-2xl font-semibold text-gray-300 bg-[#252545] border border-white/5 hover:bg-[#2d2d55] transition-all">Fix Grammar</button>
+    <button id="rewriteBtn" class="flex-1 md:flex-none px-10 py-4 rounded-2xl font-bold text-white bg-gradient-to-r from-purple-500 to-blue-500 shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:shadow-[0_0_30px_rgba(168,85,247,0.6)]">Rewrite Paragraph</button>
+</div>
+
             </div>
 
             <!-- Document Actions -->
             <div id="documentActionContainer" class="hidden">
-                ${docActionHtml}
+                
+<div class="flex justify-center" data-purpose="action-section">
+<button class="w-full btn-process bg-button-gradient py-5 rounded-2xl text-white text-xl font-semibold tracking-wide flex items-center justify-center" id="processDocumentBtn">
+        Process Document
+      </button>
+</div>
+
             </div>
         </div>
 
