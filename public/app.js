@@ -4,7 +4,7 @@
  */
 
 const CONFIG = {
-    PRODUCTION_API_URL: "https://grammarflow-brain.onrender.com",
+    PRODUCTION_API_URL: "",
     API_VERSION: "/api/v1",
 };
 

@@ -91,13 +91,13 @@ app.use('/api', (req, res, next) => {
 app.use('/api/v1', aiRoutes);
 
 // 6. Static Frontend Serving (Phase 3 Unified Architecture)
-// Serves the web app from the GRAMMARFLOW_LIVE directory
-app.use(express.static(path.join(__dirname, 'GRAMMARFLOW_LIVE')));
+// Serves the web app from the public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Fallback to index.html for SPA-like behavior (Phase 3 Final Middleware)
 app.use((req, res) => {
     if (req.url.startsWith('/api')) return res.status(404).json({ success: false, error: { message: 'API route not found' } });
-    res.sendFile(path.join(__dirname, 'GRAMMARFLOW_LIVE', 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // 6. Global Error Handling
@@ -113,9 +113,13 @@ app.use((err, req, res, next) => {
 });
 
 // 7. Start Server
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`\x1b[36m%s\x1b[0m`, `--------------------------------------------------`);
-    console.log(`\x1b[32m%s\x1b[0m`, `GrammarFlow Production Backend Active!`);
-    console.log(`\x1b[33m%s\x1b[0m`, `Port: ${PORT} | Mode: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`\x1b[36m%s\x1b[0m`, `--------------------------------------------------`);
-});
+if (process.env.NODE_ENV !== 'production' || require.main === module) {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`\x1b[36m%s\x1b[0m`, `--------------------------------------------------`);
+        console.log(`\x1b[32m%s\x1b[0m`, `GrammarFlow Production Backend Active!`);
+        console.log(`\x1b[33m%s\x1b[0m`, `Port: ${PORT} | Mode: ${process.env.NODE_ENV || 'development'}`);
+        console.log(`\x1b[36m%s\x1b[0m`, `--------------------------------------------------`);
+    });
+}
+
+module.exports = app;
