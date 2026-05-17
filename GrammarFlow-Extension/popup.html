@@ -3,65 +3,110 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GrammarFlow Settings</title>
+    <title>GrammarFlow</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="popup.css">
 </head>
 <body>
+    <!-- Header -->
     <div class="header">
         <div class="logo">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
             GrammarFlow
         </div>
+        <div class="version-badge">v2.0</div>
     </div>
 
-    <div class="content">
-        <div class="section-title">Context Menu Settings</div>
-        <div class="description">These settings apply when you right-click "Improve with GrammarFlow" on any website.</div>
+    <!-- Quick Actions -->
+    <div class="section">
+        <div class="section-title">Quick Actions</div>
+        <div class="action-grid">
+            <button class="action-btn" id="btn-rewrite">
+                <span class="action-icon">✏️</span>
+                <span>Rewrite</span>
+            </button>
+            <button class="action-btn" id="btn-grammar">
+                <span class="action-icon">✔️</span>
+                <span>Fix Grammar</span>
+            </button>
+            <button class="action-btn" id="btn-summarize">
+                <span class="action-icon">📋</span>
+                <span>Summarize</span>
+            </button>
+            <button class="action-btn" id="btn-explain">
+                <span class="action-icon">💡</span>
+                <span>Explain</span>
+            </button>
+        </div>
+        <div id="action-status" class="action-status hidden"></div>
+    </div>
 
-        <div class="form-group">
-            <label>Output Language</label>
-            <select id="langSelect">
+    <div class="divider"></div>
+
+    <!-- Settings -->
+    <div class="section">
+        <div class="section-title">Settings</div>
+
+        <div class="setting-row">
+            <label class="setting-label">Language</label>
+            <select id="langSelect" class="setting-select">
+                <option value="Auto">Auto-Detect</option>
                 <option value="English">English</option>
-                <option value="Hinglish">Hinglish</option>
-                <option value="Telugu">Telugu</option>
-                <option value="Telugu-English">Telugu-English Mixed</option>
-                <option value="Kannada">Kannada</option>
-                <option value="Kannada-English">Kannada-English Mixed</option>
                 <option value="Hindi">Hindi</option>
+                <option value="Hinglish">Hinglish</option>
+                <option value="Kannada">Kannada</option>
+                <option value="Telugu">Telugu</option>
             </select>
         </div>
 
-        <div class="form-row">
-            <div class="form-group">
-                <label>Style</label>
-                <select id="styleSelect">
-                    <option value="Casual">Casual</option>
-                    <option value="Professional">Professional</option>
-                    <option value="Conversational">Conversational</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Tone</label>
-                <select id="toneSelect">
-                    <option value="Friendly">Friendly</option>
-                    <option value="Direct">Direct</option>
-                    <option value="Empathetic">Empathetic</option>
-                </select>
-            </div>
+        <div class="setting-row">
+            <label class="setting-label">Style</label>
+            <select id="styleSelect" class="setting-select">
+                <option value="Casual">Casual</option>
+                <option value="Formal">Formal</option>
+                <option value="Professional">Professional</option>
+                <option value="Conversational">Conversational</option>
+            </select>
         </div>
 
-        <div class="form-group toggle-group">
-            <label>Humanize AI</label>
-            <label class="switch">
+        <div class="setting-row">
+            <label class="setting-label">Tone</label>
+            <select id="toneSelect" class="setting-select">
+                <option value="Friendly">Friendly</option>
+                <option value="Polite">Polite</option>
+                <option value="Direct">Direct</option>
+                <option value="Empathetic">Empathetic</option>
+            </select>
+        </div>
+
+        <div class="setting-row toggle-row">
+            <label class="setting-label">Human Mode</label>
+            <label class="toggle-switch">
                 <input type="checkbox" id="humanizeToggle" checked>
-                <span class="slider"></span>
+                <span class="toggle-slider"></span>
             </label>
         </div>
 
-        <div class="save-btn-container">
-            <button id="saveBtn" class="btn">Save Settings</button>
-            <span id="saveStatus" class="status-msg"></span>
+        <button id="saveBtn" class="save-btn">Save Settings</button>
+        <span id="saveStatus" class="save-status"></span>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Launchers -->
+    <div class="section">
+        <div class="section-title">Open in GrammarFlow</div>
+        <div class="launcher-group">
+            <button class="launcher-btn primary-launch" id="btn-docai">
+                <span>📄</span>
+                <span>Open Document AI</span>
+                <span class="launch-arrow">↗</span>
+            </button>
+            <button class="launcher-btn" id="btn-dashboard">
+                <span>🏠</span>
+                <span>Open Full Dashboard</span>
+                <span class="launch-arrow">↗</span>
+            </button>
         </div>
     </div>
 

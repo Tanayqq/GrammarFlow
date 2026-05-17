@@ -79,5 +79,7 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7, model = DE
 }
 
 module.exports = {
-    callGroqAPI
+    callGroqAPI,
+    DEFAULT_MODEL,
+    PREM_MODEL
 };
