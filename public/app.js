@@ -969,7 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'outline:none','resize:none','box-shadow:none','box-sizing:border-box',
             'font-family:Inter,sans-serif','font-size:1.2rem','line-height:1.85',
             'color:rgba(255,255,255,0.92)','caret-color:#a855f7',
-            'padding:6px 0','min-height:36px','overflow:hidden'
+            'padding:6px 0','min-height:36px','overflow:hidden','text-align:left'
         ].join(';');
 
         wrap.appendChild(ta);

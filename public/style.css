@@ -300,8 +300,11 @@ input:checked + .slider:before { transform: translateX(20px); }
 /* Fullscreen Immersive Container */
 .fov-overlay {
     position: fixed;
-    inset: 0;
-    z-index: 1000;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 9999;
     background: radial-gradient(circle at center, #12092b 0%, #05020c 100%);
     display: none;
     flex-direction: column;
@@ -310,6 +313,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     opacity: 0;
     transition: opacity 0.35s ease;
     backdrop-filter: blur(20px);
+    box-sizing: border-box;
 }
 
 .fov-overlay.fov-visible {
@@ -376,6 +380,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     flex-direction: column;
     gap: 16px;
     box-sizing: border-box;
+    text-align: left;
 }
 
 /* Paragraph Blocks */
@@ -383,6 +388,7 @@ input:checked + .slider:before { transform: translateX(20px); }
     position: relative;
     width: 100%;
     transition: opacity 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    text-align: left;
 }
 
 .fov-para.fov-dimmed {
@@ -424,8 +430,8 @@ input:checked + .slider:before { transform: translateX(20px); }
 
 /* Textareas within blocks */
 .fov-para textarea {
-    /* Set inside JS block style to avoid overrides but duplicated here as fallback */
     font-family: 'Inter', sans-serif !important;
+    text-align: left !important;
 }
 
 /* Context Strips */
