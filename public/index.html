@@ -154,10 +154,10 @@
             <div class="relative w-full bg-[#0f0b1e]/50 border border-white/5 rounded-2xl transition-all overflow-hidden" data-purpose="editor-canvas" id="flowEditorWrap">
                 <!-- Context Strips Zone -->
                 <div id="flowStrips" class="flow-strips-zone"></div>
-                <!-- Multi-paragraph flow canvas -->
-                <div id="flowCanvas" class="flow-canvas h-80 md:h-96 overflow-y-auto custom-scrollbar px-6 py-4"></div>
+                <!-- Multi-paragraph flow canvas — same size & padding as the original textarea -->
+                <div id="flowCanvas" class="flow-canvas h-80 md:h-96 overflow-y-auto custom-scrollbar" style="padding:24px;"></div>
                 <!-- Hidden sync textarea — keeps all existing app.js features working -->
-                <textarea id="inputText" class="sr-only" aria-hidden="true" tabindex="-1" style="position:absolute;opacity:0;pointer-events:none;height:0;"></textarea>
+                <textarea id="inputText" aria-hidden="true" tabindex="-1" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;"></textarea>
                 <!-- Hidden highlighter overlay — kept for existing JS compatibility -->
                 <div id="highlighterOverlay" class="hidden" aria-hidden="true"></div>
                 <!-- Word count + session info HUD -->

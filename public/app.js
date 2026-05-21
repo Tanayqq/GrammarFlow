@@ -970,6 +970,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const wrap = document.createElement('div');
         wrap.className = 'flow-para new' + (focus ? ' active' : ' dimmed');
         if (!text) wrap.classList.add('empty');
+        // Inline layout styles — guarantees full width regardless of Tailwind/browser resets
+        wrap.style.cssText = 'display:block;width:100%;position:relative;';
 
         const ta = document.createElement('textarea');
         ta.className = 'flow-para-ta';
@@ -977,7 +979,28 @@ document.addEventListener('DOMContentLoaded', () => {
         ta.rows = 1;
         ta.placeholder = 'Begin writing…';
         ta.spellcheck = true;
-        ta.autocomplete = 'off';
+        ta.setAttribute('autocomplete', 'off');
+        // Inline styles to match the original textarea appearance exactly
+        ta.style.cssText = [
+            'display:block',
+            'width:100%',
+            'background:transparent',
+            'border:none',
+            'border-radius:0',
+            'outline:none',
+            'resize:none',
+            'box-shadow:none',
+            'box-sizing:border-box',
+            'font-family:Inter,ui-sans-serif,system-ui,sans-serif',
+            'font-size:1.125rem',
+            'line-height:1.75',
+            'color:rgba(255,255,255,0.9)',
+            'caret-color:#a855f7',
+            'padding:4px 0',
+            'min-height:32px',
+            'overflow:hidden',
+            'transition:opacity 0.2s'
+        ].join(';');
 
         wrap.appendChild(ta);
         canvas.appendChild(wrap);
