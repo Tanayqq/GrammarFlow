@@ -847,44 +847,54 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ═══════════════════════════════════════════════════════
-   GrammarFlow — Flow-State Canvas Engine
-   Merged into the existing Text Editor tab.
-   All existing rewrite / grammar-fix / AI features work
-   via the hidden #inputText sync textarea.
+   GrammarFlow — Flow-State Expand Mode
+   The original textarea is UNCHANGED.
+   When the textarea fills up (or user clicks expand),
+   a full-screen immersive flow canvas opens over the page.
+   On close, text is written back to the textarea.
    ═══════════════════════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-    const canvas      = document.getElementById('flowCanvas');
-    const stripsZone  = document.getElementById('flowStrips');
-    const inputText   = document.getElementById('inputText'); // hidden sync textarea
-    const wordsEl     = document.getElementById('flowWords');
-    const timerEl     = document.getElementById('flowTimer');
-    const saveEl      = document.getElementById('flowSave');
-    const hudEl       = document.getElementById('flowHud');
+    const inputText    = document.getElementById('inputText');
+    const expandBtn    = document.getElementById('expandFlowBtn');
+    const overlay      = document.getElementById('flowOverlay');
+    const closeBtn     = document.getElementById('closeFlowBtn');
+    const flowCanvas   = document.getElementById('flowOverlayCanvas');
+    const flowStrips   = document.getElementById('flowOverlayStrips');
+    const flowWords    = document.getElementById('flowOverlayWords');
+    const flowTimer    = document.getElementById('flowOverlayTimer');
+    const flowSave     = document.getElementById('flowOverlaySave');
 
-    if (!canvas) return; // guard: only runs on text-editor page
+    if (!inputText || !expandBtn || !overlay) return;
 
     /* ── State ── */
-    const SAVE_KEY      = 'gf_flow_v2';
-    const COMPRESS_AT   = 8;   // paragraphs before oldest batch compresses
-    const KEEP_LAST     = 3;   // paragraphs to keep visible after compression
-    let paras           = [];  // DOM wrappers
-    let activeIdx       = 0;
-    let strips          = [];  // [{preview, full, paragraphs:[]}]
-    let saveTimer       = null;
-    let hudTimer        = null;
-    let sessionStart    = Date.now();
+    const SAVE_KEY    = 'gf_flow_v2';
+    const COMPRESS_AT = 8;
+    const KEEP_LAST   = 3;
+    let paras         = [];
+    let activeIdx     = 0;
+    let strips        = [];
+    let saveTimer     = null;
+    let hudTimer      = null;
+    let sessionStart  = Date.now();
+    let isOpen        = false;
 
     /* ── Session timer ── */
-    setInterval(() => {
-        const s   = Math.floor((Date.now() - sessionStart) / 1000);
-        const m   = Math.floor(s / 60);
-        const sec = String(s % 60).padStart(2, '0');
-        if (timerEl) timerEl.textContent = m + ':' + sec;
+    const timerIv = setInterval(() => {
+        if (!isOpen) return;
+        const s = Math.floor((Date.now() - sessionStart) / 1000);
+        const m = Math.floor(s / 60), sec = String(s % 60).padStart(2, '0');
+        if (flowTimer) flowTimer.textContent = m + ':' + sec;
     }, 1000);
 
-    /* ── Helpers ── */
     function esc(s) {
         return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    /* ── Word count ── */
+    function updateWords() {
+        const all = allTexts().join(' ');
+        const wc  = all.split(/\s+/).filter(Boolean).length;
+        if (flowWords) flowWords.textContent = wc + ' words';
     }
 
     function allTexts() {
@@ -893,57 +903,36 @@ document.addEventListener('DOMContentLoaded', () => {
         return [...fromStrips, ...fromCanvas];
     }
 
-    function syncInputText() {
-        // Keep the hidden textarea in sync so existing app.js AI buttons work
-        const full = allTexts().join('\n\n');
-        inputText.value = full;
-        // Dispatch input so existing real-time analysis (momentum engine etc.) fires
-        inputText.dispatchEvent(new Event('input', { bubbles: true }));
-        // Word count
-        const wc = full.split(/\s+/).filter(Boolean).length;
-        if (wordsEl) wordsEl.textContent = wc + ' words';
-    }
-
+    /* ── Save ── */
     function scheduleSave() {
-        if (saveEl) saveEl.classList.add('unsaved');
+        if (flowSave) flowSave.classList.add('unsaved');
         clearTimeout(saveTimer);
-        saveTimer = setTimeout(doSave, 25000);
+        saveTimer = setTimeout(doSave, 20000);
     }
 
     function doSave() {
-        const data = {
-            paragraphs: paras.map(p => p.querySelector('textarea').value),
-            strips,
-            ts: Date.now()
-        };
+        const data = { paragraphs: paras.map(p => p.querySelector('textarea').value), strips, ts: Date.now() };
         try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch(_) {}
-        if (saveEl) { saveEl.classList.remove('unsaved'); saveEl.title = 'Saved ' + new Date().toLocaleTimeString(); }
+        if (flowSave) { flowSave.classList.remove('unsaved'); flowSave.title = 'Saved ' + new Date().toLocaleTimeString(); }
     }
 
-    function showHud() {
-        if (!hudEl) return;
-        hudEl.classList.remove('fade');
-        clearTimeout(hudTimer);
-        hudTimer = setTimeout(() => hudEl.classList.add('fade'), 2500);
-    }
-
-    /* ── Strips ── */
+    /* ── Context Strips ── */
     function renderStrips() {
-        if (!stripsZone) return;
-        stripsZone.innerHTML = '';
+        if (!flowStrips) return;
+        flowStrips.innerHTML = '';
         strips.forEach((s, i) => {
             const el = document.createElement('div');
-            el.className = 'flow-strip';
-            el.innerHTML = `<span class="flow-strip-num">§${i+1}</span>
-                <span class="flow-strip-preview">${esc(s.preview)}…</span>
-                <span class="flow-strip-icon">▶</span>
-                <div class="flow-strip-body">${esc(s.full)}</div>`;
+            el.className = 'fov-strip';
+            el.innerHTML = `<span class="fov-strip-num">§${i+1}</span>
+                <span class="fov-strip-prev">${esc(s.preview)}…</span>
+                <span class="fov-strip-icon">▶</span>
+                <div class="fov-strip-body">${esc(s.full)}</div>`;
             el.addEventListener('click', () => {
                 const wasOpen = el.classList.contains('open');
-                stripsZone.querySelectorAll('.flow-strip').forEach(x => x.classList.remove('open'));
+                flowStrips.querySelectorAll('.fov-strip').forEach(x => x.classList.remove('open'));
                 if (!wasOpen) el.classList.add('open');
             });
-            stripsZone.appendChild(el);
+            flowStrips.appendChild(el);
         });
     }
 
@@ -951,171 +940,174 @@ document.addEventListener('DOMContentLoaded', () => {
         if (paras.length < COMPRESS_AT) return;
         const toCompress = paras.slice(0, paras.length - KEEP_LAST);
         if (!toCompress.length) return;
-        const texts = toCompress.map(p => p.querySelector('textarea').value);
-        const full  = texts.join('\n\n');
-        const preview = full.replace(/\s+/g,' ').trim().slice(0, 70);
-        strips.push({ preview, full, paragraphs: texts });
-        toCompress.forEach(p => canvas.removeChild(p));
+        const texts  = toCompress.map(p => p.querySelector('textarea').value);
+        const full   = texts.join('\n\n');
+        strips.push({ preview: full.replace(/\s+/g,' ').trim().slice(0,70), full, paragraphs: texts });
+        toCompress.forEach(p => flowCanvas.removeChild(p));
         paras = paras.slice(paras.length - KEEP_LAST);
         activeIdx = paras.length - 1;
         paras.forEach((p, i) => {
-            p.classList.toggle('active', i === activeIdx);
-            p.classList.toggle('dimmed', i !== activeIdx);
+            p.classList.toggle('fov-active', i === activeIdx);
+            p.classList.toggle('fov-dimmed', i !== activeIdx);
         });
         renderStrips();
     }
 
     /* ── Paragraph factory ── */
-    function addPara(text, focus) {
+    function addPara(text, doFocus) {
         const wrap = document.createElement('div');
-        wrap.className = 'flow-para new' + (focus ? ' active' : ' dimmed');
-        if (!text) wrap.classList.add('empty');
-        // Inline layout styles — guarantees full width regardless of Tailwind/browser resets
-        wrap.style.cssText = 'display:block;width:100%;position:relative;';
+        wrap.className = 'fov-para' + (doFocus ? ' fov-active' : ' fov-dimmed');
+        wrap.style.cssText = 'position:relative;display:block;width:100%;';
 
         const ta = document.createElement('textarea');
-        ta.className = 'flow-para-ta';
         ta.value = text || '';
         ta.rows = 1;
-        ta.placeholder = 'Begin writing…';
+        ta.placeholder = 'Keep writing…';
         ta.spellcheck = true;
-        ta.setAttribute('autocomplete', 'off');
-        // Inline styles to match the original textarea appearance exactly
         ta.style.cssText = [
-            'display:block',
-            'width:100%',
-            'background:transparent',
-            'border:none',
-            'border-radius:0',
-            'outline:none',
-            'resize:none',
-            'box-shadow:none',
-            'box-sizing:border-box',
-            'font-family:Inter,ui-sans-serif,system-ui,sans-serif',
-            'font-size:1.125rem',
-            'line-height:1.75',
-            'color:rgba(255,255,255,0.9)',
-            'caret-color:#a855f7',
-            'padding:4px 0',
-            'min-height:32px',
-            'overflow:hidden',
-            'transition:opacity 0.2s'
+            'display:block','width:100%','background:transparent','border:none',
+            'outline:none','resize:none','box-shadow:none','box-sizing:border-box',
+            'font-family:Inter,sans-serif','font-size:1.2rem','line-height:1.85',
+            'color:rgba(255,255,255,0.92)','caret-color:#a855f7',
+            'padding:6px 0','min-height:36px','overflow:hidden'
         ].join(';');
 
         wrap.appendChild(ta);
-        canvas.appendChild(wrap);
+        flowCanvas.appendChild(wrap);
         paras.push(wrap);
-        const idx = paras.length - 1;
 
-        autoResize(ta);
-
+        autoH(ta);
         ta.addEventListener('input', () => {
-            autoResize(ta);
-            wrap.classList.toggle('empty', ta.value.trim() === '');
-            syncInputText();
-            showHud();
+            autoH(ta);
+            wrap.classList.toggle('fov-empty', ta.value.trim() === '');
+            updateWords();
             scheduleSave();
-            if (paras.length >= COMPRESS_AT && idx === paras.length - 1) compress();
+            const currentIdx = paras.indexOf(wrap);
+            if (paras.length >= COMPRESS_AT && currentIdx === paras.length - 1) compress();
         });
+        ta.addEventListener('focus', () => setActive(paras.indexOf(wrap)));
+        ta.addEventListener('keydown', e => handleKey(e, ta));
 
-        ta.addEventListener('focus', () => setActive(idx));
-
-        ta.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                addPara('', true);
-                setActive(paras.length - 1);
-                scheduleSave();
-                return;
-            }
-            if (e.key === 'Backspace' && ta.value === '' && paras.length > 1) {
-                e.preventDefault();
-                canvas.removeChild(wrap);
-                paras.splice(idx, 1);
-                const ni = Math.max(0, idx - 1);
-                setActive(ni);
-                const prev = paras[ni].querySelector('textarea');
-                prev.focus();
-                prev.selectionStart = prev.selectionEnd = prev.value.length;
-                return;
-            }
-            if (e.key === 'ArrowUp' && idx > 0 && ta.selectionStart === 0) {
-                e.preventDefault();
-                paras[idx-1].querySelector('textarea').focus();
-            }
-            if (e.key === 'ArrowDown' && idx < paras.length - 1 && ta.selectionStart === ta.value.length) {
-                e.preventDefault();
-                paras[idx+1].querySelector('textarea').focus();
-            }
-        });
-
-        if (focus) requestAnimationFrame(() => { ta.focus(); setActive(idx); });
+        if (doFocus) requestAnimationFrame(() => { ta.focus(); setActive(paras.indexOf(wrap)); });
         return wrap;
     }
 
-    function autoResize(ta) {
+    function autoH(ta) {
         ta.style.height = 'auto';
         ta.style.height = ta.scrollHeight + 'px';
     }
 
     function setActive(idx) {
+        if (idx < 0) return;
         activeIdx = idx;
         paras.forEach((p, i) => {
-            p.classList.toggle('active', i === idx);
-            p.classList.toggle('dimmed', i !== idx);
+            p.classList.toggle('fov-active', i === idx);
+            p.classList.toggle('fov-dimmed', i !== idx);
         });
-        // Scroll active para into view within the canvas
-        const activePara = paras[idx];
-        if (activePara) activePara.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        paras[idx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    /* ── Patch: when existing grammar-fix/rewrite applies a result back ──
-       The existing app.js sets resultText back into inputText.value and calls
-       a copy button — it doesn't write back to the canvas. We watch for
-       external writes to inputText and reflect them into the canvas. ── */
-    function reflectExternalEdit(newText) {
-        if (!newText || !newText.trim()) return;
-        const newParas = newText.split(/\n\n+/).filter(s => s.trim());
-        canvas.innerHTML = '';
+    function handleKey(e, ta) {
+        const idx = paras.indexOf(ta.parentElement);
+        if (idx < 0) return;
+
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            addPara('', true);
+            setActive(paras.length - 1);
+            scheduleSave();
+            return;
+        }
+        if (e.key === 'Backspace' && ta.value === '' && paras.length > 1) {
+            e.preventDefault();
+            flowCanvas.removeChild(paras[idx]);
+            paras.splice(idx, 1);
+            const ni = Math.max(0, idx - 1);
+            setActive(ni);
+            const prev = paras[ni].querySelector('textarea');
+            prev.focus();
+            prev.selectionStart = prev.selectionEnd = prev.value.length;
+            return;
+        }
+        if (e.key === 'ArrowUp' && idx > 0 && ta.selectionStart === 0) {
+            e.preventDefault(); paras[idx-1].querySelector('textarea').focus();
+        }
+        if (e.key === 'ArrowDown' && idx < paras.length - 1 && ta.selectionStart === ta.value.length) {
+            e.preventDefault(); paras[idx+1].querySelector('textarea').focus();
+        }
+        if (e.key === 'Escape') closeOverlay();
+    }
+
+
+    /* ── Open overlay ── */
+    function openOverlay() {
+        if (isOpen) return;
+        isOpen = true;
+        sessionStart = Date.now();
+
+        // Seed canvas with text from the main textarea
+        const seedText = inputText.value || '';
+        flowCanvas.innerHTML = '';
         paras = [];
         strips = [];
-        stripsZone.innerHTML = '';
-        newParas.forEach((t, i) => addPara(t, i === newParas.length - 1));
-        setActive(paras.length - 1);
-        doSave();
-    }
+        flowStrips.innerHTML = '';
 
-    // Observe inputText for external value changes (e.g. "Apply" in grammar fix)
-    let lastInputVal = '';
-    setInterval(() => {
-        if (inputText.value !== lastInputVal && document.activeElement !== inputText) {
-            // Someone else changed inputText (e.g. the Apply button result)
-            // Only reflect if it's meaningfully different from what we'd sync
-            const ourText = allTexts().join('\n\n');
-            if (inputText.value !== ourText && inputText.value.trim() !== '') {
-                reflectExternalEdit(inputText.value);
-            }
-        }
-        lastInputVal = inputText.value;
-    }, 500);
-
-    /* ── Boot ── */
-    function boot() {
+        // Try loading saved state first; fall back to textarea content
         let loaded = false;
         try {
             const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
             if (saved && Array.isArray(saved.paragraphs) && saved.paragraphs.length) {
-                if (Array.isArray(saved.strips)) strips = saved.strips;
+                strips = saved.strips || [];
                 renderStrips();
                 saved.paragraphs.forEach((t, i) => addPara(t, i === saved.paragraphs.length - 1));
                 loaded = true;
             }
         } catch(_) {}
-        if (!loaded) addPara('', true);
-        syncInputText();
-        showHud();
+
+        if (!loaded) {
+            const seedParas = seedText.split(/\n\n+/).filter(s => s.trim());
+            if (seedParas.length) seedParas.forEach((t, i) => addPara(t, i === seedParas.length - 1));
+            else addPara('', true);
+        }
+
+        updateWords();
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'flex';
+        requestAnimationFrame(() => overlay.classList.add('fov-visible'));
     }
 
-    boot();
+    /* ── Close overlay ── */
+    function closeOverlay() {
+        if (!isOpen) return;
+        doSave();
+        // Write text back to the main textarea
+        const full = allTexts().join('\n\n');
+        inputText.value = full;
+        inputText.dispatchEvent(new Event('input', { bubbles: true }));
+
+        overlay.classList.remove('fov-visible');
+        setTimeout(() => {
+            overlay.style.display = 'none';
+            overlay.classList.add('hidden');
+        }, 350);
+        isOpen = false;
+
+        // Refocus the main textarea
+        inputText.focus();
+    }
+
+    /* ── Trigger: textarea fills up → auto-open ── */
+    inputText.addEventListener('input', () => {
+        if (isOpen) return;
+        if (inputText.scrollHeight > inputText.clientHeight + 20) {
+            openOverlay();
+        }
+    });
+
+    /* ── Manual trigger ── */
+    expandBtn.addEventListener('click', openOverlay);
+    closeBtn.addEventListener('click', closeOverlay);
 });
+
+
 

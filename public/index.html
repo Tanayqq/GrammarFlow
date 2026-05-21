@@ -150,25 +150,20 @@
 
         <!-- TEXT MODE CONTAINER -->
         <div id="textModeContainer">
-            <!-- Flow-State Writing Canvas -->
-            <div class="relative w-full bg-[#0f0b1e]/50 border border-white/5 rounded-2xl transition-all overflow-hidden" data-purpose="editor-canvas" id="flowEditorWrap">
-                <!-- Context Strips Zone -->
-                <div id="flowStrips" class="flow-strips-zone"></div>
-                <!-- Multi-paragraph flow canvas — same size & padding as the original textarea -->
-                <div id="flowCanvas" class="flow-canvas h-80 md:h-96 overflow-y-auto custom-scrollbar" style="padding:24px;"></div>
-                <!-- Hidden sync textarea — keeps all existing app.js features working -->
-                <textarea id="inputText" aria-hidden="true" tabindex="-1" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;overflow:hidden;"></textarea>
-                <!-- Hidden highlighter overlay — kept for existing JS compatibility -->
-                <div id="highlighterOverlay" class="hidden" aria-hidden="true"></div>
-                <!-- Word count + session info HUD -->
-                <div id="flowHud" class="flow-hud">
-                    <span id="flowWords">0 words</span>
-                    <span class="flow-hud-sep">·</span>
-                    <span id="flowTimer">0:00</span>
-                    <span class="flow-hud-sep">·</span>
-                    <span id="flowSave" title="Auto-save">●</span>
-                </div>
+            <div class="relative w-full bg-[#0f0b1e]/50 border border-white/5 rounded-2xl transition-all focus-within:ring-1 focus-within:ring-purple-500/50" data-purpose="editor-canvas">
+                <!-- Shadow Highlighter Overlay for wavy underlining -->
+                <div id="highlighterOverlay" class="absolute inset-0 pointer-events-none text-transparent whitespace-pre-wrap break-words overflow-y-auto w-full h-full p-6 text-lg rounded-2xl border border-transparent custom-scrollbar leading-relaxed"></div>
+                
+                <!-- Active Textarea -->
+                <textarea class="w-full h-80 md:h-96 bg-transparent text-lg text-white/90 p-6 placeholder:text-gray-600 focus:outline-none resize-none custom-scrollbar transition-all relative z-10 leading-relaxed" id="inputText" placeholder="Start typing naturally..."></textarea>
+
+                <!-- Immersive Flow Expand Button -->
+                <button id="expandFlowBtn" class="expand-flow-btn" title="Expand to Immersive Flow-State Editor">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                    Flow Focus
+                </button>
             </div>
+
 
             <!-- TEXT EDITOR LOADING INDICATOR & OUTPUT CONTAINER -->
             <div id="loadingIndicator" class="hidden mt-6 flex flex-col items-center justify-center p-8 gap-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl">
@@ -459,5 +454,34 @@
         btn.classList.add('chip-active');
     }
 </script>
+
+
+<!-- Fullscreen Immersive Flow State Overlay -->
+<div id="flowOverlay" class="fov-overlay hidden">
+    <!-- Header -->
+    <header class="fov-header">
+        <div class="fov-brand">GrammarFlow Flow-State</div>
+        <button id="closeFlowBtn" class="fov-close-btn" title="Save and Exit Fullscreen Focus Mode">
+            Exit Focus (Esc)
+        </button>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="fov-main">
+        <!-- Context Strips -->
+        <div id="flowOverlayStrips" class="fov-strips-zone"></div>
+        <!-- Scrollable Multi-paragraph sandbox -->
+        <div id="flowOverlayCanvas" class="fov-canvas-scroll custom-scrollbar"></div>
+    </main>
+
+    <!-- Floating HUD -->
+    <div id="flowOverlayHud" class="fov-hud">
+        <span id="flowOverlayWords">0 words</span>
+        <span class="fov-hud-sep">·</span>
+        <span id="flowOverlayTimer">0:00</span>
+        <span class="fov-hud-sep">·</span>
+        <span id="flowOverlaySave" class="fov-save-dot" title="Auto-saved to draft">●</span>
+    </div>
+</div>
 
 </body></html>
