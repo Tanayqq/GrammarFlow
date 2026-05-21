@@ -17,9 +17,6 @@
       color: #e2e8f0;
       overflow-y: auto;
       overflow-x: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
       min-height: 100vh;
     }
 
@@ -131,13 +128,15 @@
     }
   </script>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4 md:p-8">
+<body class="min-h-screen bg-[#080312] text-[#e2e8f0] relative">
 
 <div class="cosmic-bg"></div>
 <div class="nebula-glow" style="top: -100px; right: -100px;"></div>
 <div class="nebula-glow" style="bottom: -150px; left: -100px; background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);"></div>
 
-<main class="w-full max-w-5xl mx-auto" data-purpose="editor-main-container">
+<!-- Flex Wrapper to center main editor -->
+<div class="min-h-screen w-full flex items-center justify-center p-4 md:p-8">
+    <main class="w-full max-w-5xl mx-auto" data-purpose="editor-main-container">
     <div class="glass-panel rounded-3xl overflow-hidden p-6 md:p-8 flex flex-col gap-6 relative">
         
         <!-- Tabs Navigation -->
@@ -389,6 +388,8 @@
             Apply
         </button>
     </div>
+    </div>
+</main>
 </div>
 <!-- External Document Processing Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
