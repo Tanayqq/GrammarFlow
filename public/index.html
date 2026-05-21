@@ -118,21 +118,37 @@
 
     /* Fullscreen Immersive Container */
     .fov-overlay {
+        --ambient-glow-size: 70%;
+        --bg-darkness-1: #12092b;
+        --bg-darkness-2: #05020c;
         position: fixed;
         top: 0;
         left: 0;
         width: 100vw;
         height: 100vh;
         z-index: 9999;
-        background: radial-gradient(circle at center, #12092b 0%, #05020c 100%);
+        background: radial-gradient(circle at center, var(--bg-darkness-1) 0%, var(--bg-darkness-2) var(--ambient-glow-size));
         display: none;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         opacity: 0;
-        transition: opacity 0.35s ease;
+        transition: opacity 0.35s ease, background 1.5s ease;
         backdrop-filter: blur(20px);
         box-sizing: border-box;
+    }
+
+    /* Spatial Timeline Pulse */
+    .fov-timeline-pulse {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: linear-gradient(180deg, transparent, rgba(168, 85, 247, 0.15), transparent);
+        opacity: 0.6;
+        transition: opacity 1.5s ease;
+        z-index: 9999;
     }
 
     .fov-overlay.fov-visible {
@@ -229,7 +245,17 @@
     .fov-para.fov-dimmed-1 { opacity: 0.65; }
     .fov-para.fov-dimmed-2 { opacity: 0.35; }
     .fov-para.fov-dimmed-3 { opacity: 0.15; }
-    .fov-para.fov-dimmed-far { opacity: 0.05; pointer-events: none; }
+    .fov-para.fov-dimmed-far { opacity: 0.05; filter: blur(1px); pointer-events: none; }
+
+    /* Progressive Compression */
+    .fov-para.fov-condensing {
+        opacity: 0 !important;
+        transform: translateY(-15px) scale(0.97);
+        margin-bottom: -30px;
+        filter: blur(3px);
+        pointer-events: none;
+        transition: all 0.4s ease-in-out;
+    }
 
     /* Left edge active indicator */
     .fov-para.fov-active::before {
@@ -389,6 +415,12 @@
     }
 
     /* Psychological Momentum Engine States */
+    .fov-overlay.momentum-high {
+        --ambient-glow-size: 20%;
+        --bg-darkness-1: #0a041a;
+        --bg-darkness-2: #020106;
+    }
+
     .fov-overlay.momentum-high .fov-hud {
         opacity: 0.05;
         transform: translateX(-50%) translateY(10px);
@@ -396,6 +428,10 @@
     
     .fov-overlay.momentum-high .fov-strips-zone {
         opacity: 0.05;
+    }
+
+    .fov-overlay.momentum-high .fov-timeline-pulse {
+        opacity: 0.1;
     }
 
     .fov-overlay.momentum-high .fov-camera-track {
@@ -787,6 +823,7 @@
 
 <!-- Fullscreen Immersive Flow State Overlay -->
 <div id="flowOverlay" class="fov-overlay hidden">
+    <div class="fov-timeline-pulse"></div>
     <!-- Header -->
     <header class="fov-header">
         <div class="fov-brand">GrammarFlow Flow-State</div>

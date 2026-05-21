@@ -869,8 +869,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ── State ── */
     const SAVE_KEY    = 'gf_flow_v2';
-    const COMPRESS_AT = 8;
-    const KEEP_LAST   = 3;
+    const COMPRESS_AT = 10;
+    const KEEP_LAST   = 5;
     let paras         = [];
     let activeIdx     = 0;
     let strips        = [];
@@ -883,6 +883,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let stripFocusIdx = -1;
     let momentumTimer = null;
     let isHighMomentum = false;
+    let pendingCompress = false;
 
     /* ── Session timer ── */
     const timerIv = setInterval(() => {
@@ -954,18 +955,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function compress() {
         if (paras.length < COMPRESS_AT) return;
+        if (isHighMomentum) {
+            pendingCompress = true;
+            return;
+        }
+        pendingCompress = false;
         const toCompress = paras.slice(0, paras.length - KEEP_LAST);
         if (!toCompress.length) return;
-        const texts  = toCompress.map(p => p.querySelector('textarea').value);
-        const full   = texts.join('\n\n');
-        strips.push({ preview: full.replace(/\s+/g,' ').trim().slice(0,70), full, paragraphs: texts });
-        toCompress.forEach(p => {
-            if(cameraTrack && cameraTrack.contains(p)) cameraTrack.removeChild(p);
-        });
-        paras = paras.slice(paras.length - KEEP_LAST);
-        activeIdx = paras.length - 1;
-        setActive(activeIdx);
-        renderStrips();
+        
+        toCompress.forEach(p => p.classList.add('fov-condensing'));
+        
+        setTimeout(() => {
+            const texts  = toCompress.map(p => p.querySelector('textarea').value);
+            const full   = texts.join('\n\n');
+            strips.push({ preview: full.replace(/\s+/g,' ').trim().slice(0,70), full, paragraphs: texts });
+            toCompress.forEach(p => {
+                if(cameraTrack && cameraTrack.contains(p)) cameraTrack.removeChild(p);
+            });
+            paras = paras.slice(paras.length - KEEP_LAST);
+            activeIdx = paras.length - 1;
+            setActive(activeIdx);
+            renderStrips();
+        }, 400); // Wait for condense animation
     }
 
     /* ── Paragraph factory ── */
@@ -978,7 +989,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ta.value = text || '';
         ta.rows = 1;
         ta.placeholder = 'Keep writing…';
-        ta.spellcheck = true;
+        ta.spellcheck = false;
         ta.style.cssText = [
             'display:block','width:100%','background:transparent','border:none',
             'outline:none','resize:none','box-shadow:none','box-sizing:border-box',
@@ -1007,13 +1018,11 @@ document.addEventListener('DOMContentLoaded', () => {
             momentumTimer = setTimeout(() => {
                 isHighMomentum = false;
                 overlay.classList.remove('momentum-high');
-            }, 3000); // Reset momentum after 3s pause
+                if (pendingCompress) compress();
+            }, 2500); // Reset momentum after 2.5s pause
             
             // Update virtual camera on text expansion
             if(paras.indexOf(wrap) === activeIdx) setActive(activeIdx);
-
-            const currentIdx = paras.indexOf(wrap);
-            if (paras.length >= COMPRESS_AT && currentIdx === paras.length - 1) compress();
         });
         ta.addEventListener('focus', () => setActive(paras.indexOf(wrap)));
         ta.addEventListener('keydown', e => handleKey(e, ta));
@@ -1090,6 +1099,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addPara('', true);
             setActive(paras.length - 1);
             scheduleSave();
+            if (paras.length >= COMPRESS_AT) compress();
             return;
         }
         if (e.key === 'Backspace' && ta.value === '' && paras.length > 1) {
@@ -1137,10 +1147,15 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
             if (saved && Array.isArray(saved.paragraphs) && saved.paragraphs.length) {
-                strips = saved.strips || [];
-                renderStrips();
-                saved.paragraphs.forEach((t, i) => addPara(t, i === saved.paragraphs.length - 1));
-                loaded = true;
+                const savedFull = [...(saved.strips ? saved.strips.flatMap(s => s.paragraphs) : []), ...saved.paragraphs].join('\n\n');
+                
+                // ONLY load from save if the external textarea hasn't been manually changed significantly
+                if (!seedText || seedText.trim() === savedFull.trim()) {
+                    strips = saved.strips || [];
+                    renderStrips();
+                    saved.paragraphs.forEach((t, i) => addPara(t, i === saved.paragraphs.length - 1));
+                    loaded = true;
+                }
             }
         } catch(_) {}
 
