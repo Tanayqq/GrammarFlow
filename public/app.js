@@ -845,3 +845,254 @@ document.addEventListener("DOMContentLoaded", () => {
     // Set initial tab state
     window.documentProcessor.switchTab('text');
 });
+
+/* ═══════════════════════════════════════════════════════
+   GrammarFlow — Flow-State Canvas Engine
+   Merged into the existing Text Editor tab.
+   All existing rewrite / grammar-fix / AI features work
+   via the hidden #inputText sync textarea.
+   ═══════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas      = document.getElementById('flowCanvas');
+    const stripsZone  = document.getElementById('flowStrips');
+    const inputText   = document.getElementById('inputText'); // hidden sync textarea
+    const wordsEl     = document.getElementById('flowWords');
+    const timerEl     = document.getElementById('flowTimer');
+    const saveEl      = document.getElementById('flowSave');
+    const hudEl       = document.getElementById('flowHud');
+
+    if (!canvas) return; // guard: only runs on text-editor page
+
+    /* ── State ── */
+    const SAVE_KEY      = 'gf_flow_v2';
+    const COMPRESS_AT   = 8;   // paragraphs before oldest batch compresses
+    const KEEP_LAST     = 3;   // paragraphs to keep visible after compression
+    let paras           = [];  // DOM wrappers
+    let activeIdx       = 0;
+    let strips          = [];  // [{preview, full, paragraphs:[]}]
+    let saveTimer       = null;
+    let hudTimer        = null;
+    let sessionStart    = Date.now();
+
+    /* ── Session timer ── */
+    setInterval(() => {
+        const s   = Math.floor((Date.now() - sessionStart) / 1000);
+        const m   = Math.floor(s / 60);
+        const sec = String(s % 60).padStart(2, '0');
+        if (timerEl) timerEl.textContent = m + ':' + sec;
+    }, 1000);
+
+    /* ── Helpers ── */
+    function esc(s) {
+        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function allTexts() {
+        const fromStrips = strips.flatMap(s => s.paragraphs);
+        const fromCanvas = paras.map(p => p.querySelector('textarea').value);
+        return [...fromStrips, ...fromCanvas];
+    }
+
+    function syncInputText() {
+        // Keep the hidden textarea in sync so existing app.js AI buttons work
+        const full = allTexts().join('\n\n');
+        inputText.value = full;
+        // Dispatch input so existing real-time analysis (momentum engine etc.) fires
+        inputText.dispatchEvent(new Event('input', { bubbles: true }));
+        // Word count
+        const wc = full.split(/\s+/).filter(Boolean).length;
+        if (wordsEl) wordsEl.textContent = wc + ' words';
+    }
+
+    function scheduleSave() {
+        if (saveEl) saveEl.classList.add('unsaved');
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(doSave, 25000);
+    }
+
+    function doSave() {
+        const data = {
+            paragraphs: paras.map(p => p.querySelector('textarea').value),
+            strips,
+            ts: Date.now()
+        };
+        try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch(_) {}
+        if (saveEl) { saveEl.classList.remove('unsaved'); saveEl.title = 'Saved ' + new Date().toLocaleTimeString(); }
+    }
+
+    function showHud() {
+        if (!hudEl) return;
+        hudEl.classList.remove('fade');
+        clearTimeout(hudTimer);
+        hudTimer = setTimeout(() => hudEl.classList.add('fade'), 2500);
+    }
+
+    /* ── Strips ── */
+    function renderStrips() {
+        if (!stripsZone) return;
+        stripsZone.innerHTML = '';
+        strips.forEach((s, i) => {
+            const el = document.createElement('div');
+            el.className = 'flow-strip';
+            el.innerHTML = `<span class="flow-strip-num">§${i+1}</span>
+                <span class="flow-strip-preview">${esc(s.preview)}…</span>
+                <span class="flow-strip-icon">▶</span>
+                <div class="flow-strip-body">${esc(s.full)}</div>`;
+            el.addEventListener('click', () => {
+                const wasOpen = el.classList.contains('open');
+                stripsZone.querySelectorAll('.flow-strip').forEach(x => x.classList.remove('open'));
+                if (!wasOpen) el.classList.add('open');
+            });
+            stripsZone.appendChild(el);
+        });
+    }
+
+    function compress() {
+        if (paras.length < COMPRESS_AT) return;
+        const toCompress = paras.slice(0, paras.length - KEEP_LAST);
+        if (!toCompress.length) return;
+        const texts = toCompress.map(p => p.querySelector('textarea').value);
+        const full  = texts.join('\n\n');
+        const preview = full.replace(/\s+/g,' ').trim().slice(0, 70);
+        strips.push({ preview, full, paragraphs: texts });
+        toCompress.forEach(p => canvas.removeChild(p));
+        paras = paras.slice(paras.length - KEEP_LAST);
+        activeIdx = paras.length - 1;
+        paras.forEach((p, i) => {
+            p.classList.toggle('active', i === activeIdx);
+            p.classList.toggle('dimmed', i !== activeIdx);
+        });
+        renderStrips();
+    }
+
+    /* ── Paragraph factory ── */
+    function addPara(text, focus) {
+        const wrap = document.createElement('div');
+        wrap.className = 'flow-para new' + (focus ? ' active' : ' dimmed');
+        if (!text) wrap.classList.add('empty');
+
+        const ta = document.createElement('textarea');
+        ta.className = 'flow-para-ta';
+        ta.value = text || '';
+        ta.rows = 1;
+        ta.placeholder = 'Begin writing…';
+        ta.spellcheck = true;
+        ta.autocomplete = 'off';
+
+        wrap.appendChild(ta);
+        canvas.appendChild(wrap);
+        paras.push(wrap);
+        const idx = paras.length - 1;
+
+        autoResize(ta);
+
+        ta.addEventListener('input', () => {
+            autoResize(ta);
+            wrap.classList.toggle('empty', ta.value.trim() === '');
+            syncInputText();
+            showHud();
+            scheduleSave();
+            if (paras.length >= COMPRESS_AT && idx === paras.length - 1) compress();
+        });
+
+        ta.addEventListener('focus', () => setActive(idx));
+
+        ta.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                addPara('', true);
+                setActive(paras.length - 1);
+                scheduleSave();
+                return;
+            }
+            if (e.key === 'Backspace' && ta.value === '' && paras.length > 1) {
+                e.preventDefault();
+                canvas.removeChild(wrap);
+                paras.splice(idx, 1);
+                const ni = Math.max(0, idx - 1);
+                setActive(ni);
+                const prev = paras[ni].querySelector('textarea');
+                prev.focus();
+                prev.selectionStart = prev.selectionEnd = prev.value.length;
+                return;
+            }
+            if (e.key === 'ArrowUp' && idx > 0 && ta.selectionStart === 0) {
+                e.preventDefault();
+                paras[idx-1].querySelector('textarea').focus();
+            }
+            if (e.key === 'ArrowDown' && idx < paras.length - 1 && ta.selectionStart === ta.value.length) {
+                e.preventDefault();
+                paras[idx+1].querySelector('textarea').focus();
+            }
+        });
+
+        if (focus) requestAnimationFrame(() => { ta.focus(); setActive(idx); });
+        return wrap;
+    }
+
+    function autoResize(ta) {
+        ta.style.height = 'auto';
+        ta.style.height = ta.scrollHeight + 'px';
+    }
+
+    function setActive(idx) {
+        activeIdx = idx;
+        paras.forEach((p, i) => {
+            p.classList.toggle('active', i === idx);
+            p.classList.toggle('dimmed', i !== idx);
+        });
+        // Scroll active para into view within the canvas
+        const activePara = paras[idx];
+        if (activePara) activePara.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    /* ── Patch: when existing grammar-fix/rewrite applies a result back ──
+       The existing app.js sets resultText back into inputText.value and calls
+       a copy button — it doesn't write back to the canvas. We watch for
+       external writes to inputText and reflect them into the canvas. ── */
+    function reflectExternalEdit(newText) {
+        if (!newText || !newText.trim()) return;
+        const newParas = newText.split(/\n\n+/).filter(s => s.trim());
+        canvas.innerHTML = '';
+        paras = [];
+        strips = [];
+        stripsZone.innerHTML = '';
+        newParas.forEach((t, i) => addPara(t, i === newParas.length - 1));
+        setActive(paras.length - 1);
+        doSave();
+    }
+
+    // Observe inputText for external value changes (e.g. "Apply" in grammar fix)
+    let lastInputVal = '';
+    setInterval(() => {
+        if (inputText.value !== lastInputVal && document.activeElement !== inputText) {
+            // Someone else changed inputText (e.g. the Apply button result)
+            // Only reflect if it's meaningfully different from what we'd sync
+            const ourText = allTexts().join('\n\n');
+            if (inputText.value !== ourText && inputText.value.trim() !== '') {
+                reflectExternalEdit(inputText.value);
+            }
+        }
+        lastInputVal = inputText.value;
+    }, 500);
+
+    /* ── Boot ── */
+    function boot() {
+        let loaded = false;
+        try {
+            const saved = JSON.parse(localStorage.getItem(SAVE_KEY));
+            if (saved && Array.isArray(saved.paragraphs) && saved.paragraphs.length) {
+                if (Array.isArray(saved.strips)) strips = saved.strips;
+                renderStrips();
+                saved.paragraphs.forEach((t, i) => addPara(t, i === saved.paragraphs.length - 1));
+                loaded = true;
+            }
+        } catch(_) {}
+        if (!loaded) addPara('', true);
+        syncInputText();
+        showHud();
+    }
+
+    boot();
+});
+

@@ -292,3 +292,97 @@ input:checked + .slider:before { transform: translateX(20px); }
 .hidden { display: none !important; }
 .spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #A855F7; border-radius: 50%; animation: spin 1s linear infinite; margin: 40px auto; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════
+   Flow-State Canvas — merged into Text Editor
+   ═══════════════════════════════════════ */
+
+/* Canvas container */
+.flow-canvas { display: flex; flex-direction: column; gap: 2px; }
+
+/* Each paragraph block */
+.flow-para {
+    position: relative;
+    transition: opacity 0.3s ease;
+}
+.flow-para.dimmed { opacity: 0.28; }
+.flow-para.active  { opacity: 1; }
+
+/* Active paragraph left accent bar */
+.flow-para.active::before {
+    content: '';
+    position: absolute; left: -16px; top: 6px; bottom: 6px; width: 2px;
+    background: linear-gradient(180deg, #a855f7, #3b82f6);
+    border-radius: 2px; opacity: 0.8;
+    animation: flowBar 3s ease infinite;
+}
+@keyframes flowBar { 0%,100%{opacity:0.3} 50%{opacity:1} }
+
+/* Active paragraph soft glow behind text */
+.flow-para.active::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 500px 70px at 50% 55%, rgba(168,85,247,0.06), transparent);
+    pointer-events: none; border-radius: 6px;
+}
+
+/* The textarea inside each paragraph block */
+.flow-para-ta {
+    display: block; width: 100%;
+    background: transparent; border: none; outline: none; resize: none;
+    font-family: 'Inter', sans-serif; font-size: 1.1rem; line-height: 1.7;
+    color: rgba(255,255,255,0.9); caret-color: #a855f7;
+    padding: 6px 0; min-height: 34px; overflow: hidden;
+}
+.flow-para-ta::placeholder { color: rgba(148,163,184,0.35); font-style: italic; }
+
+/* Context strips zone */
+.flow-strips-zone {
+    display: flex; flex-direction: column;
+}
+.flow-strip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 24px; cursor: pointer; overflow: hidden;
+    background: rgba(15,11,30,0.6);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    max-height: 34px;
+    transition: max-height 0.3s ease, opacity 0.2s, background 0.2s;
+    opacity: 0.5;
+}
+.flow-strip:hover { opacity: 0.85; background: rgba(37,37,69,0.5); }
+.flow-strip.open { max-height: 300px; opacity: 1; }
+.flow-strip-num {
+    font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+    background: linear-gradient(90deg,#a855f7,#3b82f6);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    min-width: 22px;
+}
+.flow-strip-preview {
+    font-size: 11px; color: rgba(148,163,184,0.5);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;
+}
+.flow-strip-icon { font-size: 9px; color: rgba(148,163,184,0.3); transition: transform 0.2s; }
+.flow-strip.open .flow-strip-icon { transform: rotate(90deg); }
+.flow-strip-body {
+    display: none; width: 100%; font-size: 12px; line-height: 1.7;
+    color: rgba(226,232,240,0.35); white-space: pre-wrap; word-break: break-word;
+    padding: 8px 0 4px;
+}
+.flow-strip.open .flow-strip-body { display: block; }
+
+/* HUD (word count / timer / save) */
+.flow-hud {
+    position: absolute; bottom: 10px; right: 16px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.06em;
+    color: rgba(148,163,184,0.3); pointer-events: none; user-select: none;
+    transition: opacity 0.4s;
+}
+.flow-hud.fade { opacity: 0; }
+.flow-hud-sep { opacity: 0.3; }
+#flowSave { color: #34d399; }
+#flowSave.unsaved { color: rgba(148,163,184,0.2); }
+
+/* New para fade-in */
+@keyframes paraIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+.flow-para.new { animation: paraIn 0.25s ease both; }
