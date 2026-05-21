@@ -863,6 +863,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const flowWords    = document.getElementById('flowOverlayWords');
     const flowTimer    = document.getElementById('flowOverlayTimer');
     const flowSave     = document.getElementById('flowOverlaySave');
+    const cameraTrack  = document.getElementById('fovCameraTrack');
 
     if (!inputText || !expandBtn || !overlay) return;
 
@@ -877,6 +878,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let hudTimer      = null;
     let sessionStart  = Date.now();
     let isOpen        = false;
+    
+    // Cognitive Flow State Variables
+    let stripFocusIdx = -1;
+    let momentumTimer = null;
+    let isHighMomentum = false;
 
     /* ── Session timer ── */
     const timerIv = setInterval(() => {
@@ -934,6 +940,16 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             flowStrips.appendChild(el);
         });
+        updateStripFocus();
+    }
+
+    function updateStripFocus() {
+        if (!flowStrips) return;
+        const els = flowStrips.querySelectorAll('.fov-strip');
+        els.forEach((el, i) => el.classList.toggle('fov-strip-focused', i === stripFocusIdx));
+        if (stripFocusIdx >= 0 && els[stripFocusIdx]) {
+            els[stripFocusIdx].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
     }
 
     function compress() {
@@ -943,20 +959,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const texts  = toCompress.map(p => p.querySelector('textarea').value);
         const full   = texts.join('\n\n');
         strips.push({ preview: full.replace(/\s+/g,' ').trim().slice(0,70), full, paragraphs: texts });
-        toCompress.forEach(p => flowCanvas.removeChild(p));
+        toCompress.forEach(p => {
+            if(cameraTrack && cameraTrack.contains(p)) cameraTrack.removeChild(p);
+        });
         paras = paras.slice(paras.length - KEEP_LAST);
         activeIdx = paras.length - 1;
-        paras.forEach((p, i) => {
-            p.classList.toggle('fov-active', i === activeIdx);
-            p.classList.toggle('fov-dimmed', i !== activeIdx);
-        });
+        setActive(activeIdx);
         renderStrips();
     }
 
     /* ── Paragraph factory ── */
     function addPara(text, doFocus) {
         const wrap = document.createElement('div');
-        wrap.className = 'fov-para' + (doFocus ? ' fov-active' : ' fov-dimmed');
+        wrap.className = 'fov-para' + (doFocus ? ' fov-active' : ' fov-dimmed-1');
         wrap.style.cssText = 'position:relative;display:block;width:100%;';
 
         const ta = document.createElement('textarea');
@@ -973,7 +988,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ].join(';');
 
         wrap.appendChild(ta);
-        flowCanvas.appendChild(wrap);
+        if(cameraTrack) cameraTrack.appendChild(wrap);
         paras.push(wrap);
 
         autoH(ta);
@@ -982,6 +997,21 @@ document.addEventListener('DOMContentLoaded', () => {
             wrap.classList.toggle('fov-empty', ta.value.trim() === '');
             updateWords();
             scheduleSave();
+            
+            // Psychological Momentum Engine
+            if (!isHighMomentum) {
+                isHighMomentum = true;
+                overlay.classList.add('momentum-high');
+            }
+            clearTimeout(momentumTimer);
+            momentumTimer = setTimeout(() => {
+                isHighMomentum = false;
+                overlay.classList.remove('momentum-high');
+            }, 3000); // Reset momentum after 3s pause
+            
+            // Update virtual camera on text expansion
+            if(paras.indexOf(wrap) === activeIdx) setActive(activeIdx);
+
             const currentIdx = paras.indexOf(wrap);
             if (paras.length >= COMPRESS_AT && currentIdx === paras.length - 1) compress();
         });
@@ -1001,15 +1031,59 @@ document.addEventListener('DOMContentLoaded', () => {
         if (idx < 0) return;
         activeIdx = idx;
         paras.forEach((p, i) => {
-            p.classList.toggle('fov-active', i === idx);
-            p.classList.toggle('fov-dimmed', i !== idx);
+            p.className = 'fov-para'; // reset
+            const dist = Math.abs(i - idx);
+            if (dist === 0) p.classList.add('fov-active');
+            else if (dist === 1) p.classList.add('fov-dimmed-1');
+            else if (dist === 2) p.classList.add('fov-dimmed-2');
+            else if (dist === 3) p.classList.add('fov-dimmed-3');
+            else p.classList.add('fov-dimmed-far');
         });
-        paras[idx]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Virtual Camera offset calculation
+        const activePara = paras[idx];
+        if (activePara && cameraTrack) {
+            const trackOffset = activePara.offsetTop;
+            const paraHalf = activePara.offsetHeight / 2;
+            const shiftY = -(trackOffset + paraHalf);
+            cameraTrack.style.transform = `translateY(${shiftY}px)`;
+        }
+        
+        stripFocusIdx = -1;
+        updateStripFocus();
     }
 
     function handleKey(e, ta) {
         const idx = paras.indexOf(ta.parentElement);
         if (idx < 0) return;
+
+        // Context Strip Keyboard Nav
+        if (e.key === 'ArrowUp' && e.ctrlKey) {
+            e.preventDefault();
+            if (stripFocusIdx === -1) stripFocusIdx = strips.length - 1;
+            else if (stripFocusIdx > 0) stripFocusIdx--;
+            updateStripFocus();
+            return;
+        }
+        if (e.key === 'ArrowDown' && e.ctrlKey) {
+            e.preventDefault();
+            if (stripFocusIdx >= 0) {
+                stripFocusIdx++;
+                if (stripFocusIdx >= strips.length) stripFocusIdx = -1;
+                updateStripFocus();
+            }
+            return;
+        }
+        if (e.key === 'Enter' && stripFocusIdx >= 0) {
+            e.preventDefault();
+            const els = flowStrips.querySelectorAll('.fov-strip');
+            if (els[stripFocusIdx]) {
+                const wasOpen = els[stripFocusIdx].classList.contains('open');
+                els.forEach(x => x.classList.remove('open'));
+                if (!wasOpen) els[stripFocusIdx].classList.add('open');
+            }
+            return;
+        }
 
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -1020,7 +1094,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (e.key === 'Backspace' && ta.value === '' && paras.length > 1) {
             e.preventDefault();
-            flowCanvas.removeChild(paras[idx]);
+            if(cameraTrack && cameraTrack.contains(paras[idx])) cameraTrack.removeChild(paras[idx]);
             paras.splice(idx, 1);
             const ni = Math.max(0, idx - 1);
             setActive(ni);
@@ -1029,10 +1103,10 @@ document.addEventListener('DOMContentLoaded', () => {
             prev.selectionStart = prev.selectionEnd = prev.value.length;
             return;
         }
-        if (e.key === 'ArrowUp' && idx > 0 && ta.selectionStart === 0) {
+        if (e.key === 'ArrowUp' && !e.ctrlKey && idx > 0 && ta.selectionStart === 0) {
             e.preventDefault(); paras[idx-1].querySelector('textarea').focus();
         }
-        if (e.key === 'ArrowDown' && idx < paras.length - 1 && ta.selectionStart === ta.value.length) {
+        if (e.key === 'ArrowDown' && !e.ctrlKey && idx < paras.length - 1 && ta.selectionStart === ta.value.length) {
             e.preventDefault(); paras[idx+1].querySelector('textarea').focus();
         }
         if (e.key === 'Escape') closeOverlay();
@@ -1047,9 +1121,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Seed canvas with text from the main textarea
         const seedText = inputText.value || '';
-        flowCanvas.innerHTML = '';
+        if(cameraTrack) {
+            cameraTrack.innerHTML = '';
+            cameraTrack.style.transform = 'translateY(0)';
+        }
         paras = [];
         strips = [];
+        stripFocusIdx = -1;
+        isHighMomentum = false;
+        overlay.classList.remove('momentum-high');
         flowStrips.innerHTML = '';
 
         // Try loading saved state first; fall back to textarea content
