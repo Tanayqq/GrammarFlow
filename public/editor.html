@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GrammarFlow — Flow-State Editor</title>
+  <meta name="description" content="GrammarFlow Flow-State Editor: A distraction-free AI writing environment for novels, essays, scripts and long-form content." />
+  <meta name="theme-color" content="#080312" />
+  <link rel="stylesheet" href="editor.css" />
+</head>
+<body id="gf-body" data-mode="writing">
+
+  <!-- Nebula glows (matching main app) -->
+  <div class="nebula-glow" style="top:-100px;right:-100px;position:fixed;"></div>
+  <div class="nebula-glow" style="bottom:-150px;left:-100px;background:radial-gradient(circle,rgba(59,130,246,.12) 0%,transparent 70%);position:fixed;"></div>
+
+  <!-- Back to main app -->
+  <a href="index.html" id="back-link">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+    GrammarFlow
+  </a>
+
+  <!-- Context Strips Zone -->
+  <div id="gf-strips" aria-label="Context strips"></div>
+
+  <!-- Writing Canvas -->
+  <main id="gf-canvas-wrap">
+    <div id="gf-canvas" role="textbox" aria-multiline="true" aria-label="Writing canvas"></div>
+  </main>
+
+  <!-- Status HUD -->
+  <footer id="gf-status" aria-live="polite">
+    <span id="gf-mode-badge" class="mode-badge">FLOW</span>
+    <span id="gf-words">0 words</span>
+    <span id="gf-timer">0:00</span>
+    <span class="status-sep">·</span>
+    <span id="gf-save-dot" title="Auto-save status">●</span>
+    <span id="gf-ai-dot" class="ai-dot" style="display:none">AI ◌</span>
+  </footer>
+
+  <!-- Edit Mode Panel -->
+  <aside id="gf-panel" aria-hidden="true" aria-label="Edit mode — AI tools">
+    <div class="panel-head">
+      <div class="panel-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Edit Mode
+      </div>
+      <button id="gf-close-panel" class="icon-btn" title="Return to writing" aria-label="Close panel">✕</button>
+    </div>
+
+    <div class="panel-body">
+
+      <!-- Grammar Fix -->
+      <section class="p-sec">
+        <div class="sec-head">
+          <span class="sec-icon">✦</span>
+          <h3>Grammar Fix</h3>
+          <button id="gf-run-grammar" class="run-btn">Run</button>
+        </div>
+        <div id="gf-grammar-out" class="result-box">
+          <p class="placeholder-text">Fix grammar errors in your current draft.</p>
+        </div>
+        <div id="gf-grammar-actions" class="action-row hidden">
+          <button id="gf-apply-grammar" class="accept-btn">Apply</button>
+          <button id="gf-reject-grammar" class="reject-btn">Reject</button>
+        </div>
+      </section>
+
+      <!-- Smart Suggestions -->
+      <section class="p-sec">
+        <div class="sec-head">
+          <span class="sec-icon">◈</span>
+          <h3>AI Suggestions</h3>
+          <button id="gf-run-suggest" class="run-btn">Analyze</button>
+        </div>
+        <div id="gf-suggest-out" class="result-box">
+          <p class="placeholder-text">Clarity, pacing &amp; tone analysis.</p>
+        </div>
+      </section>
+
+      <!-- Rewrite -->
+      <section class="p-sec">
+        <div class="sec-head">
+          <span class="sec-icon">⟳</span>
+          <h3>Rewrite</h3>
+          <div class="sec-controls">
+            <select id="gf-style" class="mini-sel">
+              <option value="Casual">Casual</option>
+              <option value="Formal">Formal</option>
+              <option value="Creative">Creative</option>
+              <option value="Academic">Academic</option>
+              <option value="Concise">Concise</option>
+            </select>
+            <select id="gf-lang" class="mini-sel">
+              <option value="English">English</option>
+              <option value="Hinglish">Hinglish</option>
+              <option value="Hindi">Hindi</option>
+              <option value="Telugu">Telugu</option>
+              <option value="Kannada">Kannada</option>
+              <option value="Auto">Auto-Detect</option>
+            </select>
+            <button id="gf-run-rewrite" class="run-btn">Go</button>
+          </div>
+        </div>
+        <div id="gf-rewrite-out" class="result-box">
+          <p class="placeholder-text">Get 3 AI rewrites of the active paragraph.</p>
+        </div>
+      </section>
+
+      <!-- Export -->
+      <section class="p-sec">
+        <div class="sec-head">
+          <span class="sec-icon">↓</span>
+          <h3>Export</h3>
+        </div>
+        <div class="export-row">
+          <button id="gf-export-txt" class="exp-btn">Plain Text</button>
+          <button id="gf-export-md" class="exp-btn">Markdown</button>
+          <button id="gf-copy-all" class="exp-btn">Copy All</button>
+        </div>
+      </section>
+
+    </div>
+  </aside>
+
+  <!-- AI Loading Overlay -->
+  <div id="gf-ai-overlay" class="ai-overlay hidden" aria-live="polite">
+    <div class="ai-ring"></div>
+    <span id="gf-ai-label">Analyzing…</span>
+  </div>
+
+  <script src="editor.js"></script>
+</body>
+</html>
