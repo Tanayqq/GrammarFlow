@@ -118,7 +118,7 @@
 
     /* Fullscreen Immersive Container */
     .fov-overlay {
-        --ambient-glow-size: 70%;
+        --ambient-glow-size: 40%;
         --bg-darkness-1: #12092b;
         --bg-darkness-2: #05020c;
         position: fixed;
@@ -218,13 +218,13 @@
 
     .fov-camera-track {
         position: absolute;
-        top: 50vh; /* Start roughly center screen */
+        top: 40vh; /* Rest at 40vh to show more context above */
         left: 24px;
         right: 24px;
         transition: transform 0.35s cubic-bezier(0.2, 0.85, 0.2, 1);
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 14px;
         padding-bottom: 50vh; /* Provide empty space at bottom so we can scroll past */
     }
 
@@ -242,10 +242,10 @@
     }
 
     /* Gradual opacity falloff for older paragraphs */
-    .fov-para.fov-dimmed-1 { opacity: 0.65; }
-    .fov-para.fov-dimmed-2 { opacity: 0.35; }
-    .fov-para.fov-dimmed-3 { opacity: 0.15; }
-    .fov-para.fov-dimmed-far { opacity: 0.05; filter: blur(1px); pointer-events: none; }
+    .fov-para.fov-dimmed-1 { opacity: 0.85; }
+    .fov-para.fov-dimmed-2 { opacity: 0.65; }
+    .fov-para.fov-dimmed-3 { opacity: 0.45; }
+    .fov-para.fov-dimmed-far { opacity: 0.20; pointer-events: none; }
 
     /* Progressive Compression */
     .fov-para.fov-condensing {
@@ -280,8 +280,8 @@
     .fov-para.fov-active::after {
         content: '';
         position: absolute;
-        inset: -12px -16px;
-        background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.06), transparent 70%);
+        inset: -6px -10px;
+        background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.03), transparent 70%);
         pointer-events: none;
         border-radius: 12px;
         z-index: -1;
@@ -416,7 +416,7 @@
 
     /* Psychological Momentum Engine States */
     .fov-overlay.momentum-high {
-        --ambient-glow-size: 20%;
+        --ambient-glow-size: 15%;
         --bg-darkness-1: #0a041a;
         --bg-darkness-2: #020106;
     }
