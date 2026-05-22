@@ -1053,8 +1053,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const activePara = paras[idx];
         if (activePara && cameraTrack) {
             const trackOffset = activePara.offsetTop;
-            const paraHalf = activePara.offsetHeight / 2;
-            const shiftY = -(trackOffset + paraHalf);
+            const paraHeight = activePara.offsetHeight;
+            // Track the bottom of the paragraph so the cursor never falls off-screen for long texts
+            const shiftY = -(trackOffset + paraHeight);
             cameraTrack.style.transform = `translateY(${shiftY}px)`;
         }
         
@@ -1160,7 +1161,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch(_) {}
 
         if (!loaded) {
-            const seedParas = seedText.split(/\n\n+/).filter(s => s.trim());
+            // Split by ANY newline so pasted blocks correctly break into multiple cinematic paragraphs
+            const seedParas = seedText.split(/\n+/).filter(s => s.trim());
             if (seedParas.length) seedParas.forEach((t, i) => addPara(t, i === seedParas.length - 1));
             else addPara('', true);
         }
