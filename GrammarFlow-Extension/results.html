@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GrammarFlow — Results</title>
+    <style>
+        * { margin: 0; box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+            background: #13131a;
+            color: #e0e0e0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .header span { font-weight: 600; font-size: 14px; color: #c4c0f7; }
+        .badge {
+            margin-left: auto;
+            font-size: 10px;
+            background: rgba(139,124,247,0.15);
+            color: #a89cf7;
+            padding: 3px 8px;
+            border-radius: 4px;
+        }
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 0;
+            gap: 12px;
+            color: #888;
+            font-size: 13px;
+            text-align: center;
+        }
+        .spinner {
+            width: 28px; height: 28px;
+            border: 3px solid rgba(139,124,247,0.2);
+            border-top-color: #8b7cf7;
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg) } }
+        .result {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            line-height: 1.65;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .result-label {
+            font-size: 10px;
+            font-weight: 600;
+            color: #8b7cf7;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .actions { display: flex; gap: 8px; margin-top: 14px; }
+        .btn {
+            flex: 1;
+            padding: 8px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .btn-primary { background: #6c63ff; color: white; }
+        .btn-secondary { background: rgba(255,255,255,0.08); color: #ccc; }
+        .error-msg { color: #ff6b6b; }
+        .empty-msg { color: #888; text-align: center; padding: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span>GrammarFlow</span>
+        <div class="badge" id="actionLabel">Processing</div>
+    </div>
+    <div id="content">
+        <div class="loading">
+            <div class="spinner"></div>
+            <div id="statusText">Starting...</div>
+        </div>
+    </div>
+    <script src="results.js"></script>
+</body>
+</html>

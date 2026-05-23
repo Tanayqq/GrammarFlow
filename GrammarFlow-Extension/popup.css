@@ -1,0 +1,280 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    width: 320px;
+    font-family: 'Inter', sans-serif;
+    background: #0f0f1a;
+    color: #e2e2f0;
+    padding-bottom: 8px;
+}
+
+/* ─── Header ─────────────────────────────── */
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 12px;
+    background: linear-gradient(135deg, #1a1a2e, #16213e);
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #a5b4fc;
+    letter-spacing: -0.3px;
+}
+
+.version-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #6366f1;
+    background: rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    padding: 2px 7px;
+    border-radius: 20px;
+}
+
+/* ─── Sections ───────────────────────────── */
+.section {
+    padding: 12px 14px 10px;
+}
+
+.section-title {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #6366f1;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 10px;
+}
+
+.divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.05);
+    margin: 0 14px;
+}
+
+/* ─── Action Grid ────────────────────────── */
+.action-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+}
+
+.action-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 10px 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+    color: #c4c4e0;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.action-btn:hover {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: rgba(99, 102, 241, 0.4);
+    color: #a5b4fc;
+    transform: translateY(-1px);
+}
+
+.action-btn:active {
+    transform: translateY(0);
+}
+
+.action-icon {
+    font-size: 1.1rem;
+}
+
+.action-status {
+    margin-top: 8px;
+    font-size: 0.75rem;
+    padding: 6px 10px;
+    border-radius: 7px;
+    text-align: center;
+    font-weight: 500;
+}
+
+.action-status.hidden { display: none; }
+
+.action-status.success {
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.action-status.error {
+    background: rgba(239, 68, 68, 0.12);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* ─── Settings ───────────────────────────── */
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.setting-label {
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #9ca3af;
+}
+
+.setting-select {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 7px;
+    color: #e2e2f0;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    cursor: pointer;
+    outline: none;
+    min-width: 130px;
+    transition: border-color 0.15s;
+}
+
+.setting-select:focus {
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.setting-select option {
+    background: #1a1a2e;
+}
+
+/* Toggle */
+.toggle-row { margin-top: 2px; }
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 38px;
+    height: 21px;
+}
+
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+.toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 21px;
+    transition: 0.25s;
+}
+
+.toggle-slider:before {
+    content: "";
+    position: absolute;
+    width: 15px; height: 15px;
+    left: 3px; top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: 0.25s;
+}
+
+input:checked + .toggle-slider {
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+}
+
+input:checked + .toggle-slider:before {
+    transform: translateX(17px);
+}
+
+/* Save button */
+.save-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 7px;
+    background: linear-gradient(135deg, #6366f1, #a855f7);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.save-btn:hover { opacity: 0.88; }
+
+.save-status {
+    display: block;
+    text-align: center;
+    font-size: 0.72rem;
+    color: #4ade80;
+    font-weight: 600;
+    height: 16px;
+    margin-top: 4px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.save-status.visible { opacity: 1; }
+
+/* ─── Launchers ──────────────────────────── */
+.launcher-group {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.launcher-btn {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    padding: 9px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    color: #b0b0cc;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    text-align: left;
+}
+
+.launcher-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #e2e2f0;
+}
+
+.launcher-btn.primary-launch {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(99, 102, 241, 0.3);
+    color: #a5b4fc;
+}
+
+.launcher-btn.primary-launch:hover {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.launch-arrow {
+    margin-left: auto;
+    font-size: 0.85rem;
+    opacity: 0.6;
+}

@@ -132,9 +132,9 @@ const rewrite = async (req, res, next) => {
 
 const grammarFix = async (req, res, next) => {
     try {
-        const { text, language = "English", humanize = false } = req.body;
+        const { text, language = "English", humanize = false, _extensionPrompt } = req.body;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required" } });
-        const prompt = prompts.getGrammarFixPrompt(language, humanize);
+        const prompt = _extensionPrompt || prompts.getGrammarFixPrompt(language, humanize);
         const resultText = await aiService.callGroqAPI(prompt, text, 0.2);
         sendResponse(res, true, resultText, null, { language, humanize });
     } catch (error) {
