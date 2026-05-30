@@ -1,5 +1,6 @@
 const aiService = require('../services/ai.service');
 const prompts = require('../config/prompts');
+const { aiQueue } = require('../queue');
 
 // Helper for standardized API responses
 const sendResponse = (res, success, data = null, error = null, metadata = {}) => {
@@ -88,12 +89,15 @@ const rewrite = async (req, res, next) => {
         console.log(`[API v1] /rewrite. Lang: ${language}, Humanize: ${humanize}`);
 
         let resultText = "";
+        let source = "groq";
         let attempts = 0;
         while (attempts < 2) {
             let prompt = prompts.getRewritePrompt(style, tone, language, humanize);
             if (attempts > 0) prompt = `CRITICAL: Previous response was invalid. Provide exactly 3 numbered rewrites in ${language} now.\n\n${prompt}`;
             try {
-                resultText = await aiService.callGroqAPI(prompt, text, 0.7, aiService.PREM_MODEL);
+                const response = await aiService.callGroqAPI(prompt, text, 0.7);
+                resultText = response.text;
+                source = response.source;
                 if (resultText.trim().length > 0 && !resultText.toLowerCase().includes("sorry")) break;
             } catch (err) {
                 if (attempts === 1) throw err;
@@ -119,7 +123,7 @@ const rewrite = async (req, res, next) => {
         } else {
             rewrites = [resultText.trim()];
         }
-        sendResponse(res, true, rewrites.slice(0, 3), null, { language, humanize });
+        sendResponse(res, true, rewrites.slice(0, 3), null, { language, humanize, source });
     } catch (error) {
         console.error("[API v1] Rewrite error:", error.message);
         res.status(500).json({ success: false, error: { message: error.message, code: "AI_PROCESSING_ERROR" } });
@@ -130,10 +134,20 @@ const grammarFix = async (req, res, next) => {
     try {
         const { text, language = "English", humanize = false, _extensionPrompt } = req.body;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required" } });
+        
         const prompt = _extensionPrompt || prompts.getGrammarFixPrompt(language, humanize);
-        const resultText = await aiService.callGroqAPI(prompt, text, 0.2, aiService.PREM_MODEL);
-        sendResponse(res, true, resultText, null, { language, humanize });
+        
+        console.log(`[API v1] Queueing grammarFix job...`);
+        const job = await aiQueue.add('grammar-fix', {
+            prompt,
+            text,
+            temperature: 0.2
+        });
+        
+        console.log(`[API v1] grammarFix job queued. Job ID: ${job.id}`);
+        sendResponse(res, true, { status: "queued", jobId: job.id }, null, { language, humanize });
     } catch (error) {
+        console.error("[API v1] grammarFix queueing error:", error.message);
         res.status(500).json({ success: false, error: { message: error.message } });
     }
 };
@@ -143,13 +157,13 @@ const suggestions = async (req, res, next) => {
         const { text, language = "English" } = req.body;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required" } });
         const prompt = prompts.getSuggestionsPrompt(language);
-        const resultText = await aiService.callGroqAPI(prompt, text, 0.5);
+        const response = await aiService.callGroqAPI(prompt, text, 0.5);
         let parsedSuggestions = [];
         try {
-            const jsonMatch = resultText.match(/\[.*\]/s);
-            parsedSuggestions = jsonMatch ? JSON.parse(jsonMatch[0]) : [resultText];
-        } catch (e) { parsedSuggestions = [resultText]; }
-        sendResponse(res, true, parsedSuggestions, null, { language });
+            const jsonMatch = response.text.match(/\[.*\]/s);
+            parsedSuggestions = jsonMatch ? JSON.parse(jsonMatch[0]) : [response.text];
+        } catch (e) { parsedSuggestions = [response.text]; }
+        sendResponse(res, true, parsedSuggestions, null, { language, source: response.source });
     } catch (error) {
         res.status(500).json({ success: false, error: { message: "Failed to get suggestions" } });
     }
@@ -160,8 +174,8 @@ const autocomplete = async (req, res, next) => {
         const { context, partial_word, language = "English" } = req.body;
         if (!context) return res.status(400).json({ success: false, error: { message: "Context is required" } });
         const prompt = prompts.getAutocompletePrompt(context, language);
-        const resultText = await aiService.callGroqAPI(prompt, partial_word || "", 0.3);
-        sendResponse(res, true, resultText.replace(/^[\"']|[\"']$/g, '').trim(), null, { language });
+        const response = await aiService.callGroqAPI(prompt, partial_word || "", 0.3);
+        sendResponse(res, true, response.text.replace(/^[\"']|[\"']$/g, '').trim(), null, { language, source: response.source });
     } catch (error) {
         res.status(500).json({ success: false, error: { message: "Autocomplete failed" } });
     }
@@ -181,15 +195,15 @@ const analyzeRealtime = async (req, res, next) => {
         }
 
         const prompt = prompts.getStableRealtimePrompt(language, humanize);
-        const resultText = await aiService.callGroqAPI(prompt, text, 0.55);
+        const response = await aiService.callGroqAPI(prompt, text, 0.55);
 
         let suggestionsList = [];
         try {
-            const jsonMatch = resultText.match(/\[[\s\S]*\]/);
+            const jsonMatch = response.text.match(/\[[\s\S]*\]/);
             suggestionsList = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
         } catch (e) { suggestionsList = []; }
 
-        sendResponse(res, true, suggestionsList, null, { language, humanize });
+        sendResponse(res, true, suggestionsList, null, { language, humanize, source: response.source });
     } catch (error) {
         console.error("[Realtime] Error:", error.message);
         res.status(500).json({ success: false, error: { message: "Real-time analysis failed" } });
@@ -236,21 +250,21 @@ const analyzeSmartSuggestions = async (req, res, next) => {
         console.log(`[Smart] Analyzing. Lang: ${language}, Intent: ${writingContext.intent || '?'}, Words: ${writingContext.wordCount || '?'}`);
 
         const prompt = prompts.getSmartSuggestionsPrompt(language, humanize, writingContext);
-        const resultText = await aiService.callGroqAPI(prompt, text, 0.45);
+        const response = await aiService.callGroqAPI(prompt, text, 0.45);
 
         let raw = [];
         try {
-            const jsonMatch = resultText.match(/\[[\s\S]*\]/);
+            const jsonMatch = response.text.match(/\[[\s\S]*\]/);
             raw = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
         } catch (e) {
-            console.error("[Smart] Parse error:", resultText.substring(0, 200));
+            console.error("[Smart] Parse error:", response.text.substring(0, 200));
             raw = [];
         }
 
         const ranked = rankSuggestions(raw, writingContext);
         console.log(`[Smart] Ranked ${ranked.length} suggestions (from ${raw.length} raw)`);
 
-        sendResponse(res, true, ranked, null, { language, humanize, intent: writingContext.intent, mode: 'smart' });
+        sendResponse(res, true, ranked, null, { language, humanize, intent: writingContext.intent, mode: 'smart', source: response.source });
     } catch (error) {
         console.error("[Smart] Error:", error.message);
         res.status(500).json({ success: false, error: { message: "Smart analysis failed" } });
@@ -275,13 +289,48 @@ const processDocument = async (req, res, next) => {
         // Use the fast, high-rate-limit model for the entire document pipeline to prevent 429 errors on large files
         const model = "llama-3.1-8b-instant";
 
-        const resultText = await aiService.callGroqAPI(prompt, text, 0.4, model);
+        const response = await aiService.callGroqAPI(prompt, text, 0.4, model);
 
         // The result is just raw markdown text, we wrap it in an array to match the frontend expectations
-        sendResponse(res, true, [resultText.trim()], null, { mode, language, humanize });
+        sendResponse(res, true, [response.text.trim()], null, { mode, language, humanize, source: response.source });
     } catch (error) {
         console.error("[\x1b[31mDOC ERROR\x1b[0m]", error.message);
         sendResponse(res, false, null, error.message || "Failed to process document");
+    }
+};
+
+const checkJobStatus = async (req, res, next) => {
+    try {
+        const { jobId } = req.params;
+        if (!jobId) {
+            return res.status(400).json({ success: false, error: { message: "Job ID is required" } });
+        }
+
+        const job = await aiQueue.getJob(jobId);
+        if (!job) {
+            return res.status(404).json({ success: false, error: { message: "Job not found" } });
+        }
+
+        const state = await job.getState(); // completed, failed, active, waiting, delayed
+        console.log(`[API v1] Checking status for Job ID ${jobId}: ${state}`);
+
+        if (state === 'completed') {
+            const result = job.returnvalue;
+            return sendResponse(res, true, { status: "completed", result: result.text }, null, { source: result.source });
+        }
+
+        if (state === 'failed') {
+            return res.json({
+                success: false,
+                data: { status: "failed" },
+                error: { message: job.failedReason || "Background job execution failed" }
+            });
+        }
+
+        return sendResponse(res, true, { status: state });
+    } catch (error) {
+        console.error("[API v1] Job status check error:", error.message);
+        res.status(500).json({ success: false, error: { message: error.message } });
     }
 };
 
@@ -292,5 +341,6 @@ module.exports = {
     autocomplete,
     analyzeRealtime,
     analyzeSmartSuggestions,
-    processDocument
+    processDocument,
+    checkJobStatus
 };

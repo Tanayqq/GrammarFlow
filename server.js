@@ -4,6 +4,9 @@ const cors = require('cors');
 const path = require('path');
 const aiRoutes = require('./src/routes/ai.routes');
 
+// Initialize background queue worker
+require('./src/worker');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const startTime = Date.now();

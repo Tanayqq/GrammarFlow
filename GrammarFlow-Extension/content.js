@@ -88,8 +88,17 @@ function requestPdfSelectionFromBackground() {
     });
 }
 
+function removeOverlay() {
+    if (activeOverlay) {
+        activeOverlay.remove();
+        activeOverlay = null;
+        window.removeEventListener('scroll', positionOverlay, { capture: true, passive: true });
+        window.removeEventListener('resize', positionOverlay);
+    }
+}
+
 function showOverlay(loadingText = "Processing...") {
-    if (activeOverlay) activeOverlay.remove();
+    removeOverlay();
 
     activeOverlay = document.createElement('div');
     activeOverlay.id = 'gf-inline-overlay';
@@ -116,13 +125,18 @@ function showOverlay(loadingText = "Processing...") {
     document.body.appendChild(activeOverlay);
     positionOverlay();
 
+    // Dynamically adjust positioning on window scroll (including custom containers via capture phase) and resize
+    window.addEventListener('scroll', positionOverlay, { capture: true, passive: true });
+    window.addEventListener('resize', positionOverlay);
+
     activeOverlay.querySelector('.gf-close').addEventListener('click', () => {
-        activeOverlay.remove();
-        activeOverlay = null;
+        removeOverlay();
     });
 }
 
 function positionOverlay() {
+    if (!activeOverlay) return;
+
     const selection = window.getSelection();
     let rect;
     
@@ -133,14 +147,57 @@ function positionOverlay() {
     }
 
     if (rect) {
-        const top = rect.bottom + window.scrollY + 10;
-        const left = rect.left + window.scrollX;
-        const maxLeft = window.innerWidth - 390;
+        // Explicitly set absolute positioning relative to the document
+        activeOverlay.style.position = 'absolute';
+        
+        const overlayWidth = activeOverlay.offsetWidth || 380;
+        const overlayHeight = activeOverlay.offsetHeight || 160;
+        
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // Calculate initial horizontal position (fit inside viewport)
+        let left = rect.left + window.scrollX;
+        
+        // Calculate initial vertical position (lift up if needed)
+        const spaceBelow = viewportHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        
+        let top;
+        if (spaceBelow >= overlayHeight + 15 || spaceBelow >= spaceAbove) {
+            // Put below the element
+            top = rect.bottom + window.scrollY + 10;
+        } else {
+            // Put above the element (lift up)
+            top = rect.top + window.scrollY - overlayHeight - 10;
+        }
+        
+        // --- VIEWPORT CLAMPING (BULLETPROOF SAFETY NET) ---
+        // Convert document-relative positions back to viewport-relative positions for clamping
+        let viewportTop = top - window.scrollY;
+        let viewportLeft = left - window.scrollX;
+        
+        // Clamp viewportTop to be fully visible within the viewport (with 12px margin)
+        const maxViewportTop = Math.max(12, viewportHeight - overlayHeight - 12);
+        viewportTop = Math.max(12, Math.min(viewportTop, maxViewportTop));
+        
+        // Clamp viewportLeft to be fully visible within the viewport (with 12px margin)
+        const maxViewportLeft = Math.max(12, viewportWidth - overlayWidth - 12);
+        viewportLeft = Math.max(12, Math.min(viewportLeft, maxViewportLeft));
+        
+        // Convert back to document-relative coordinates
+        top = viewportTop + window.scrollY;
+        left = viewportLeft + window.scrollX;
+        
         activeOverlay.style.top = `${top}px`;
-        activeOverlay.style.left = `${Math.min(left, maxLeft)}px`;
+        activeOverlay.style.left = `${left}px`;
+        activeOverlay.style.right = 'auto';
     } else {
+        // Fallback to top-right viewport corner if no selection/target is found
+        activeOverlay.style.position = 'fixed';
         activeOverlay.style.top = '20px';
         activeOverlay.style.right = '20px';
+        activeOverlay.style.left = 'auto';
     }
 }
 
@@ -155,12 +212,14 @@ function fetchResults(text, endpoint, triggerAction) {
         
         if (!response || !response.success) {
             contentDiv.innerHTML = `<div class="gf-error">Connection failed. Please check your internet or try again.</div>`;
+            positionOverlay();
             return;
         }
 
         const data = response.data;
         if (!data || data.length === 0) {
             contentDiv.innerHTML = `<div class="gf-empty">No changes needed! Your text looks great.</div>`;
+            positionOverlay();
             return;
         }
 
@@ -217,6 +276,9 @@ function renderResults(results) {
     });
 
     applyBtn.onclick = () => applyText(selectedResultText);
+    
+    // Reposition the overlay to adjust to the new size after results are rendered
+    positionOverlay();
 }
 
 function applyText(newText) {
@@ -238,8 +300,5 @@ function applyText(newText) {
         document.execCommand("insertText", false, newText);
     }
 
-    if (activeOverlay) {
-        activeOverlay.remove();
-        activeOverlay = null;
-    }
+    removeOverlay();
 }

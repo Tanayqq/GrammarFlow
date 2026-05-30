@@ -11,8 +11,11 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@upstash/redis": "^1.38.0",
+    "bullmq": "^5.77.6",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "ioredis": "^5.11.0"
   }
 }
