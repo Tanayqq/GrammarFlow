@@ -217,32 +217,93 @@ function fetchResults(text, endpoint, triggerAction) {
         }
 
         const data = response.data;
-        if (!data || data.length === 0) {
-            contentDiv.innerHTML = `<div class="gf-empty">No changes needed! Your text looks great.</div>`;
-            positionOverlay();
+        
+        // If the backend has queued the task, poll until completed
+        if (data && data.status === "queued" && data.jobId) {
+            pollJob(data.jobId, endpoint, triggerAction);
             return;
         }
 
-        // Logic for different return types
-        let results = [];
-        if (Array.isArray(data)) {
-            // /rewrite returns array of strings
-            results = data.map((str, i) => ({
-                text: str,
-                label: i === 0 ? "Best Match" : `Alternative ${i}`,
-                desc: "AI Rewrite"
-            }));
-        } else if (typeof data === 'string') {
-            // Others return a single string
-            results = [{
-                text: data,
-                label: endpoint === '/grammar-fix' ? "Corrected Version" : "AI Result",
-                desc: "AI Result"
-            }];
-        }
-
-        renderResults(results);
+        processAndRenderResponseData(data, endpoint);
     });
+}
+
+function pollJob(jobId, originalEndpoint, triggerAction) {
+    const contentDiv = activeOverlay.querySelector('#gf-inline-content');
+    let attempts = 0;
+    const maxAttempts = 60; // 60 seconds timeout (40 * 1.5s)
+    
+    const interval = setInterval(() => {
+        attempts++;
+        if (attempts > maxAttempts) {
+            clearInterval(interval);
+            contentDiv.innerHTML = `<div class="gf-error">Request timed out. Please try again.</div>`;
+            positionOverlay();
+            return;
+        }
+        
+        chrome.runtime.sendMessage({
+            action: "API_CALL",
+            endpoint: `/job/${jobId}`,
+            payload: {},
+            triggerAction: triggerAction
+        }, (response) => {
+            if (!activeOverlay) {
+                // Stop polling if the overlay was closed by the user
+                clearInterval(interval);
+                return;
+            }
+
+            if (response && response.success) {
+                const jobData = response.data;
+                if (jobData && jobData.status === "completed") {
+                    clearInterval(interval);
+                    processAndRenderResponseData(jobData.result, originalEndpoint);
+                } else if (jobData && jobData.status === "failed") {
+                    clearInterval(interval);
+                    const errMsg = (response.error && response.error.message) || "Job failed in background worker.";
+                    contentDiv.innerHTML = `<div class="gf-error">${errMsg}</div>`;
+                    positionOverlay();
+                }
+                // Keep polling if status is 'active' or 'queued'
+            } else {
+                clearInterval(interval);
+                const errMsg = (response && response.error && response.error.message) || "Failed to retrieve status.";
+                contentDiv.innerHTML = `<div class="gf-error">${errMsg}</div>`;
+                positionOverlay();
+            }
+        });
+    }, 1500);
+}
+
+function processAndRenderResponseData(data, endpoint) {
+    const contentDiv = activeOverlay.querySelector('#gf-inline-content');
+    
+    if (!data || data.length === 0) {
+        contentDiv.innerHTML = `<div class="gf-empty">No changes needed! Your text looks great.</div>`;
+        positionOverlay();
+        return;
+    }
+
+    // Logic for different return types
+    let results = [];
+    if (Array.isArray(data)) {
+        // /rewrite returns array of strings
+        results = data.map((str, i) => ({
+            text: str,
+            label: i === 0 ? "Best Match" : `Alternative ${i}`,
+            desc: "AI Rewrite"
+        }));
+    } else if (typeof data === 'string') {
+        // Others return a single string
+        results = [{
+            text: data,
+            label: endpoint === '/grammar-fix' ? "Corrected Version" : "AI Result",
+            desc: "AI Result"
+        }];
+    }
+
+    renderResults(results);
 }
 
 let selectedResultText = "";

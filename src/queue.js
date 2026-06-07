@@ -46,6 +46,10 @@ redisConnection.on('error', (err) => {
 // Initialize the Queue named 'ai-jobs'
 const aiQueue = new Queue('ai-jobs', { connection: redisConnection });
 
+aiQueue.on('error', (err) => {
+    console.error('[BULLMQ QUEUE ERROR] Queue encountered connection issue:', err.message);
+});
+
 console.log('[BULLMQ] Queue "ai-jobs" initialized successfully.');
 
 module.exports = {

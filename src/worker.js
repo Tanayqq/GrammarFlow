@@ -58,6 +58,10 @@ aiWorker.on('failed', (job, err) => {
     console.error(`[WORKER] Job ${job?.id} failed with error: ${err.message}`);
 });
 
+aiWorker.on('error', (err) => {
+    console.error('[BULLMQ WORKER ERROR] Worker encountered connection issue:', err.message);
+});
+
 console.log('[BULLMQ] Background Worker initialized and listening for jobs...');
 
 module.exports = {
