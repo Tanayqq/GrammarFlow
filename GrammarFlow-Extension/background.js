@@ -448,7 +448,26 @@ function getPromptForAction(endpoint, triggerAction, lang, style, tone, humanize
     return getGrammarFixPrompt(lang, humanize);
 }
 
+async function getOrCreateGuestSessionId() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get(["guest_session_id"], (result) => {
+            if (result.guest_session_id) {
+                resolve(result.guest_session_id);
+            } else {
+                const uuid = self.crypto?.randomUUID ? self.crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+                chrome.storage.local.set({ guest_session_id: uuid }, () => {
+                    resolve(uuid);
+                });
+            }
+        });
+    });
+}
+
 async function handleApiCall(endpoint, payload, promptOverride = null, triggerAction = null) {
+    const guestSessionId = await getOrCreateGuestSessionId();
     const prefs = await chrome.storage.sync.get({
         language: "Auto",
         style: "Casual",
@@ -482,7 +501,10 @@ async function handleApiCall(endpoint, payload, promptOverride = null, triggerAc
     try {
         response = await fetch(`${API_BASE}${endpoint}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "x-guest-session-id": guestSessionId
+            },
             body: JSON.stringify(body),
             signal: controller.signal
         });
