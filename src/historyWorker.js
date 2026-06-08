@@ -7,6 +7,7 @@ const MODEL_NAME = 'llama-3.3-70b-versatile';
 const historyWorker = new Worker('ai-history', async (job) => {
     const {
         guest_session_id,
+        user_id,
         input_text,
         output_text,
         operation_type,
@@ -20,26 +21,43 @@ const historyWorker = new Worker('ai-history', async (job) => {
         operation_metadata
     } = job.data;
 
-    // Safety guard: skip logging if no session ID
-    if (!guest_session_id) {
-        console.warn('[HISTORY WORKER] Skipping log — no guest_session_id provided.');
+    // Safety guard: skip logging if neither ID is provided
+    if (!guest_session_id && !user_id) {
+        console.warn('[HISTORY WORKER] Skipping log — neither guest_session_id nor user_id provided.');
         return;
     }
 
     try {
-        // Find or create User by guest_session_id (upsert)
-        const user = await prisma.user.upsert({
-            where: { guest_session_id },
-            update: {},
-            create: {
-                guest_session_id,
-                settings: {
-                    create: {
-                        preferred_language: language || 'English'
+        let user;
+        if (user_id) {
+            // Find or create User by authenticated user_id
+            user = await prisma.user.upsert({
+                where: { id: user_id },
+                update: {},
+                create: {
+                    id: user_id,
+                    settings: {
+                        create: {
+                            preferred_language: language || 'English'
+                        }
                     }
                 }
-            }
-        });
+            });
+        } else {
+            // Find or create User by guest_session_id
+            user = await prisma.user.upsert({
+                where: { guest_session_id },
+                update: {},
+                create: {
+                    guest_session_id,
+                    settings: {
+                        create: {
+                            preferred_language: language || 'English'
+                        }
+                    }
+                }
+            });
+        }
 
         // Save the AI operation
         await prisma.aiOperation.create({
@@ -59,7 +77,7 @@ const historyWorker = new Worker('ai-history', async (job) => {
             }
         });
 
-        console.log(`[HISTORY WORKER] ✓ Logged "${operation_type}" for guest: ${guest_session_id.substring(0, 8)}...`);
+        console.log(`[HISTORY WORKER] ✓ Logged "${operation_type}" for user/guest: ${(user_id || guest_session_id).substring(0, 8)}...`);
     } catch (error) {
         console.error(`[HISTORY WORKER ERROR] Failed to save operation:`, error.message);
         throw error; // Let BullMQ retry

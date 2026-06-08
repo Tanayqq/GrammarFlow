@@ -23,6 +23,7 @@ const rewrite = async (req, res, next) => {
     try {
         const { text, style = "Casual", tone = "Friendly", language = "English", humanize = false } = req.body;
         const guestSessionId = req.headers['x-guest-session-id'] || null;
+        const userId = req.userId || null;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required", code: "MISSING_INPUT" } });
 
         console.log(`[API v1] /rewrite. Lang: ${language}, Humanize: ${humanize}`);
@@ -70,9 +71,10 @@ const rewrite = async (req, res, next) => {
         sendResponse(res, true, rewrites.slice(0, 3), null, { language, humanize, source });
 
         // Queue history logging asynchronously — never blocks response
-        if (guestSessionId) {
+        if (guestSessionId || userId) {
             aiHistoryQueue.add('save-history', {
                 guest_session_id:   guestSessionId,
+                user_id:            userId,
                 input_text:         text,
                 output_text:        rewrites.slice(0, 3).join('\n---\n'),
                 operation_type:     'rewrite',
@@ -95,6 +97,7 @@ const grammarFix = async (req, res, next) => {
     try {
         const { text, language = "English", humanize = false, _extensionPrompt } = req.body;
         const guestSessionId = req.headers['x-guest-session-id'] || null;
+        const userId = req.userId || null;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required" } });
         
         const prompt = _extensionPrompt || prompts.getGrammarFixPrompt(language, humanize);
@@ -105,6 +108,7 @@ const grammarFix = async (req, res, next) => {
             text,
             temperature:    0.2,
             guest_session_id: guestSessionId,
+            user_id:        userId,
             operation_type: 'grammar_fix',
             language,
             style:          null

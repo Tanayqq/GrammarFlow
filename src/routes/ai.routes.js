@@ -3,6 +3,9 @@ const router = express.Router();
 const aiController = require('../controllers/ai.controller');
 const { aiCacheCheck } = require('../middlewares/cacheCheck');
 const { aiLimiter, docLimiter, readLimiter } = require('../middlewares/rateLimiter');
+const authRoutes = require('./auth.routes');
+
+router.use('/auth', authRoutes);
 
 router.post('/rewrite', aiCacheCheck, aiLimiter, aiController.rewrite);
 router.post('/grammar-fix', aiCacheCheck, aiLimiter, aiController.grammarFix);

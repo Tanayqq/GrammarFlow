@@ -64,8 +64,9 @@ app.get('/api/v1/health', (req, res) => res.json(getHealthStatus()));
 app.get('/health', (req, res) => res.json(getHealthStatus()));
 
 // 4. Rate Limiting Protection (Global Safety-Net Sliding-Window)
+const { passiveAuth } = require('./src/middlewares/auth');
 const { globalSafetyLimiter } = require('./src/middlewares/rateLimiter');
-app.use('/api', globalSafetyLimiter);
+app.use('/api', passiveAuth, globalSafetyLimiter);
 
 // 5. API Routes
 app.use('/api/v1', aiRoutes);

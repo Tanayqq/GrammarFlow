@@ -40,7 +40,7 @@ const redisConnection = typeof connectionOptions === 'string'
 // Initialize the Worker to process jobs from 'ai-jobs' queue
 const aiWorker = new Worker('ai-jobs', async (job) => {
     console.log(`[WORKER] Starting job ${job.id} of type "${job.name}"...`);
-    const { prompt, text, temperature, guest_session_id, operation_type, language, style } = job.data;
+    const { prompt, text, temperature, guest_session_id, user_id, operation_type, language, style } = job.data;
     const startTime = Date.now();
 
     try {
@@ -52,6 +52,7 @@ const aiWorker = new Worker('ai-jobs', async (job) => {
         // Queue history logging asynchronously — never block the response
         aiHistoryQueue.add('save-history', {
             guest_session_id:   guest_session_id || 'unknown',
+            user_id:            user_id || null,
             input_text:         text,
             output_text:        response.text,
             operation_type:     operation_type || 'grammar_fix',
@@ -72,6 +73,7 @@ const aiWorker = new Worker('ai-jobs', async (job) => {
         // Log failed operations too
         aiHistoryQueue.add('save-history', {
             guest_session_id:   guest_session_id || 'unknown',
+            user_id:            user_id || null,
             input_text:         text,
             output_text:        '',
             operation_type:     operation_type || 'grammar_fix',
