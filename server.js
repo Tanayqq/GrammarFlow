@@ -4,8 +4,9 @@ const cors = require('cors');
 const path = require('path');
 const aiRoutes = require('./src/routes/ai.routes');
 
-// Initialize background queue worker
-require('./src/worker');
+// Initialize background queue workers
+require('./src/worker');        // ai-jobs queue (grammar-fix, summarize, explain)
+require('./src/historyWorker'); // ai-history queue (async DB logging)
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -47,7 +48,7 @@ const getHealthStatus = () => {
             uptime: `${uptimeSeconds}s`,
             timestamp: new Date().toISOString(),
             environment: process.env.NODE_ENV || 'development',
-            version: '1.2.0',
+            version: '1.3.0',
             system: {
                 nodeVersion: process.version,
                 memoryUsage: {

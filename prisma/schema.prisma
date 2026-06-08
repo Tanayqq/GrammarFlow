@@ -1,0 +1,51 @@
+// GrammarFlow Prisma Schema
+// Database: Supabase PostgreSQL
+// ORM: Prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id               String        @id @default(cuid())
+  guest_session_id String?       @unique
+  email            String?       @unique
+  name             String?
+  created_at       DateTime      @default(now())
+  deleted_at       DateTime?
+  settings         UserSettings?
+  operations       AiOperation[]
+}
+
+model AiOperation {
+  id                 String   @id @default(cuid())
+  user_id            String
+  input_text         String
+  output_text        String
+  operation_type     String
+  language           String?
+  style              String?
+  model              String?
+  tokens_used        Int?
+  processing_time_ms Int?
+  cached             Boolean  @default(false)
+  status             String
+  operation_metadata Json?
+  created_at         DateTime @default(now())
+  user               User     @relation(fields: [user_id], references: [id])
+
+  @@index([user_id, created_at])
+}
+
+model UserSettings {
+  id                 String   @id @default(cuid())
+  user_id            String   @unique
+  preferred_theme    String?
+  preferred_language String?
+  created_at         DateTime @default(now())
+  user               User     @relation(fields: [user_id], references: [id])
+}

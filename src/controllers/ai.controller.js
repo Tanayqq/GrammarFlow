@@ -1,6 +1,8 @@
 const aiService = require('../services/ai.service');
 const prompts = require('../config/prompts');
 const { aiQueue } = require('../queue');
+const { aiHistoryQueue } = require('../historyQueue');
+const prisma = require('../db');
 
 // Helper for standardized API responses
 const sendResponse = (res, success, data = null, error = null, metadata = {}) => {
@@ -82,8 +84,10 @@ const detectLanguage = (text) => {
 // Standard endpoints
 // ─────────────────────────────────────────────
 const rewrite = async (req, res, next) => {
+    const startTime = Date.now();
     try {
         const { text, style = "Casual", tone = "Friendly", language = "English", humanize = false } = req.body;
+        const guestSessionId = req.headers['x-guest-session-id'] || null;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required", code: "MISSING_INPUT" } });
 
         console.log(`[API v1] /rewrite. Lang: ${language}, Humanize: ${humanize}`);
@@ -106,8 +110,6 @@ const rewrite = async (req, res, next) => {
         }
 
         resultText = resultText.replace(/^(STRICT COMMAND|IMPORTANT|CRITICAL|STRICT|Note):.*?\n/gsi, '').trim();
-
-        // Defensive cleanup for any leaked markdown headers or label lines
         resultText = resultText.replace(/###\s*[0-9]?\s*Rewrite.*/gi, '');
         resultText = resultText.replace(/###.*/g, '');
         resultText = resultText.replace(/Rewrite\s*[0-9]?:?/gi, '');
@@ -123,7 +125,26 @@ const rewrite = async (req, res, next) => {
         } else {
             rewrites = [resultText.trim()];
         }
+
+        const processingTime = Date.now() - startTime;
         sendResponse(res, true, rewrites.slice(0, 3), null, { language, humanize, source });
+
+        // Queue history logging asynchronously — never blocks response
+        if (guestSessionId) {
+            aiHistoryQueue.add('save-history', {
+                guest_session_id:   guestSessionId,
+                input_text:         text,
+                output_text:        rewrites.slice(0, 3).join('\n---\n'),
+                operation_type:     'rewrite',
+                language,
+                style,
+                model:              'llama-3.3-70b-versatile',
+                cached:             source === 'cache',
+                status:             'success',
+                processing_time_ms: processingTime,
+                operation_metadata: { tone, humanize }
+            }).catch(err => console.error('[API v1] /rewrite history queue error:', err.message));
+        }
     } catch (error) {
         console.error("[API v1] Rewrite error:", error.message);
         res.status(500).json({ success: false, error: { message: error.message, code: "AI_PROCESSING_ERROR" } });
@@ -133,6 +154,7 @@ const rewrite = async (req, res, next) => {
 const grammarFix = async (req, res, next) => {
     try {
         const { text, language = "English", humanize = false, _extensionPrompt } = req.body;
+        const guestSessionId = req.headers['x-guest-session-id'] || null;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required" } });
         
         const prompt = _extensionPrompt || prompts.getGrammarFixPrompt(language, humanize);
@@ -141,7 +163,11 @@ const grammarFix = async (req, res, next) => {
         const job = await aiQueue.add('grammar-fix', {
             prompt,
             text,
-            temperature: 0.2
+            temperature:    0.2,
+            guest_session_id: guestSessionId,
+            operation_type: 'grammar_fix',
+            language,
+            style:          null
         });
         
         console.log(`[API v1] grammarFix job queued. Job ID: ${job.id}`);
@@ -275,8 +301,10 @@ const analyzeSmartSuggestions = async (req, res, next) => {
 // Phase 6: Document Processing
 // ─────────────────────────────────────────────
 const processDocument = async (req, res, next) => {
+    const startTime = Date.now();
     try {
         const { text, mode = "Summarize", language = "English", style = "Casual", tone = "Friendly", humanize = false, isConsolidation = false } = req.body;
+        const guestSessionId = req.headers['x-guest-session-id'] || null;
 
         if (!text || text.trim().length === 0) {
             return res.status(400).json({ success: false, error: { message: "Document text is required" } });
@@ -285,12 +313,8 @@ const processDocument = async (req, res, next) => {
         console.log(`[API v1] /process-document. Mode: ${mode}, Lang: ${language}, Consolidation: ${isConsolidation}`);
 
         const prompt = prompts.getDocumentProcessingPrompt(mode, language, style, tone, humanize, isConsolidation);
-
-        // Use the fast, high-rate-limit model for the entire document pipeline to prevent 429 errors on large files
         const model = "llama-3.1-8b-instant";
-
         const response = await aiService.callGroqAPI(prompt, text, 0.4, model);
-
         // The result is just raw markdown text, we wrap it in an array to match the frontend expectations
         sendResponse(res, true, [response.text.trim()], null, { mode, language, humanize, source: response.source });
     } catch (error) {
@@ -334,6 +358,76 @@ const checkJobStatus = async (req, res, next) => {
     }
 };
 
+const getHistory = async (req, res) => {
+    try {
+        const guestSessionId = req.headers['x-guest-session-id'] || null;
+        if (!guestSessionId) {
+            return res.status(400).json({ success: false, error: { message: 'x-guest-session-id header is required' } });
+        }
+
+        const page  = Math.max(1, parseInt(req.query.page)  || 1);
+        const limit = Math.min(50, parseInt(req.query.limit) || 10);
+        const skip  = (page - 1) * limit;
+
+        const user = await prisma.user.findUnique({ where: { guest_session_id: guestSessionId } });
+        if (!user) {
+            return sendResponse(res, true, { operations: [], total: 0, page, limit });
+        }
+
+        const [operations, total] = await Promise.all([
+            prisma.aiOperation.findMany({
+                where:   { user_id: user.id },
+                orderBy: { created_at: 'desc' },
+                skip,
+                take:    limit,
+                select: {
+                    id:             true,
+                    operation_type: true,
+                    language:       true,
+                    style:          true,
+                    cached:         true,
+                    status:         true,
+                    created_at:     true
+                }
+            }),
+            prisma.aiOperation.count({ where: { user_id: user.id } })
+        ]);
+
+        sendResponse(res, true, { operations, total, page, limit, totalPages: Math.ceil(total / limit) });
+    } catch (error) {
+        console.error('[API v1] getHistory error:', error.message);
+        res.status(500).json({ success: false, error: { message: 'Failed to retrieve history' } });
+    }
+};
+
+const getHistoryDetail = async (req, res) => {
+    try {
+        const guestSessionId = req.headers['x-guest-session-id'] || null;
+        if (!guestSessionId) {
+            return res.status(400).json({ success: false, error: { message: 'x-guest-session-id header is required' } });
+        }
+
+        const operation = await prisma.aiOperation.findUnique({
+            where: { id: req.params.id },
+            include: { user: { select: { guest_session_id: true } } }
+        });
+
+        if (!operation) {
+            return res.status(404).json({ success: false, error: { message: 'Operation not found' } });
+        }
+
+        // Security: only return operation if it belongs to this guest session
+        if (operation.user.guest_session_id !== guestSessionId) {
+            return res.status(403).json({ success: false, error: { message: 'Access denied' } });
+        }
+
+        sendResponse(res, true, operation);
+    } catch (error) {
+        console.error('[API v1] getHistoryDetail error:', error.message);
+        res.status(500).json({ success: false, error: { message: 'Failed to retrieve operation details' } });
+    }
+};
+
 module.exports = {
     rewrite,
     grammarFix,
@@ -342,5 +436,7 @@ module.exports = {
     analyzeRealtime,
     analyzeSmartSuggestions,
     processDocument,
-    checkJobStatus
+    checkJobStatus,
+    getHistory,
+    getHistoryDetail
 };

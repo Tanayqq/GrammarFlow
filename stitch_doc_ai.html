@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>GrammarFlow - Document AI</title>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'cosmic-midnight': '#0a0a14',
+            'nebula-purple': '#a855f7',
+            'nebula-blue': '#3b82f6',
+            'glass-border': 'rgba(255, 255, 255, 0.12)',
+            'glass-bg': 'rgba(255, 255, 255, 0.05)',
+          },
+          backgroundImage: {
+            'button-gradient': 'linear-gradient(90deg, #a855f7 0%, #3b82f6 100%)',
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="background-visuals">
+    /* Global Background and Nebula Effects */
+    body {
+      background-color: #0a0a14;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    .nebula-glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      filter: blur(120px);
+      z-index: -1;
+      opacity: 0.4;
+    }
+
+    .nebula-purple-glow {
+      top: -100px;
+      right: -100px;
+      background: radial-gradient(circle, #a855f7 0%, transparent 70%);
+    }
+
+    .nebula-blue-glow {
+      bottom: -150px;
+      left: -150px;
+      background: radial-gradient(circle, #3b82f6 0%, transparent 70%);
+    }
+
+    /* Glassmorphism Styles */
+    .glass-panel {
+      background: rgba(18, 18, 28, 0.7);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+  </style>
+<style data-purpose="component-styles">
+    /* Active Tab Glow Effect */
+    .tab-active {
+      background: rgba(168, 85, 247, 0.15);
+      border: 1.5px solid #a855f7;
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+    }
+
+    /* Process Button Glow */
+    .btn-process {
+      transition: all 0.3s ease;
+      box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
+    }
+    .btn-process:hover {
+      box-shadow: 0 0 30px rgba(168, 85, 247, 0.6);
+      transform: translateY(-1px);
+    }
+
+    /* Custom Switch / Toggle */
+    .toggle-checkbox:checked {
+      right: 0;
+      border-color: #a855f7;
+    }
+    .toggle-checkbox:checked + .toggle-label {
+      background-color: #a855f7;
+    }
+
+    /* Tone Chips Glow */
+    .chip-active {
+      border: 1.5px solid #a855f7;
+      box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+      background: rgba(168, 85, 247, 0.1);
+    }
+  </style>
+</head>
+<body class="p-4 md:p-8">
+<!-- BEGIN: Nebula Background Decoration -->
+<div aria-hidden="true" class="nebula-glow nebula-purple-glow"></div>
+<div aria-hidden="true" class="nebula-glow nebula-blue-glow"></div>
+<!-- END: Nebula Background Decoration -->
+<!-- BEGIN: Main Dashboard Container -->
+<main class="w-full max-w-5xl glass-panel rounded-3xl overflow-hidden p-6 md:p-10" data-purpose="main-interface">
+<!-- BEGIN: Tabs Navigation -->
+<nav class="flex justify-center mb-10" data-purpose="navigation-tabs">
+<div class="bg-black/30 p-1.5 rounded-2xl flex items-center space-x-1 border border-white/5">
+<button class="px-8 py-2.5 rounded-xl text-gray-400 font-medium hover:text-white transition-colors" data-purpose="tab-text-editor">
+          Text Editor
+        </button>
+<button class="px-8 py-2.5 rounded-xl text-white font-medium tab-active transition-all" data-purpose="tab-document-ai">
+          Document AI
+        </button>
+</div>
+</nav>
+<!-- END: Tabs Navigation -->
+<!-- BEGIN: Document Upload Area -->
+<section class="mb-6" data-purpose="upload-section">
+<div class="relative group cursor-pointer border-2 border-dashed border-white/20 rounded-3xl py-16 px-6 flex flex-col items-center justify-center transition-all hover:border-white/40 hover:bg-white/5" id="drop-zone">
+<!-- Cloud Icon -->
+<div class="mb-4 bg-white/5 p-4 rounded-full border border-white/10">
+<svg class="text-gray-400 group-hover:text-white transition-colors" fill="none" height="48" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="48" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+<path d="M12 12v9"></path>
+<path d="m16 16-4-4-4 4"></path>
+</svg>
+</div>
+<p class="text-xl text-gray-300 text-center font-light tracking-wide">
+          Drag &amp; drop your document (PDF, Image) here, or <span class="text-nebula-purple font-medium">click to browse</span>
+</p>
+</div>
+</section>
+<!-- END: Document Upload Area -->
+<!-- BEGIN: Summarization Input -->
+<section class="mb-6" data-purpose="input-section">
+<div class="relative">
+<input class="w-full bg-black/40 border border-white/10 rounded-2xl py-4 px-6 text-white placeholder-gray-500 focus:ring-2 focus:ring-nebula-purple focus:border-transparent outline-none transition-all" placeholder="Summarization (Optional)" type="text"/>
+</div>
+</section>
+<!-- END: Summarization Input -->
+<!-- BEGIN: Dashboard Footer Settings -->
+<footer class="flex flex-col md:flex-row items-center justify-between gap-6 mb-8" data-purpose="settings-footer">
+<!-- Tone Selection -->
+<div class="flex items-center space-x-4" data-purpose="tone-selector">
+<span class="text-gray-400 font-medium">Tone:</span>
+<div class="flex gap-2">
+<button class="chip-active px-5 py-2 rounded-full text-white text-sm font-medium transition-all">
+            Casual
+          </button>
+<button class="bg-white/5 border border-white/10 px-5 py-2 rounded-full text-gray-400 text-sm font-medium hover:bg-white/10 hover:text-white transition-all">
+            Friendly
+          </button>
+<button class="bg-white/5 border border-white/10 px-5 py-2 rounded-full text-gray-400 text-sm font-medium hover:bg-white/10 hover:text-white transition-all">
+            Auto-Detect
+          </button>
+</div>
+</div>
+<!-- Human Mode Toggle -->
+<div class="flex items-center space-x-3" data-purpose="toggle-container">
+<span class="text-gray-400 font-medium">Human Mode</span>
+<label class="relative inline-flex items-center cursor-pointer" for="human-mode-toggle">
+<input class="sr-only peer" id="human-mode-toggle" type="checkbox"/>
+<div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-nebula-purple"></div>
+</label>
+</div>
+</footer>
+<!-- END: Dashboard Footer Settings -->
+<!-- BEGIN: Primary Action -->
+<div class="flex justify-center" data-purpose="action-section">
+<button class="w-full btn-process bg-button-gradient py-5 rounded-2xl text-white text-xl font-semibold tracking-wide flex items-center justify-center" id="process-button">
+        Process Document
+      </button>
+</div>
+<!-- END: Primary Action -->
+</main>
+<!-- END: Main Dashboard Container -->
+<!-- BEGIN: Interactive Scripts -->
+<script data-purpose="event-handlers">
+    document.addEventListener('DOMContentLoaded', () => {
+      const dropZone = document.getElementById('drop-zone');
+      const processBtn = document.getElementById('process-button');
+
+      // Visual feedback for Drag and Drop
+      dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-nebula-purple', 'bg-nebula-purple/5');
+      });
+
+      dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-nebula-purple', 'bg-nebula-purple/5');
+      });
+
+      // Simple Click handler
+      processBtn.addEventListener('click', () => {
+        processBtn.innerText = 'Processing...';
+        setTimeout(() => {
+          processBtn.innerText = 'Process Document';
+        }, 2000);
+      });
+    });
+  </script>
+<!-- END: Interactive Scripts -->
+</body></html>

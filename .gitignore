@@ -1,0 +1,36 @@
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
+.vscode/
+.idea/
+.agent/
+
+# Python
+*.pyc
+__pycache__/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# Electron
+out/
+*.asar
+
+# SQLite
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Environment
+.env
+.env.local
+
+# Project specific ignores
+ARCHIVE_OLD_FILES/
+GrammarFlow-Windows/
+GrammarFlow-macOS/
+GrammarHost/
+GRAMMARFLOW_LIVE/
