@@ -100,6 +100,27 @@ async function getOrCreateGuestSessionId() {
     });
 }
 
+async function pollJobStatus(jobId, guestSessionId) {
+    const maxAttempts = 40; // 60 seconds timeout
+    for (let i = 0; i < maxAttempts; i++) {
+        await new Promise(r => setTimeout(r, 1500));
+        const response = await fetch(`${API_BASE}/job/${jobId}`, {
+            headers: { "x-guest-session-id": guestSessionId }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+            throw new Error(data.error?.message || "Job status check failed");
+        }
+        if (data.data.status === "completed") {
+            return data.data.result;
+        }
+        if (data.data.status === "failed") {
+            throw new Error(data.error?.message || "AI job failed to execute");
+        }
+    }
+    throw new Error("Job timed out. Please try again.");
+}
+
 async function run() {
     const params = new URLSearchParams(location.search);
     const pageLabel = params.get("label") || "Result";
@@ -149,7 +170,13 @@ async function run() {
             throw new Error((json && json.error && json.error.message) || "No response from server.");
         }
 
-        const results = formatResults(json.data, job.label || pageLabel);
+        let resultsData = json.data;
+        if (json.data && json.data.status === "queued" && json.data.jobId) {
+            setStatus("AI processing in background queue...");
+            resultsData = await pollJobStatus(json.data.jobId, guestSessionId);
+        }
+
+        const results = formatResults(resultsData, job.label || pageLabel);
         if (!results) throw new Error("Unexpected server response.");
         renderResults(results);
     } catch (e) {

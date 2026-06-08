@@ -427,6 +427,25 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ─── MANUAL ACTIONS ───────────────────────
+    const pollJobStatus = async (jobId) => {
+        const maxAttempts = 40; // 60 seconds timeout
+        for (let i = 0; i < maxAttempts; i++) {
+            await new Promise(r => setTimeout(r, 1500));
+            const response = await fetch(`${getBaseUrl()}/job/${jobId}`);
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.error?.message || "Job status check failed");
+            }
+            if (data.data.status === "completed") {
+                return data.data.result;
+            }
+            if (data.data.status === "failed") {
+                throw new Error(data.error?.message || "AI job failed to execute");
+            }
+        }
+        throw new Error("Job timed out. Please try again.");
+    };
+
     UI.rewriteBtn.onclick = async () => {
         const text = UI.inputText.value.trim();
         if (!text) return;
@@ -449,7 +468,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const res = await GrammarFlowAPI.request("/grammar-fix", {
                 text, language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
             });
-            renderResults(res.data);
+            if (res.data && res.data.status === "queued" && res.data.jobId) {
+                const result = await pollJobStatus(res.data.jobId);
+                renderResults([result]);
+            } else {
+                renderResults(res.data);
+            }
         } catch (e) { renderResults([`Error: ${e.message}`]); }
         finally { setBusy(false); }
     };
