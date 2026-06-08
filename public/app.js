@@ -15,11 +15,30 @@ const getBaseUrl = () => {
     return isLocal ? `http://localhost:3000${CONFIG.API_VERSION}` : CONFIG.API_VERSION;
 };
 
+const getOrCreateGuestSessionId = () => {
+    let sessionId = localStorage.getItem("guest_session_id");
+    if (!sessionId) {
+        if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+            sessionId = crypto.randomUUID();
+        } else {
+            sessionId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+        localStorage.setItem("guest_session_id", sessionId);
+    }
+    return sessionId;
+};
+
 const GrammarFlowAPI = {
     async request(endpoint, payload) {
         const response = await fetch(`${getBaseUrl()}${endpoint}`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { 
+                "Content-Type": "application/json",
+                "x-guest-session-id": getOrCreateGuestSessionId()
+            },
             body: JSON.stringify(payload)
         });
         const data = await response.json();
