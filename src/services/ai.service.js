@@ -1,5 +1,5 @@
 const { Redis } = require('@upstash/redis');
-const crypto = require('crypto');
+const { generateCacheKey } = require('../utils/cacheKey');
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const MODEL_NAME = "llama-3.3-70b-versatile";
@@ -14,15 +14,6 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
     console.log("[REDIS] Client initialized successfully.");
 } else {
     console.warn("[REDIS WARNING] UPSTASH_REDIS_REST_URL and/or UPSTASH_REDIS_REST_TOKEN are not set. Caching will be bypassed.");
-}
-
-/**
- * Generates a SHA-256 hash key for Redis from the systemPrompt and userText.
- */
-function generateCacheKey(systemPrompt, userText) {
-    const combined = `${systemPrompt}:${userText}`;
-    const hash = crypto.createHash('sha256').update(combined).digest('hex');
-    return `gf:cache:${hash}`;
 }
 
 async function callGroqAPI(systemPrompt, userText, temperature = 0.7) {

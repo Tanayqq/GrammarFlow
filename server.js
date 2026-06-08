@@ -63,33 +63,9 @@ const getHealthStatus = () => {
 app.get('/api/v1/health', (req, res) => res.json(getHealthStatus()));
 app.get('/health', (req, res) => res.json(getHealthStatus()));
 
-// 4. Rate Limiting Protection (Memory-based)
-const rateLimitMap = new Map();
-const RATE_LIMIT_WINDOW = 60 * 1000;
-const MAX_REQUESTS = 100;
-
-app.use('/api', (req, res, next) => {
-    const ip = req.ip;
-    const now = Date.now();
-    const userData = rateLimitMap.get(ip) || { count: 0, startTime: now };
-
-    if (now - userData.startTime > RATE_LIMIT_WINDOW) {
-        userData.count = 1;
-        userData.startTime = now;
-    } else {
-        userData.count++;
-    }
-
-    rateLimitMap.set(ip, userData);
-
-    if (userData.count > MAX_REQUESTS) {
-        return res.status(429).json({
-            success: false,
-            error: { message: 'Too many requests. Please try again later.', code: 'RATE_LIMIT_EXCEEDED' }
-        });
-    }
-    next();
-});
+// 4. Rate Limiting Protection (Global Safety-Net Sliding-Window)
+const { globalSafetyLimiter } = require('./src/middlewares/rateLimiter');
+app.use('/api', globalSafetyLimiter);
 
 // 5. API Routes
 app.use('/api/v1', aiRoutes);
