@@ -32,15 +32,23 @@ const getOrCreateGuestSessionId = () => {
 };
 
 const GrammarFlowAPI = {
-    async request(endpoint, payload) {
-        const response = await fetch(`${getBaseUrl()}${endpoint}`, {
-            method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-                "x-guest-session-id": getOrCreateGuestSessionId()
-            },
-            body: JSON.stringify(payload)
-        });
+    async request(endpoint, payload, method = "POST") {
+        const headers = {
+            "x-guest-session-id": getOrCreateGuestSessionId()
+        };
+        const token = localStorage.getItem("gf_token");
+        if (token) {
+            headers["Authorization"] = `Bearer ${token}`;
+        }
+        const options = {
+            method,
+            headers
+        };
+        if (method !== "GET" && method !== "HEAD" && payload !== undefined) {
+            headers["Content-Type"] = "application/json";
+            options.body = JSON.stringify(payload);
+        }
+        const response = await fetch(`${getBaseUrl()}${endpoint}`, options);
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error(data.error?.message || "Server error");
         return data;
@@ -884,6 +892,341 @@ document.addEventListener("DOMContentLoaded", () => {
     if (UI.documentModeSelect) {
         UI.documentModeSelect.addEventListener('change', () => window.documentProcessor.updateOCRMode());
     }
+
+    // ─────────────────────────────────────────────
+    // HISTORY & AUTHENTICATION WIRING
+    // ─────────────────────────────────────────────
+    const btnHistory = document.getElementById("btnHistory");
+    const btnSettings = document.getElementById("btnSettings");
+    const historyModal = document.getElementById("historyModal");
+    const settingsModal = document.getElementById("settingsModal");
+    const closeHistoryBtn = document.getElementById("closeHistoryBtn");
+    const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+
+    // Helper: Esc text helper
+    const escHtml = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+    // Modal Control: Open History
+    if (btnHistory && historyModal) {
+        btnHistory.onclick = () => {
+            historyModal.classList.remove("hidden");
+            loadHistory();
+        };
+    }
+
+    // Modal Control: Open Settings
+    if (btnSettings && settingsModal) {
+        btnSettings.onclick = () => {
+            settingsModal.classList.remove("hidden");
+            restoreSyncSection();
+        };
+    }
+
+    // Modal Control: Close History
+    if (closeHistoryBtn && historyModal) {
+        closeHistoryBtn.onclick = () => historyModal.classList.add("hidden");
+    }
+
+    // Modal Control: Close Settings
+    if (closeSettingsBtn && settingsModal) {
+        closeSettingsBtn.onclick = () => settingsModal.classList.add("hidden");
+    }
+
+    // Close modals on clicking backdrop
+    window.addEventListener("click", (e) => {
+        if (e.target === historyModal) historyModal.classList.add("hidden");
+        if (e.target === settingsModal) settingsModal.classList.add("hidden");
+    });
+
+    // Close modals on Esc keypress
+    window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+            if (historyModal) historyModal.classList.add("hidden");
+            if (settingsModal) settingsModal.classList.add("hidden");
+        }
+    });
+
+    // Auth State Check
+    const checkAuthState = async () => {
+        const token = localStorage.getItem("gf_token");
+        const profileSection = document.getElementById("profileSection");
+        const userName = document.getElementById("userName");
+        const userEmail = document.getElementById("userEmail");
+        const syncStatusDot = document.getElementById("syncStatusDot");
+        const syncText = document.getElementById("syncText");
+        const signInBtn = document.getElementById("signInBtn");
+        const signOutBtn = document.getElementById("signOutBtn");
+        
+        if (!syncText || !syncStatusDot || !signInBtn || !signOutBtn || !profileSection) return;
+
+        if (token) {
+            try {
+                const res = await GrammarFlowAPI.request("/auth/sync", {
+                    guestSessionId: getOrCreateGuestSessionId()
+                }, "POST");
+                
+                if (res.success && res.data && res.data.user) {
+                    const user = res.data.user;
+                    if (userName) userName.textContent = user.name || 'Anonymous User';
+                    if (userEmail) userEmail.textContent = user.email;
+                    profileSection.classList.remove("hidden");
+                    
+                    // Connected green dot
+                    syncStatusDot.className = "inline-block w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)] shrink-0";
+                    syncText.textContent = "Synced with your GrammarFlow account. Your writing drafts are backed up.";
+                    
+                    signInBtn.classList.add("hidden");
+                    signOutBtn.classList.remove("hidden");
+                    return;
+                }
+            } catch (err) {
+                console.warn("[AUTH] Passive sync check failed/offline:", err.message);
+                if (token.startsWith("mock_token_")) {
+                    try {
+                        const parts = token.split("_");
+                        const email = parts[2] || "guest@grammarflow.com";
+                        const name = parts[3] ? decodeURIComponent(parts[3]) : "Guest User";
+                        if (userName) userName.textContent = name;
+                        if (userEmail) userEmail.textContent = email;
+                        profileSection.classList.remove("hidden");
+                        
+                        // Offline yellow dot
+                        syncStatusDot.className = "inline-block w-2.5 h-2.5 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.6)] animate-pulse shrink-0";
+                        syncText.textContent = "Offline. Local changes will sync when connection is restored.";
+                        
+                        signInBtn.classList.add("hidden");
+                        signOutBtn.classList.remove("hidden");
+                        return;
+                    } catch (e) {
+                        console.error("[AUTH] Failed to decode offline mock token", e);
+                    }
+                }
+            }
+        }
+        
+        // Default Local/Guest Mode (purple dot)
+        profileSection.classList.add("hidden");
+        syncStatusDot.className = "inline-block w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse shrink-0";
+        syncText.textContent = "Your writing is safely stored on this device. Sign in to sync it everywhere.";
+        signInBtn.classList.remove("hidden");
+        signOutBtn.classList.add("hidden");
+    };
+
+    const restoreSyncSection = () => {
+        const syncText = document.getElementById("syncText");
+        const authActions = document.getElementById("authActions");
+        if (!syncText || !authActions) return;
+        
+        checkAuthState();
+        
+        authActions.innerHTML = `
+            <button id="signInBtn" class="text-xs font-bold px-4 py-2.5 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all shadow-md cursor-pointer">Sign In</button>
+            <button id="signOutBtn" class="hidden text-xs font-bold px-4 py-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all cursor-pointer">Sign Out</button>
+        `;
+        
+        const signInBtn = document.getElementById("signInBtn");
+        const signOutBtn = document.getElementById("signOutBtn");
+        if (signInBtn) signInBtn.onclick = showLoginForm;
+        if (signOutBtn) signOutBtn.onclick = performSignOut;
+        
+        // Ensure state is updated correctly after innerHTML replace
+        checkAuthState();
+    };
+
+    const showLoginForm = () => {
+        const syncText = document.getElementById("syncText");
+        const authActions = document.getElementById("authActions");
+        if (!syncText || !authActions) return;
+
+        syncText.innerHTML = `
+            <div class="flex flex-col gap-2 mt-1">
+                <input type="email" id="loginEmail" placeholder="Enter email (e.g. user@domain.com)" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
+                <input type="text" id="loginName" placeholder="Enter full name" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
+            </div>
+        `;
+        
+        authActions.innerHTML = `
+            <button id="confirmLoginBtn" class="text-xs font-bold px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all cursor-pointer">Confirm</button>
+            <button id="cancelLoginBtn" class="text-xs font-bold px-4 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer">Cancel</button>
+        `;
+        
+        document.getElementById("cancelLoginBtn").onclick = restoreSyncSection;
+        
+        document.getElementById("confirmLoginBtn").onclick = async () => {
+            const email = document.getElementById("loginEmail").value.trim();
+            const name = document.getElementById("loginName").value.trim();
+            if (!email || !name) {
+                alert("Please fill in both fields.");
+                return;
+            }
+            
+            try {
+                document.getElementById("confirmLoginBtn").disabled = true;
+                document.getElementById("confirmLoginBtn").textContent = "Syncing...";
+                
+                const token = `mock_token_${email}_${encodeURIComponent(name)}`;
+                localStorage.setItem("gf_token", token);
+                
+                await checkAuthState();
+                restoreSyncSection();
+            } catch (e) {
+                alert("Login Sync Failed: " + e.message);
+                localStorage.removeItem("gf_token");
+                restoreSyncSection();
+            }
+        };
+    };
+
+    const performSignOut = () => {
+        localStorage.removeItem("gf_token");
+        localStorage.removeItem("guest_session_id");
+        getOrCreateGuestSessionId();
+        checkAuthState();
+        if (historyModal && !historyModal.classList.contains("hidden")) {
+            loadHistory();
+        }
+    };
+
+    // Load paginated list of history items
+    const loadHistory = async () => {
+        const container = document.getElementById("historyContent");
+        if (!container) return;
+        
+        container.innerHTML = `<p class="text-gray-400 text-center py-8">Loading history...</p>`;
+        
+        try {
+            const res = await GrammarFlowAPI.request("/history?page=1&limit=20", undefined, "GET");
+            if (res.success && res.data && res.data.operations) {
+                const ops = res.data.operations;
+                if (ops.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center py-12 flex flex-col items-center gap-3">
+                            <svg class="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364.364l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                            <p class="text-gray-400 font-medium text-sm">No writing history found</p>
+                            <p class="text-gray-600 text-xs text-center px-6">Your grammar corrections and paragraph rewrites will appear here.</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = "";
+                ops.forEach(op => {
+                    const date = new Date(op.created_at).toLocaleDateString(undefined, { 
+                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+                    });
+                    
+                    const card = document.createElement("div");
+                    card.className = "p-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between hover:border-purple-500/30 transition-all group cursor-pointer";
+                    card.dataset.id = op.id;
+                    
+                    let iconSvg = `<svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>`;
+                    if (op.operation_type === 'grammar-fix') {
+                        iconSvg = `<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+                    }
+                    
+                    card.innerHTML = `
+                        <div class="flex items-center gap-3.5 min-w-0">
+                            <div class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-purple-500/10 group-hover:border-purple-500/20 transition-all shrink-0">
+                                ${iconSvg}
+                            </div>
+                            <div class="flex flex-col min-w-0">
+                                <span class="text-xs font-bold text-gray-200 capitalize tracking-wide">${op.operation_type.replace('-', ' ')}</span>
+                                <span class="text-[10px] text-gray-500 font-medium mt-0.5">${date} · ${op.language || 'English'} (${op.style || 'Casual'})</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            ${op.cached ? `<span class="text-[9px] font-bold text-green-400 uppercase tracking-widest bg-green-500/10 px-2 py-0.5 rounded border border-green-500/25">Cached</span>` : ''}
+                            <svg class="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                        </div>
+                    `;
+                    
+                    card.onclick = () => showHistoryDetail(op.id);
+                    container.appendChild(card);
+                });
+            } else {
+                container.innerHTML = `<p class="text-red-400 text-center py-8">Failed to parse history data.</p>`;
+            }
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = `<p class="text-red-400 text-center py-8">Error loading history: ${err.message}</p>`;
+        }
+    };
+
+    // Load detailed view of specific operation
+    const showHistoryDetail = async (opId) => {
+        const container = document.getElementById("historyContent");
+        if (!container) return;
+        
+        container.innerHTML = `<p class="text-gray-400 text-center py-8">Loading details...</p>`;
+        
+        try {
+            const res = await GrammarFlowAPI.request(`/history/${opId}`, undefined, "GET");
+            if (res.success && res.data) {
+                const op = res.data;
+                const date = new Date(op.created_at).toLocaleString();
+                
+                container.innerHTML = `
+                    <div class="flex flex-col gap-5">
+                        <button id="backToHistoryBtn" class="self-start text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                            Back to History
+                        </button>
+                        
+                        <div class="flex flex-wrap gap-4 text-xs bg-white/5 border border-white/10 rounded-2xl p-4">
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Operation</span>
+                                <span class="text-gray-200 capitalize font-medium">${op.operation_type}</span>
+                            </div>
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Date</span>
+                                <span class="text-gray-200 font-medium">${date}</span>
+                            </div>
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Language</span>
+                                <span class="text-gray-200 font-medium">${op.language || 'English'}</span>
+                            </div>
+                            <div class="flex flex-col gap-0.5">
+                                <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Style / Tone</span>
+                                <span class="text-gray-200 font-medium">${op.style || 'Casual'} / ${op.tone || 'Friendly'}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="flex flex-col gap-2">
+                            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Original Text</span>
+                            <div class="p-4 bg-black/40 border border-white/5 rounded-2xl text-sm text-gray-300 whitespace-pre-wrap max-h-36 overflow-y-auto custom-scrollbar select-all">${escHtml(op.input_text || '')}</div>
+                        </div>
+                        
+                        <div class="flex flex-col gap-2">
+                            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">AI Output</span>
+                            <div class="p-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl text-sm text-white whitespace-pre-wrap max-h-36 overflow-y-auto custom-scrollbar select-all">${escHtml(op.output_text || '')}</div>
+                        </div>
+                        
+                        <button id="restoreToEditorBtn" class="py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-blue-500 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer">
+                            Restore Output to Editor
+                        </button>
+                    </div>
+                `;
+                
+                document.getElementById("backToHistoryBtn").onclick = loadHistory;
+                document.getElementById("restoreToEditorBtn").onclick = () => {
+                    const textarea = document.getElementById("inputText");
+                    if (textarea) {
+                        textarea.value = op.output_text;
+                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                        historyModal.classList.add("hidden");
+                    }
+                };
+            } else {
+                container.innerHTML = `<p class="text-red-400 text-center py-8">Failed to retrieve operation details.</p>`;
+            }
+        } catch (err) {
+            console.error(err);
+            container.innerHTML = `<p class="text-red-400 text-center py-8">Error loading operation details: ${err.message}</p>`;
+        }
+    };
+
+    // Auto-verify Auth State on Load
+    checkAuthState();
 
     // Set initial tab state
     window.documentProcessor.switchTab('text');

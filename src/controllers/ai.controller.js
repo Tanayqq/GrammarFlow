@@ -350,15 +350,22 @@ const checkJobStatus = async (req, res, next) => {
 const getHistory = async (req, res) => {
     try {
         const guestSessionId = req.headers['x-guest-session-id'] || null;
-        if (!guestSessionId) {
-            return res.status(400).json({ success: false, error: { message: 'x-guest-session-id header is required' } });
+        if (!req.userId && !guestSessionId) {
+            return res.status(400).json({ success: false, error: { message: 'Authentication or x-guest-session-id header is required' } });
         }
 
         const page  = Math.max(1, parseInt(req.query.page)  || 1);
         const limit = Math.min(50, parseInt(req.query.limit) || 10);
         const skip  = (page - 1) * limit;
 
-        const user = await prisma.user.findUnique({ where: { guest_session_id: guestSessionId } });
+        let user = null;
+        if (req.userId) {
+            user = await prisma.user.findUnique({ where: { id: req.userId } });
+        }
+        if (!user && guestSessionId) {
+            user = await prisma.user.findUnique({ where: { guest_session_id: guestSessionId } });
+        }
+
         if (!user) {
             return sendResponse(res, true, { operations: [], total: 0, page, limit });
         }
@@ -392,9 +399,6 @@ const getHistory = async (req, res) => {
 const getHistoryDetail = async (req, res) => {
     try {
         const guestSessionId = req.headers['x-guest-session-id'] || null;
-        if (!guestSessionId) {
-            return res.status(400).json({ success: false, error: { message: 'x-guest-session-id header is required' } });
-        }
 
         const operation = await prisma.aiOperation.findUnique({
             where: { id: req.params.id },
@@ -405,8 +409,11 @@ const getHistoryDetail = async (req, res) => {
             return res.status(404).json({ success: false, error: { message: 'Operation not found' } });
         }
 
-        // Security: only return operation if it belongs to this guest session
-        if (operation.user.guest_session_id !== guestSessionId) {
+        // Security: only return operation if it belongs to this authenticated user or guest session
+        const isOwner = (req.userId && operation.user_id === req.userId) ||
+                        (guestSessionId && operation.user?.guest_session_id === guestSessionId);
+
+        if (!isOwner) {
             return res.status(403).json({ success: false, error: { message: 'Access denied' } });
         }
 
