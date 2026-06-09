@@ -1229,17 +1229,26 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 try {
                     document.getElementById("confirmLoginBtn").disabled = true;
-                    document.getElementById("confirmLoginBtn").textContent = "Syncing...";
+                    document.getElementById("confirmLoginBtn").textContent = "Checking...";
                     
-                    const token = `mock_token_${email}_Test%20User`;
-                    localStorage.setItem("gf_token", token);
-                    
-                    await checkAuthState();
-                    restoreSyncSection();
+                    const res = await GrammarFlowAPI.request("/auth/login", { email, password }, "POST");
+                    if (res.success && res.data && res.data.user) {
+                        document.getElementById("confirmLoginBtn").textContent = "Syncing...";
+                        const nameToUse = res.data.user.name || 'Test User';
+                        const token = `mock_token_${email}_${encodeURIComponent(nameToUse)}`;
+                        localStorage.setItem("gf_token", token);
+                        
+                        await checkAuthState();
+                        restoreSyncSection();
+                    } else {
+                        alert("Login Failed: " + (res.error?.message || "Account not registered. Please Sign Up first."));
+                        document.getElementById("confirmLoginBtn").disabled = false;
+                        document.getElementById("confirmLoginBtn").textContent = "Confirm";
+                    }
                 } catch (e) {
-                    alert("Login Sync Failed: " + e.message);
-                    localStorage.removeItem("gf_token");
-                    restoreSyncSection();
+                    alert("Login Error: " + (e.message || "Account not registered. Please Sign Up first."));
+                    document.getElementById("confirmLoginBtn").disabled = false;
+                    document.getElementById("confirmLoginBtn").textContent = "Confirm";
                 }
             }
         };

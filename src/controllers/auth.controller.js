@@ -297,8 +297,54 @@ const verifyCode = async (req, res) => {
     }
 };
 
+/**
+ * Verifies if an email exists in the database before letting them log in.
+ */
+const login = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ success: false, error: { message: "Email and password are required." } });
+        }
+        
+        const cleanEmail = email.trim().toLowerCase();
+        
+        // Check database for existing user by email
+        const user = await prisma.user.findFirst({
+            where: { email: cleanEmail }
+        });
+        
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                error: { message: "Account not registered. Please Sign Up first.", code: "ACCOUNT_NOT_FOUND" }
+            });
+        }
+        
+        // User exists! Return success along with user details
+        res.json({
+            success: true,
+            data: {
+                message: "Login successful.",
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name || 'Test User'
+                }
+            }
+        });
+    } catch (error) {
+        console.error("[AUTH CONTROLLER ERROR] Login check failed:", error.message);
+        res.status(500).json({
+            success: false,
+            error: { message: "Internal server error during login check", code: "SERVER_ERROR" }
+        });
+    }
+};
+
 module.exports = {
     syncSession,
     sendVerificationCode,
-    verifyCode
+    verifyCode,
+    login
 };

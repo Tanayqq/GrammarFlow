@@ -277,6 +277,40 @@ async function runTests() {
         }
         console.log('✓ Valid code verified successfully.');
 
+        // --- TEST 7: Login Account Existence Check ---
+        console.log('\n--- Test 7: Login Account Existence Check ---');
+        
+        const loginUnregisteredEmail = 'unregistered-test@domain.com';
+        const loginRegisteredEmail = 'registered-test@domain.com';
+        
+        // 1. Verify that login for an unregistered email fails
+        const loginUnregisteredRes = await makeRequest('/api/v1/auth/login', {}, { email: loginUnregisteredEmail, password: 'Password123!' });
+        console.log(`Unregistered Login Status: ${loginUnregisteredRes.status} (Expected: 404)`);
+        if (loginUnregisteredRes.status !== 404 || loginUnregisteredRes.body.success) {
+            throw new Error(`Unregistered account login succeeded! Status: ${loginUnregisteredRes.status}`);
+        }
+        console.log('✓ Login for unregistered account failed correctly.');
+        
+        // 2. Pre-register the email in DB
+        console.log('Pre-registering user in DB...');
+        const testUser = await prisma.user.create({
+            data: {
+                email: loginRegisteredEmail,
+                name: 'John Tester'
+            }
+        });
+        
+        // 3. Verify that login for a registered email succeeds
+        const loginRegisteredRes = await makeRequest('/api/v1/auth/login', {}, { email: loginRegisteredEmail, password: 'Password123!' });
+        console.log(`Registered Login Status: ${loginRegisteredRes.status} (Expected: 200)`);
+        if (loginRegisteredRes.status !== 200 || !loginRegisteredRes.body.success || loginRegisteredRes.body.data.user.name !== 'John Tester') {
+            throw new Error(`Registered account login failed! Status: ${loginRegisteredRes.status}, Body: ${JSON.stringify(loginRegisteredRes.body)}`);
+        }
+        console.log('✓ Login for registered account succeeded correctly.');
+        
+        // Clean up registered user
+        await prisma.user.delete({ where: { id: testUser.id } }).catch(() => {});
+
         console.log('\n=== ALL AUTH TESTS PASSED SUCCESSFULLY! ===');
     } catch (e) {
         console.error('\n❌ AUTH TEST RUN FAILED:', e.message);

@@ -11,4 +11,7 @@ router.post('/sync', passiveAuth, authController.syncSession);
 router.post('/send-verification-code', authController.sendVerificationCode);
 router.post('/verify-code', authController.verifyCode);
 
+// Login verification check
+router.post('/login', authController.login);
+
 module.exports = router;
