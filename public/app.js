@@ -1322,6 +1322,7 @@ document.addEventListener("DOMContentLoaded", () => {
             updateTabUI();
         };
 
+
         const toggleBtn = document.getElementById("togglePasswordVisibilityBtn");
         const passwordInput = document.getElementById("loginPassword");
         const eyeIcon = document.getElementById("eyeIcon");
@@ -1343,28 +1344,30 @@ document.addEventListener("DOMContentLoaded", () => {
             };
         }
         
-        const showVerificationScreen = (email, name, password) => {
+        const showVerificationScreen = (email, name, password, devMode) => {
+            const otpNote = devMode
+                ? `<p class="text-xs text-yellow-400/80 leading-relaxed bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2">⚠️ <strong>Dev Mode:</strong> Email delivery is not configured on the server. Check the server/Render logs for the 6-digit code.</p>`
+                : `<p class="text-xs text-gray-400 leading-relaxed">We sent a 6-digit code to <strong class="text-white">${escHtml(email)}</strong>. Check your inbox (and spam folder).</p>`;
+
             syncText.innerHTML = `
                 <div class="flex flex-col gap-3 mt-1">
                     <span class="text-xs font-bold text-purple-400">EMAIL VERIFICATION</span>
-                    <p class="text-xs text-gray-400 leading-relaxed">We have sent a 6-digit verification code to <strong class="text-white">${escHtml(email)}</strong>. Please check your email or server console and enter the code below:</p>
-                    <input type="text" id="otpCode" placeholder="Enter 6-digit code (e.g. 123456)" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white text-center tracking-widest placeholder:text-gray-500 placeholder:tracking-normal focus:outline-none focus:border-purple-500/40 w-full" maxlength="6">
+                    ${otpNote}
+                    <input type="text" id="otpCode" placeholder="Enter 6-digit code (e.g. 123456)" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white text-center tracking-widest placeholder:text-gray-500 placeholder:tracking-normal focus:outline-none focus:border-purple-500/40 w-full" maxlength="6" autocomplete="one-time-code" inputmode="numeric">
                 </div>
             `;
             
             authActions.innerHTML = `
-                <button id="verifyOtpBtn" class="text-xs font-bold px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all cursor-pointer">Verify & Sign Up</button>
+                <button id="verifyOtpBtn" class="text-xs font-bold px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all cursor-pointer">Verify &amp; Sign Up</button>
                 <button id="cancelOtpBtn" class="text-xs font-bold px-4 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer">Back</button>
             `;
 
             document.getElementById("cancelOtpBtn").onclick = () => {
                 showLoginForm();
-                // Restore input fields
                 document.getElementById("loginEmail").value = email;
                 const nameInput = document.getElementById("loginName");
                 if (nameInput) nameInput.value = name;
                 document.getElementById("loginPassword").value = password;
-                // Keep active tab as signup
                 activeTab = "signup";
                 updateTabUI();
             };
@@ -1376,29 +1379,45 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
 
+                const verifyBtn = document.getElementById("verifyOtpBtn");
                 try {
-                    document.getElementById("verifyOtpBtn").disabled = true;
-                    document.getElementById("verifyOtpBtn").textContent = "Verifying...";
+                    verifyBtn.disabled = true;
+                    verifyBtn.textContent = "Verifying...";
 
-                    const res = await GrammarFlowAPI.request("/auth/verify-code", { email, code }, "POST");
-                    if (res.success) {
-                        const token = `mock_token_${email}_${encodeURIComponent(name)}`;
-                        localStorage.setItem("gf_token", token);
-                        
-                        await checkAuthState();
-                        restoreSyncSection();
-                    } else {
-                        alert("Verification Failed: " + (res.error?.message || "Invalid verification code."));
-                        document.getElementById("verifyOtpBtn").disabled = false;
-                        document.getElementById("verifyOtpBtn").textContent = "Verify & Sign Up";
+                    // Step 1: Verify the OTP code
+                    const verifyRes = await GrammarFlowAPI.request("/auth/verify-code", { email, code }, "POST");
+                    if (!verifyRes.success) {
+                        alert("Verification Failed: " + (verifyRes.error?.message || "Invalid verification code."));
+                        verifyBtn.disabled = false;
+                        verifyBtn.textContent = "Verify & Sign Up";
+                        return;
                     }
+
+                    // Step 2: Register the user in the database with their password
+                    verifyBtn.textContent = "Creating Account...";
+                    const registerRes = await GrammarFlowAPI.request("/auth/register", { email, name, password }, "POST");
+                    if (!registerRes.success) {
+                        alert("Registration Failed: " + (registerRes.error?.message || "Could not create account."));
+                        verifyBtn.disabled = false;
+                        verifyBtn.textContent = "Verify & Sign Up";
+                        return;
+                    }
+
+                    // Step 3: Store token and sync session
+                    const registeredUser = registerRes.data.user;
+                    const token = `mock_token_${email}_${encodeURIComponent(registeredUser.name || name)}`;
+                    localStorage.setItem("gf_token", token);
+
+                    await checkAuthState();
+                    restoreSyncSection();
                 } catch (e) {
-                    alert("Verification Error: " + e.message);
-                    document.getElementById("verifyOtpBtn").disabled = false;
-                    document.getElementById("verifyOtpBtn").textContent = "Verify & Sign Up";
+                    alert("Sign Up Error: " + e.message);
+                    const btn = document.getElementById("verifyOtpBtn");
+                    if (btn) { btn.disabled = false; btn.textContent = "Verify & Sign Up"; }
                 }
             };
         };
+
 
         document.getElementById("confirmLoginBtn").onclick = async () => {
             const email = document.getElementById("loginEmail").value.trim();
@@ -1442,7 +1461,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     
                     const res = await GrammarFlowAPI.request("/auth/send-verification-code", { email }, "POST");
                     if (res.success) {
-                        showVerificationScreen(email, name, password);
+                        // devMode=true means no SMTP is configured, code is only in server logs
+                        const isDevMode = res.data && res.data.devMode === true;
+                        showVerificationScreen(email, name, password, isDevMode);
                     } else {
                         alert("Failed to send verification code: " + (res.error?.message || "Unknown error"));
                         document.getElementById("confirmLoginBtn").disabled = false;

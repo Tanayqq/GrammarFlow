@@ -1,9 +1,18 @@
 const prisma = require('../db');
 const { redisConnection } = require('../queue');
 const nodemailer = require('nodemailer');
+const bcrypt = require('bcryptjs');
 
 const memoryOtpStore = new Map();
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Generates a stable mock user ID from an email address.
+ * This ensures the same user always gets the same ID across sessions.
+ */
+const getMockUserId = (email) => {
+    return 'mock_user_' + Buffer.from(email.toLowerCase()).toString('hex').substring(0, 16);
+};
 
 /**
  * Controller to handle profile syncing and session migration.
@@ -152,6 +161,15 @@ const sendVerificationCode = async (req, res) => {
         if (!emailRegex.test(cleanEmail)) {
             return res.status(400).json({ success: false, error: { message: "Invalid email format." } });
         }
+
+        // Check if email is already registered
+        const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
+        if (existingUser && existingUser.password_hash) {
+            return res.status(409).json({
+                success: false,
+                error: { message: "An account with this email already exists. Please log in instead.", code: "EMAIL_EXISTS" }
+            });
+        }
         
         // Generate a 6-digit random code
         const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -178,12 +196,13 @@ const sendVerificationCode = async (req, res) => {
         console.log(`│ Code: ${code.padEnd(48)} │`);
         console.log(`└────────────────────────────────────────────────────────┘\n`);
         
+        let emailSent = false;
         // Try sending real email using nodemailer if configured
         if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
             try {
                 const transporter = nodemailer.createTransport({
                     host: process.env.SMTP_HOST,
-                    port: parseInt(process.env.SMTP_PORT || '587'),
+                    port: parseInt(process.env.SMTP_PASS || '587'),
                     secure: process.env.SMTP_SECURE === 'true',
                     auth: {
                         user: process.env.SMTP_USER,
@@ -208,6 +227,7 @@ const sendVerificationCode = async (req, res) => {
                     `
                 });
                 console.log(`[AUTH] Real verification email successfully sent to ${cleanEmail}`);
+                emailSent = true;
             } catch (mailErr) {
                 console.error("[AUTH ERROR] Failed to send real verification email:", mailErr.message);
             }
@@ -216,7 +236,9 @@ const sendVerificationCode = async (req, res) => {
         res.json({
             success: true,
             data: {
-                message: "Verification code sent successfully."
+                message: "Verification code sent successfully.",
+                // In dev/no-SMTP mode, tell the client the code was logged server-side
+                devMode: !emailSent
             }
         });
     } catch (error) {
@@ -298,7 +320,86 @@ const verifyCode = async (req, res) => {
 };
 
 /**
- * Verifies if an email exists in the database before letting them log in.
+ * Registers a new user after OTP verification.
+ * Creates the user in the database with a bcrypt-hashed password.
+ */
+const register = async (req, res) => {
+    try {
+        const { email, name, password } = req.body;
+        
+        if (!email || !name || !password) {
+            return res.status(400).json({
+                success: false,
+                error: { message: "Email, name, and password are required." }
+            });
+        }
+
+        const cleanEmail = email.trim().toLowerCase();
+        const cleanName = name.trim();
+
+        if (!emailRegex.test(cleanEmail)) {
+            return res.status(400).json({
+                success: false,
+                error: { message: "Invalid email format." }
+            });
+        }
+
+        // Check if user already exists
+        const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
+        if (existingUser && existingUser.password_hash) {
+            return res.status(409).json({
+                success: false,
+                error: { message: "An account with this email already exists. Please log in.", code: "EMAIL_EXISTS" }
+            });
+        }
+
+        // Hash the password
+        const saltRounds = 12;
+        const passwordHash = await bcrypt.hash(password, saltRounds);
+
+        // Generate a stable mock user ID from email
+        const userId = getMockUserId(cleanEmail);
+
+        // Upsert user (in case they were a guest before)
+        const user = await prisma.user.upsert({
+            where: { id: userId },
+            update: {
+                email: cleanEmail,
+                name: cleanName,
+                password_hash: passwordHash
+            },
+            create: {
+                id: userId,
+                email: cleanEmail,
+                name: cleanName,
+                password_hash: passwordHash
+            }
+        });
+
+        console.log(`[AUTH CONTROLLER] Registered new user: ${cleanEmail} (ID: ${user.id})`);
+
+        res.json({
+            success: true,
+            data: {
+                message: "Account created successfully.",
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    name: user.name
+                }
+            }
+        });
+    } catch (error) {
+        console.error("[AUTH CONTROLLER ERROR] Register failed:", error.message);
+        res.status(500).json({
+            success: false,
+            error: { message: "Internal server error during registration", code: "SERVER_ERROR" }
+        });
+    }
+};
+
+/**
+ * Logs in a user by verifying email and password.
  */
 const login = async (req, res) => {
     try {
@@ -317,11 +418,28 @@ const login = async (req, res) => {
         if (!user) {
             return res.status(404).json({
                 success: false,
-                error: { message: "Account not registered. Please Sign Up first.", code: "ACCOUNT_NOT_FOUND" }
+                error: { message: "Account not found. Please Sign Up first.", code: "ACCOUNT_NOT_FOUND" }
+            });
+        }
+
+        // If the user has no password_hash (e.g. old mock user or Clerk-only user)
+        if (!user.password_hash) {
+            return res.status(401).json({
+                success: false,
+                error: { message: "This account was created with a different sign-in method. Please use Sign In with Clerk or reset your password.", code: "NO_PASSWORD" }
+            });
+        }
+
+        // Verify password
+        const passwordMatch = await bcrypt.compare(password, user.password_hash);
+        if (!passwordMatch) {
+            return res.status(401).json({
+                success: false,
+                error: { message: "Incorrect password. Please try again.", code: "WRONG_PASSWORD" }
             });
         }
         
-        // User exists! Return success along with user details
+        // Password correct! Return user details
         res.json({
             success: true,
             data: {
@@ -329,7 +447,7 @@ const login = async (req, res) => {
                 user: {
                     id: user.id,
                     email: user.email,
-                    name: user.name || 'Test User'
+                    name: user.name || 'User'
                 }
             }
         });
@@ -365,6 +483,7 @@ module.exports = {
     syncSession,
     sendVerificationCode,
     verifyCode,
+    register,
     login,
     getAuthConfig
 };

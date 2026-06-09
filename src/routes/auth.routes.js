@@ -11,10 +11,14 @@ router.post('/sync', passiveAuth, authController.syncSession);
 router.post('/send-verification-code', authController.sendVerificationCode);
 router.post('/verify-code', authController.verifyCode);
 
-// Login verification check
+// Register a new user after OTP verification (stores password hash in DB)
+router.post('/register', authController.register);
+
+// Login with email + password
 router.post('/login', authController.login);
 
 // Public Clerk configuration route
 router.get('/config', authController.getAuthConfig);
 
 module.exports = router;
+

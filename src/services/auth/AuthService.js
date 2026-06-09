@@ -24,10 +24,12 @@ class AuthService {
         if (token.startsWith('mock_token_')) {
             try {
                 const parts = token.split('_');
+                // Format: mock_token_<email>_<name>
                 const email = parts[2] || 'test@example.com';
                 const name = parts[3] ? decodeURIComponent(parts[3]) : 'Test User';
-                const id = 'mock_user_' + Buffer.from(email).toString('hex').substring(0, 12);
-                console.log(`[AUTH SERVICE] Resolved mock token for User: ${name} (${email})`);
+                // Use same stable ID formula as the register endpoint in auth.controller.js
+                const id = 'mock_user_' + Buffer.from(email.toLowerCase()).toString('hex').substring(0, 16);
+                console.log(`[AUTH SERVICE] Resolved mock token for User: ${name} (${email}) → ID: ${id}`);
                 return { id, email, name };
             } catch (e) {
                 console.error("[AUTH SERVICE] Failed to parse mock token:", e.message);
