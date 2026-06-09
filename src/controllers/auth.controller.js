@@ -18,16 +18,21 @@ const syncSession = async (req, res) => {
         console.log(`[AUTH CONTROLLER] Syncing session. User ID: ${req.userId} | Guest Session: ${guestSessionId || 'none'}`);
 
         // 1. Upsert the authenticated User record
+        const existingUser = await prisma.user.findUnique({ where: { id: req.userId } });
+        const nameToSave = (authUser.name && authUser.name !== 'Test User') 
+            ? authUser.name 
+            : (existingUser?.name || 'Test User');
+
         const dbAuthUser = await prisma.user.upsert({
             where: { id: req.userId },
             update: {
                 email: authUser.email,
-                name: authUser.name
+                name: nameToSave
             },
             create: {
                 id: req.userId,
                 email: authUser.email,
-                name: authUser.name
+                name: nameToSave
             }
         });
 

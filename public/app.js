@@ -1038,10 +1038,18 @@ document.addEventListener("DOMContentLoaded", () => {
         const authActions = document.getElementById("authActions");
         if (!syncText || !authActions) return;
 
+        let activeTab = "login"; // default tab is login
+
         syncText.innerHTML = `
+            <div class="flex border-b border-white/10 mb-3 gap-2">
+                <button id="tabLogIn" type="button" class="flex-1 pb-2 text-xs font-bold text-center border-b-2 border-purple-500 text-purple-400 focus:outline-none cursor-pointer transition-all">Log In</button>
+                <button id="tabSignUp" type="button" class="flex-1 pb-2 text-xs font-bold text-center border-b-2 border-transparent text-gray-500 hover:text-gray-300 focus:outline-none cursor-pointer transition-all">Sign Up</button>
+            </div>
             <div class="flex flex-col gap-2 mt-1">
                 <input type="email" id="loginEmail" placeholder="Enter email (e.g. user@domain.com)" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
-                <input type="text" id="loginName" placeholder="Enter full name" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
+                <div id="loginNameContainer" class="hidden">
+                    <input type="text" id="loginName" placeholder="Enter full name" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
+                </div>
                 <div class="relative w-full">
                     <input type="password" id="loginPassword" placeholder="Password (min 8 chars, A-z, special char)" class="bg-[#120e26] border border-white/10 rounded-xl pl-3 pr-10 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
                     <button type="button" id="togglePasswordVisibilityBtn" class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-white cursor-pointer focus:outline-none">
@@ -1061,6 +1069,32 @@ document.addEventListener("DOMContentLoaded", () => {
         
         document.getElementById("cancelLoginBtn").onclick = restoreSyncSection;
         
+        const tabLogIn = document.getElementById("tabLogIn");
+        const tabSignUp = document.getElementById("tabSignUp");
+        const loginNameContainer = document.getElementById("loginNameContainer");
+
+        const updateTabUI = () => {
+            if (activeTab === "login") {
+                tabLogIn.className = "flex-1 pb-2 text-xs font-bold text-center border-b-2 border-purple-500 text-purple-400 focus:outline-none cursor-pointer transition-all";
+                tabSignUp.className = "flex-1 pb-2 text-xs font-bold text-center border-b-2 border-transparent text-gray-500 hover:text-gray-300 focus:outline-none cursor-pointer transition-all";
+                loginNameContainer.classList.add("hidden");
+            } else {
+                tabLogIn.className = "flex-1 pb-2 text-xs font-bold text-center border-b-2 border-transparent text-gray-500 hover:text-gray-300 focus:outline-none cursor-pointer transition-all";
+                tabSignUp.className = "flex-1 pb-2 text-xs font-bold text-center border-b-2 border-purple-500 text-purple-400 focus:outline-none cursor-pointer transition-all";
+                loginNameContainer.classList.remove("hidden");
+            }
+        };
+
+        tabLogIn.onclick = () => {
+            activeTab = "login";
+            updateTabUI();
+        };
+
+        tabSignUp.onclick = () => {
+            activeTab = "signup";
+            updateTabUI();
+        };
+
         const toggleBtn = document.getElementById("togglePasswordVisibilityBtn");
         const passwordInput = document.getElementById("loginPassword");
         const eyeIcon = document.getElementById("eyeIcon");
@@ -1084,11 +1118,19 @@ document.addEventListener("DOMContentLoaded", () => {
         
         document.getElementById("confirmLoginBtn").onclick = async () => {
             const email = document.getElementById("loginEmail").value.trim();
-            const name = document.getElementById("loginName").value.trim();
+            const name = activeTab === "signup" ? document.getElementById("loginName").value.trim() : "";
             const password = passwordInput.value.trim();
-            if (!email || !name || !password) {
-                alert("Please fill in all fields (Email, Name, and Password).");
-                return;
+            
+            if (activeTab === "signup") {
+                if (!email || !name || !password) {
+                    alert("Please fill in all fields (Email, Name, and Password).");
+                    return;
+                }
+            } else {
+                if (!email || !password) {
+                    alert("Please fill in all fields (Email and Password).");
+                    return;
+                }
             }
             
             // Password Validation: 8+ chars, lowercase, uppercase, special symbol
@@ -1106,7 +1148,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("confirmLoginBtn").disabled = true;
                 document.getElementById("confirmLoginBtn").textContent = "Syncing...";
                 
-                const token = `mock_token_${email}_${encodeURIComponent(name)}`;
+                const nameToUse = activeTab === "signup" ? name : "Test User";
+                const token = `mock_token_${email}_${encodeURIComponent(nameToUse)}`;
                 localStorage.setItem("gf_token", token);
                 
                 await checkAuthState();
