@@ -960,12 +960,18 @@ document.addEventListener("DOMContentLoaded", () => {
     // Clerk Integration State
     let clerkLoaded = false;
     let isClerkEnabled = false;
+    let clerkCheckingConfig = false;
+    let clerkConfigFetched = false;
 
     const initClerk = async () => {
         if (clerkLoaded) return;
+        if (clerkCheckingConfig) return;
+        clerkCheckingConfig = true;
         try {
+            console.log("[AUTH] Fetching Clerk configuration...");
             const configRes = await fetch(`${getBaseUrl()}/auth/config`);
             const config = await configRes.json();
+            clerkConfigFetched = true;
             if (config.success && config.data && config.data.clerkPublishableKey) {
                 const publishableKey = config.data.clerkPublishableKey;
                 isClerkEnabled = true;
@@ -999,12 +1005,26 @@ document.addEventListener("DOMContentLoaded", () => {
                 window.Clerk.addListener(async ({ session, user }) => {
                     console.log("[AUTH] Clerk auth state changed:", user ? user.primaryEmailAddress?.emailAddress : "No user");
                     await checkAuthState();
+                    const settingsModal = document.getElementById("settingsModal");
+                    if (settingsModal && !settingsModal.classList.contains("hidden")) {
+                        restoreSyncSection();
+                    }
                 });
+
+                await checkAuthState();
+                const settingsModal = document.getElementById("settingsModal");
+                if (settingsModal && !settingsModal.classList.contains("hidden")) {
+                    restoreSyncSection();
+                }
             } else {
+                isClerkEnabled = false;
                 console.log("[AUTH] Clerk Publishable Key not configured. Using mock auth fallback.");
             }
         } catch (err) {
+            isClerkEnabled = false;
             console.error("[AUTH] Failed to initialize Clerk:", err.message);
+        } finally {
+            clerkCheckingConfig = false;
         }
     };
 
@@ -1130,6 +1150,24 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!syncText || !authActions) return;
         
         checkAuthState();
+        
+        // If config is not yet fetched or failed previously, try initializing in background
+        if (!clerkLoaded && !clerkCheckingConfig) {
+            initClerk().catch(e => console.warn("[AUTH] Settings retry of Clerk failed:", e));
+        }
+
+        if (clerkCheckingConfig && !clerkLoaded) {
+            authActions.innerHTML = `
+                <div class="flex items-center gap-2 text-xs text-gray-400 font-semibold px-1 py-2">
+                    <svg class="animate-spin h-4 w-4 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Connecting to authentication...
+                </div>
+            `;
+            return;
+        }
         
         authActions.innerHTML = `
             <button id="signInBtn" class="text-xs font-bold px-4 py-2.5 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all shadow-md cursor-pointer">Sign In</button>
