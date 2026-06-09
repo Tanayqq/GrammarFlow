@@ -359,37 +359,47 @@ const getHistory = async (req, res) => {
         const skip  = (page - 1) * limit;
 
         let user = null;
-        if (req.userId) {
-            user = await prisma.user.findUnique({ where: { id: req.userId } });
-        }
-        if (!user && guestSessionId) {
-            user = await prisma.user.findUnique({ where: { guest_session_id: guestSessionId } });
+        try {
+            if (req.userId) {
+                user = await prisma.user.findUnique({ where: { id: req.userId } });
+            }
+            if (!user && guestSessionId) {
+                user = await prisma.user.findUnique({ where: { guest_session_id: guestSessionId } });
+            }
+        } catch (dbError) {
+            console.error('[API v1] Database lookup failed in getHistory, degrading to offline:', dbError.message);
+            return sendResponse(res, true, { operations: [], total: 0, page, limit, totalPages: 0, offline: true });
         }
 
         if (!user) {
             return sendResponse(res, true, { operations: [], total: 0, page, limit });
         }
 
-        const [operations, total] = await Promise.all([
-            prisma.aiOperation.findMany({
-                where:   { user_id: user.id },
-                orderBy: { created_at: 'desc' },
-                skip,
-                take:    limit,
-                select: {
-                    id:             true,
-                    operation_type: true,
-                    language:       true,
-                    style:          true,
-                    cached:         true,
-                    status:         true,
-                    created_at:     true
-                }
-            }),
-            prisma.aiOperation.count({ where: { user_id: user.id } })
-        ]);
+        try {
+            const [operations, total] = await Promise.all([
+                prisma.aiOperation.findMany({
+                    where:   { user_id: user.id },
+                    orderBy: { created_at: 'desc' },
+                    skip,
+                    take:    limit,
+                    select: {
+                        id:             true,
+                        operation_type: true,
+                        language:       true,
+                        style:          true,
+                        cached:         true,
+                        status:         true,
+                        created_at:     true
+                    }
+                }),
+                prisma.aiOperation.count({ where: { user_id: user.id } })
+            ]);
 
-        sendResponse(res, true, { operations, total, page, limit, totalPages: Math.ceil(total / limit) });
+            sendResponse(res, true, { operations, total, page, limit, totalPages: Math.ceil(total / limit) });
+        } catch (dbError) {
+            console.error('[API v1] Database query failed in getHistory, degrading to offline:', dbError.message);
+            return sendResponse(res, true, { operations: [], total: 0, page, limit, totalPages: 0, offline: true });
+        }
     } catch (error) {
         console.error('[API v1] getHistory error:', error.message);
         res.status(500).json({ success: false, error: { message: 'Failed to retrieve history' } });
@@ -400,10 +410,16 @@ const getHistoryDetail = async (req, res) => {
     try {
         const guestSessionId = req.headers['x-guest-session-id'] || null;
 
-        const operation = await prisma.aiOperation.findUnique({
-            where: { id: req.params.id },
-            include: { user: { select: { guest_session_id: true } } }
-        });
+        let operation = null;
+        try {
+            operation = await prisma.aiOperation.findUnique({
+                where: { id: req.params.id },
+                include: { user: { select: { guest_session_id: true } } }
+            });
+        } catch (dbError) {
+            console.error('[API v1] Database lookup failed in getHistoryDetail:', dbError.message);
+            return res.status(503).json({ success: false, error: { message: 'Database connection is temporarily offline.', code: 'DATABASE_OFFLINE' } });
+        }
 
         if (!operation) {
             return res.status(404).json({ success: false, error: { message: 'Operation not found' } });

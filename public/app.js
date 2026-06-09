@@ -1042,6 +1042,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="flex flex-col gap-2 mt-1">
                 <input type="email" id="loginEmail" placeholder="Enter email (e.g. user@domain.com)" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
                 <input type="text" id="loginName" placeholder="Enter full name" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
+                <input type="password" id="loginPassword" placeholder="Enter password (any)" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
             </div>
         `;
         
@@ -1055,8 +1056,9 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("confirmLoginBtn").onclick = async () => {
             const email = document.getElementById("loginEmail").value.trim();
             const name = document.getElementById("loginName").value.trim();
-            if (!email || !name) {
-                alert("Please fill in both fields.");
+            const password = document.getElementById("loginPassword").value.trim();
+            if (!email || !name || !password) {
+                alert("Please fill in all fields (Email, Name, and Password).");
                 return;
             }
             
@@ -1098,58 +1100,97 @@ document.addEventListener("DOMContentLoaded", () => {
             const res = await GrammarFlowAPI.request("/history?page=1&limit=20", undefined, "GET");
             if (res.success && res.data && res.data.operations) {
                 const ops = res.data.operations;
-                if (ops.length === 0) {
-                    container.innerHTML = `
-                        <div class="text-center py-12 flex flex-col items-center gap-3">
-                            <svg class="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364.364l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
-                            <p class="text-gray-400 font-medium text-sm">No writing history found</p>
-                            <p class="text-gray-600 text-xs text-center px-6">Your grammar corrections and paragraph rewrites will appear here.</p>
-                        </div>
-                    `;
-                    return;
-                }
                 
-                container.innerHTML = "";
-                ops.forEach(op => {
-                    const date = new Date(op.created_at).toLocaleDateString(undefined, { 
-                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
-                    });
-                    
-                    const card = document.createElement("div");
-                    card.className = "p-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between hover:border-purple-500/30 transition-all group cursor-pointer";
-                    card.dataset.id = op.id;
-                    
-                    let iconSvg = `<svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>`;
-                    if (op.operation_type === 'grammar-fix') {
-                        iconSvg = `<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
-                    }
-                    
-                    card.innerHTML = `
-                        <div class="flex items-center gap-3.5 min-w-0">
-                            <div class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-purple-500/10 group-hover:border-purple-500/20 transition-all shrink-0">
-                                ${iconSvg}
-                            </div>
-                            <div class="flex flex-col min-w-0">
-                                <span class="text-xs font-bold text-gray-200 capitalize tracking-wide">${op.operation_type.replace('-', ' ')}</span>
-                                <span class="text-[10px] text-gray-500 font-medium mt-0.5">${date} · ${op.language || 'English'} (${op.style || 'Casual'})</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            ${op.cached ? `<span class="text-[9px] font-bold text-green-400 uppercase tracking-widest bg-green-500/10 px-2 py-0.5 rounded border border-green-500/25">Cached</span>` : ''}
-                            <svg class="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
-                        </div>
-                    `;
-                    
-                    card.onclick = () => showHistoryDetail(op.id);
-                    container.appendChild(card);
-                });
+                // Cache history items locally
+                localStorage.setItem("gf_history_cache", JSON.stringify(ops));
+                
+                renderHistoryList(ops, res.data.offline);
             } else {
-                container.innerHTML = `<p class="text-red-400 text-center py-8">Failed to parse history data.</p>`;
+                loadHistoryFromCache(container);
             }
         } catch (err) {
-            console.error(err);
-            container.innerHTML = `<p class="text-red-400 text-center py-8">Error loading history: ${err.message}</p>`;
+            console.warn("[HISTORY] Failed to fetch live history, falling back to local cache:", err.message);
+            loadHistoryFromCache(container);
         }
+    };
+
+    const loadHistoryFromCache = (container) => {
+        const cached = localStorage.getItem("gf_history_cache");
+        if (cached) {
+            try {
+                const ops = JSON.parse(cached);
+                renderHistoryList(ops, true); // true indicates offline mode
+                return;
+            } catch (e) {
+                console.error("[HISTORY] Failed to parse cached history:", e);
+            }
+        }
+        container.innerHTML = `
+            <div class="text-center py-12 flex flex-col items-center gap-3">
+                <svg class="w-10 h-10 text-red-500/50" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                <p class="text-red-400 font-bold text-sm">Failed to retrieve history</p>
+                <p class="text-gray-500 text-xs px-6 text-center">We couldn't connect to retrieve your history, and no offline backup is cached on this device. Start the server or check your network.</p>
+            </div>
+        `;
+    };
+
+    const renderHistoryList = (ops, isOffline = false) => {
+        const container = document.getElementById("historyContent");
+        if (!container) return;
+        
+        if (ops.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-12 flex flex-col items-center gap-3">
+                    <svg class="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364.364l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg>
+                    <p class="text-gray-400 font-medium text-sm">No writing history found</p>
+                    <p class="text-gray-600 text-xs text-center px-6">Your grammar corrections and paragraph rewrites will appear here.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = "";
+        
+        if (isOffline) {
+            const badge = document.createElement("div");
+            badge.className = "text-center text-[10px] font-bold text-yellow-500 bg-yellow-500/10 py-2.5 rounded-xl border border-yellow-500/20 mb-3 flex items-center justify-center gap-1.5 animate-pulse";
+            badge.innerHTML = `⚠️ Viewing Offline History Cache`;
+            container.appendChild(badge);
+        }
+        
+        ops.forEach(op => {
+            const date = new Date(op.created_at).toLocaleDateString(undefined, { 
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' 
+            });
+            
+            const card = document.createElement("div");
+            card.className = "p-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between hover:border-purple-500/30 transition-all group cursor-pointer mb-2.5";
+            card.dataset.id = op.id;
+            
+            let iconSvg = `<svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>`;
+            if (op.operation_type === 'grammar-fix') {
+                iconSvg = `<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
+            }
+            
+            card.innerHTML = `
+                <div class="flex items-center gap-3.5 min-w-0">
+                    <div class="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-purple-500/10 group-hover:border-purple-500/20 transition-all shrink-0">
+                        ${iconSvg}
+                    </div>
+                    <div class="flex flex-col min-w-0">
+                        <span class="text-xs font-bold text-gray-200 capitalize tracking-wide">${op.operation_type.replace('-', ' ')}</span>
+                        <span class="text-[10px] text-gray-500 font-medium mt-0.5">${date} · ${op.language || 'English'} (${op.style || 'Casual'})</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    ${op.cached ? `<span class="text-[9px] font-bold text-green-400 uppercase tracking-widest bg-green-500/10 px-2 py-0.5 rounded border border-green-500/25">Cached</span>` : ''}
+                    <svg class="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+                </div>
+            `;
+            
+            card.onclick = () => showHistoryDetail(op.id);
+            container.appendChild(card);
+        });
     };
 
     // Load detailed view of specific operation
@@ -1163,66 +1204,109 @@ document.addEventListener("DOMContentLoaded", () => {
             const res = await GrammarFlowAPI.request(`/history/${opId}`, undefined, "GET");
             if (res.success && res.data) {
                 const op = res.data;
-                const date = new Date(op.created_at).toLocaleString();
                 
-                container.innerHTML = `
-                    <div class="flex flex-col gap-5">
-                        <button id="backToHistoryBtn" class="self-start text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
-                            Back to History
-                        </button>
-                        
-                        <div class="flex flex-wrap gap-4 text-xs bg-white/5 border border-white/10 rounded-2xl p-4">
-                            <div class="flex flex-col gap-0.5">
-                                <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Operation</span>
-                                <span class="text-gray-200 capitalize font-medium">${op.operation_type}</span>
-                            </div>
-                            <div class="flex flex-col gap-0.5">
-                                <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Date</span>
-                                <span class="text-gray-200 font-medium">${date}</span>
-                            </div>
-                            <div class="flex flex-col gap-0.5">
-                                <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Language</span>
-                                <span class="text-gray-200 font-medium">${op.language || 'English'}</span>
-                            </div>
-                            <div class="flex flex-col gap-0.5">
-                                <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Style / Tone</span>
-                                <span class="text-gray-200 font-medium">${op.style || 'Casual'} / ${op.tone || 'Friendly'}</span>
-                            </div>
-                        </div>
-                        
-                        <div class="flex flex-col gap-2">
-                            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Original Text</span>
-                            <div class="p-4 bg-black/40 border border-white/5 rounded-2xl text-sm text-gray-300 whitespace-pre-wrap max-h-36 overflow-y-auto custom-scrollbar select-all">${escHtml(op.input_text || '')}</div>
-                        </div>
-                        
-                        <div class="flex flex-col gap-2">
-                            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">AI Output</span>
-                            <div class="p-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl text-sm text-white whitespace-pre-wrap max-h-36 overflow-y-auto custom-scrollbar select-all">${escHtml(op.output_text || '')}</div>
-                        </div>
-                        
-                        <button id="restoreToEditorBtn" class="py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-blue-500 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer">
-                            Restore Output to Editor
-                        </button>
-                    </div>
-                `;
+                // Cache details locally
+                localStorage.setItem(`gf_history_detail_${opId}`, JSON.stringify(op));
                 
-                document.getElementById("backToHistoryBtn").onclick = loadHistory;
-                document.getElementById("restoreToEditorBtn").onclick = () => {
-                    const textarea = document.getElementById("inputText");
-                    if (textarea) {
-                        textarea.value = op.output_text;
-                        textarea.dispatchEvent(new Event('input', { bubbles: true }));
-                        historyModal.classList.add("hidden");
-                    }
-                };
+                renderHistoryDetail(op);
             } else {
-                container.innerHTML = `<p class="text-red-400 text-center py-8">Failed to retrieve operation details.</p>`;
+                loadDetailFromCache(container, opId);
             }
         } catch (err) {
-            console.error(err);
-            container.innerHTML = `<p class="text-red-400 text-center py-8">Error loading operation details: ${err.message}</p>`;
+            console.warn("[HISTORY] Failed to fetch live detail, falling back to local cache:", err.message);
+            loadDetailFromCache(container, opId);
         }
+    };
+
+    const loadDetailFromCache = (container, opId) => {
+        const cached = localStorage.getItem(`gf_history_detail_${opId}`);
+        if (cached) {
+            try {
+                const op = JSON.parse(cached);
+                renderHistoryDetail(op, true); // true indicates offline mode
+                return;
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        container.innerHTML = `
+            <div class="flex flex-col gap-5">
+                <button id="backToHistoryBtn" class="self-start text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                    Back to History
+                </button>
+                <div class="text-center py-8">
+                    <p class="text-red-400 text-xs font-bold">Detail View Offline</p>
+                    <p class="text-gray-500 text-xs px-6 mt-1 text-center">These operation details have not been cached locally. Reconnect to load.</p>
+                </div>
+            </div>
+        `;
+        document.getElementById("backToHistoryBtn").onclick = loadHistory;
+    };
+
+    const renderHistoryDetail = (op, isOffline = false) => {
+        const container = document.getElementById("historyContent");
+        if (!container) return;
+        
+        const date = new Date(op.created_at).toLocaleString();
+        
+        container.innerHTML = `
+            <div class="flex flex-col gap-5">
+                <button id="backToHistoryBtn" class="self-start text-xs font-bold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+                    Back to History
+                </button>
+                
+                ${isOffline ? `
+                <div class="text-center text-[10px] font-bold text-yellow-500 bg-yellow-500/10 py-2 rounded-xl border border-yellow-500/20">
+                    ⚠️ Viewing Offline Cached Details
+                </div>` : ''}
+                
+                <div class="flex flex-wrap gap-4 text-xs bg-white/5 border border-white/10 rounded-2xl p-4">
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Operation</span>
+                        <span class="text-gray-200 capitalize font-medium">${op.operation_type}</span>
+                    </div>
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Date</span>
+                        <span class="text-gray-200 font-medium">${date}</span>
+                    </div>
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Language</span>
+                        <span class="text-gray-200 font-medium">${op.language || 'English'}</span>
+                    </div>
+                    <div class="flex flex-col gap-0.5">
+                        <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Style / Tone</span>
+                        <span class="text-gray-200 font-medium">${op.style || 'Casual'} / ${op.tone || 'Friendly'}</span>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col gap-2">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Original Text</span>
+                    <div class="p-4 bg-black/40 border border-white/5 rounded-2xl text-sm text-gray-300 whitespace-pre-wrap max-h-36 overflow-y-auto custom-scrollbar select-all">${escHtml(op.input_text || '')}</div>
+                </div>
+                
+                <div class="flex flex-col gap-2">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">AI Output</span>
+                    <div class="p-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl text-sm text-white whitespace-pre-wrap max-h-36 overflow-y-auto custom-scrollbar select-all">${escHtml(op.output_text || '')}</div>
+                </div>
+                
+                <button id="restoreToEditorBtn" class="py-3 rounded-2xl bg-gradient-to-r from-purple-500 to-blue-500 text-white font-bold text-sm shadow-md hover:shadow-lg transition-all cursor-pointer">
+                    Restore Output to Editor
+                </button>
+            </div>
+        `;
+        
+        document.getElementById("backToHistoryBtn").onclick = loadHistory;
+        document.getElementById("restoreToEditorBtn").onclick = () => {
+            const textarea = document.getElementById("inputText");
+            if (textarea) {
+                textarea.value = op.output_text;
+                textarea.dispatchEvent(new Event('input', { bubbles: true }));
+                const historyModal = document.getElementById("historyModal");
+                if (historyModal) historyModal.classList.add("hidden");
+            }
+        };
     };
 
     // Auto-verify Auth State on Load
