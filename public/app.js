@@ -963,11 +963,13 @@ document.addEventListener("DOMContentLoaded", () => {
     let isClerkEnabled = false;
     let clerkCheckingConfig = false;
     let clerkConfigFetched = false;
+    let clerkLoadFailed = false;
 
     const initClerk = async () => {
         if (clerkLoaded) return;
         if (clerkCheckingConfig) return;
         clerkCheckingConfig = true;
+        clerkLoadFailed = false;
         try {
             console.log("[AUTH] Fetching Clerk configuration...");
             const configRes = await fetch(`${getBaseUrl()}/auth/config`);
@@ -998,7 +1000,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             reject(e);
                         }
                     };
-                    script.onerror = (err) => reject(err);
+                    script.onerror = (err) => reject(new Error("Failed to load Clerk script file. It may be blocked by Brave Shield or an adblocker."));
                     document.body.appendChild(script);
                 });
 
@@ -1022,7 +1024,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 console.log("[AUTH] Clerk Publishable Key not configured. Using mock auth fallback.");
             }
         } catch (err) {
-            isClerkEnabled = false;
+            clerkLoadFailed = true;
             console.error("[AUTH] Failed to initialize Clerk:", err.message);
         } finally {
             clerkCheckingConfig = false;
@@ -1175,6 +1177,27 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
         
+        if (clerkLoadFailed) {
+            syncText.innerHTML = `
+                <div class="text-xs text-red-400 leading-relaxed font-medium flex flex-col gap-1">
+                    <span>⚠️ Authentication service (Clerk) failed to load.</span>
+                    <span>This is usually caused by <strong>Brave Shield</strong>, <strong>uBlock Origin</strong>, or another adblocker blocking <code>cdn.clerk.com</code>.</span>
+                    <span class="text-white font-bold mt-1">Please disable your adblocker/Shield for this site and refresh the page.</span>
+                </div>
+            `;
+            authActions.innerHTML = `
+                <button id="retryClerkBtn" class="text-xs font-bold px-4 py-2.5 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all shadow-md cursor-pointer">Retry Connection</button>
+            `;
+            const retryClerkBtn = document.getElementById("retryClerkBtn");
+            if (retryClerkBtn) {
+                retryClerkBtn.onclick = () => {
+                    clerkConfigFetched = false;
+                    restoreSyncSection();
+                };
+            }
+            return;
+        }
+
         authActions.innerHTML = `
             <button id="signInBtn" class="text-xs font-bold px-4 py-2.5 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all shadow-md cursor-pointer">Sign In</button>
             <button id="signOutBtn" class="hidden text-xs font-bold px-4 py-2.5 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-all cursor-pointer">Sign Out</button>
