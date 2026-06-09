@@ -7,4 +7,8 @@ const { passiveAuth } = require('../middlewares/auth');
 // Uses passiveAuth to parse token credentials.
 router.post('/sync', passiveAuth, authController.syncSession);
 
+// Email verification endpoints for Sign Up
+router.post('/send-verification-code', authController.sendVerificationCode);
+router.post('/verify-code', authController.verifyCode);
+
 module.exports = router;

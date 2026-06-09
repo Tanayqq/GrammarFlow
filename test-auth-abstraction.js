@@ -237,6 +237,46 @@ async function runTests() {
         // Restore AuthService
         authService.verifySessionToken = originalVerifyToken;
 
+        // --- TEST 6: OTP Email Verification (Sign Up Verification) ---
+        console.log('\n--- Test 6: OTP Email Verification (Sign Up Code Delivery & Verification) ---');
+        
+        const testEmail = 'verify-test@domain.com';
+        
+        // 1. Trigger code sending
+        const sendCodeRes = await makeRequest('/api/v1/auth/send-verification-code', {}, { email: testEmail });
+        console.log(`Send Code Status: ${sendCodeRes.status} (Expected: 200)`);
+        if (sendCodeRes.status !== 200 || !sendCodeRes.body.success) {
+            throw new Error(`Failed to send verification code: ${JSON.stringify(sendCodeRes.body)}`);
+        }
+        console.log('✓ Request to send verification code succeeded.');
+        
+        // 2. Fetch code from Redis
+        let savedCode = null;
+        if (redisConnection && redisConnection.status === 'ready') {
+            savedCode = await redisConnection.get(`gf:otp:${testEmail}`);
+        }
+        
+        if (!savedCode) {
+            throw new Error("Could not retrieve OTP from Redis for testing.");
+        }
+        console.log(`Retrieved OTP code from Redis: ${savedCode}`);
+        
+        // 3. Verify with INCORRECT code
+        const verifyWrongRes = await makeRequest('/api/v1/auth/verify-code', {}, { email: testEmail, code: '000000' });
+        console.log(`Verify Wrong Code Status: ${verifyWrongRes.status} (Expected: 400)`);
+        if (verifyWrongRes.status !== 400 || verifyWrongRes.body.success) {
+            throw new Error(`Incorrect code was accepted! Status: ${verifyWrongRes.status}`);
+        }
+        console.log('✓ Invalid code rejected correctly.');
+        
+        // 4. Verify with CORRECT code
+        const verifyCorrectRes = await makeRequest('/api/v1/auth/verify-code', {}, { email: testEmail, code: savedCode });
+        console.log(`Verify Correct Code Status: ${verifyCorrectRes.status} (Expected: 200)`);
+        if (verifyCorrectRes.status !== 200 || !verifyCorrectRes.body.success) {
+            throw new Error(`Failed to verify with correct code: ${JSON.stringify(verifyCorrectRes.body)}`);
+        }
+        console.log('✓ Valid code verified successfully.');
+
         console.log('\n=== ALL AUTH TESTS PASSED SUCCESSFULLY! ===');
     } catch (e) {
         console.error('\n❌ AUTH TEST RUN FAILED:', e.message);

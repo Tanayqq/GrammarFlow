@@ -1116,6 +1116,63 @@ document.addEventListener("DOMContentLoaded", () => {
             };
         }
         
+        const showVerificationScreen = (email, name, password) => {
+            syncText.innerHTML = `
+                <div class="flex flex-col gap-3 mt-1">
+                    <span class="text-xs font-bold text-purple-400">EMAIL VERIFICATION</span>
+                    <p class="text-xs text-gray-400 leading-relaxed">We have sent a 6-digit verification code to <strong class="text-white">${escHtml(email)}</strong>. Please check your email or server console and enter the code below:</p>
+                    <input type="text" id="otpCode" placeholder="Enter 6-digit code (e.g. 123456)" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white text-center tracking-widest placeholder:text-gray-500 placeholder:tracking-normal focus:outline-none focus:border-purple-500/40 w-full" maxlength="6">
+                </div>
+            `;
+            
+            authActions.innerHTML = `
+                <button id="verifyOtpBtn" class="text-xs font-bold px-4 py-2 rounded-xl bg-purple-600 text-white hover:bg-purple-500 transition-all cursor-pointer">Verify & Sign Up</button>
+                <button id="cancelOtpBtn" class="text-xs font-bold px-4 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer">Back</button>
+            `;
+
+            document.getElementById("cancelOtpBtn").onclick = () => {
+                showLoginForm();
+                // Restore input fields
+                document.getElementById("loginEmail").value = email;
+                const nameInput = document.getElementById("loginName");
+                if (nameInput) nameInput.value = name;
+                document.getElementById("loginPassword").value = password;
+                // Keep active tab as signup
+                activeTab = "signup";
+                updateTabUI();
+            };
+
+            document.getElementById("verifyOtpBtn").onclick = async () => {
+                const code = document.getElementById("otpCode").value.trim();
+                if (!code || code.length !== 6) {
+                    alert("Please enter the 6-digit verification code.");
+                    return;
+                }
+
+                try {
+                    document.getElementById("verifyOtpBtn").disabled = true;
+                    document.getElementById("verifyOtpBtn").textContent = "Verifying...";
+
+                    const res = await GrammarFlowAPI.request("/auth/verify-code", { email, code }, "POST");
+                    if (res.success) {
+                        const token = `mock_token_${email}_${encodeURIComponent(name)}`;
+                        localStorage.setItem("gf_token", token);
+                        
+                        await checkAuthState();
+                        restoreSyncSection();
+                    } else {
+                        alert("Verification Failed: " + (res.error?.message || "Invalid verification code."));
+                        document.getElementById("verifyOtpBtn").disabled = false;
+                        document.getElementById("verifyOtpBtn").textContent = "Verify & Sign Up";
+                    }
+                } catch (e) {
+                    alert("Verification Error: " + e.message);
+                    document.getElementById("verifyOtpBtn").disabled = false;
+                    document.getElementById("verifyOtpBtn").textContent = "Verify & Sign Up";
+                }
+            };
+        };
+
         document.getElementById("confirmLoginBtn").onclick = async () => {
             const email = document.getElementById("loginEmail").value.trim();
             const name = activeTab === "signup" ? document.getElementById("loginName").value.trim() : "";
@@ -1132,6 +1189,13 @@ document.addEventListener("DOMContentLoaded", () => {
                     return;
                 }
             }
+
+            // Client-side Email Validation
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                alert("Please enter a valid email address.");
+                return;
+            }
             
             // Password Validation: 8+ chars, lowercase, uppercase, special symbol
             const hasMinLength = password.length >= 8;
@@ -1144,20 +1208,39 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
             
-            try {
-                document.getElementById("confirmLoginBtn").disabled = true;
-                document.getElementById("confirmLoginBtn").textContent = "Syncing...";
-                
-                const nameToUse = activeTab === "signup" ? name : "Test User";
-                const token = `mock_token_${email}_${encodeURIComponent(nameToUse)}`;
-                localStorage.setItem("gf_token", token);
-                
-                await checkAuthState();
-                restoreSyncSection();
-            } catch (e) {
-                alert("Login Sync Failed: " + e.message);
-                localStorage.removeItem("gf_token");
-                restoreSyncSection();
+            if (activeTab === "signup") {
+                try {
+                    document.getElementById("confirmLoginBtn").disabled = true;
+                    document.getElementById("confirmLoginBtn").textContent = "Sending Code...";
+                    
+                    const res = await GrammarFlowAPI.request("/auth/send-verification-code", { email }, "POST");
+                    if (res.success) {
+                        showVerificationScreen(email, name, password);
+                    } else {
+                        alert("Failed to send verification code: " + (res.error?.message || "Unknown error"));
+                        document.getElementById("confirmLoginBtn").disabled = false;
+                        document.getElementById("confirmLoginBtn").textContent = "Confirm";
+                    }
+                } catch (e) {
+                    alert("Request Error: " + e.message);
+                    document.getElementById("confirmLoginBtn").disabled = false;
+                    document.getElementById("confirmLoginBtn").textContent = "Confirm";
+                }
+            } else {
+                try {
+                    document.getElementById("confirmLoginBtn").disabled = true;
+                    document.getElementById("confirmLoginBtn").textContent = "Syncing...";
+                    
+                    const token = `mock_token_${email}_Test%20User`;
+                    localStorage.setItem("gf_token", token);
+                    
+                    await checkAuthState();
+                    restoreSyncSection();
+                } catch (e) {
+                    alert("Login Sync Failed: " + e.message);
+                    localStorage.removeItem("gf_token");
+                    restoreSyncSection();
+                }
             }
         };
     };
