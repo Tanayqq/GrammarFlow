@@ -929,6 +929,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (btnSettings && settingsModal) {
         btnSettings.onclick = () => {
             settingsModal.classList.remove("hidden");
+            clerkConfigFetched = false; // Reset config fetched flag to allow retry when opening settings
             restoreSyncSection();
         };
     }
@@ -1025,6 +1026,11 @@ document.addEventListener("DOMContentLoaded", () => {
             console.error("[AUTH] Failed to initialize Clerk:", err.message);
         } finally {
             clerkCheckingConfig = false;
+            // Always refresh UI once config fetching completes (fails or succeeds) to clear load spinner
+            const settingsModal = document.getElementById("settingsModal");
+            if (settingsModal && !settingsModal.classList.contains("hidden")) {
+                restoreSyncSection();
+            }
         }
     };
 
@@ -1151,8 +1157,8 @@ document.addEventListener("DOMContentLoaded", () => {
         
         checkAuthState();
         
-        // If config is not yet fetched or failed previously, try initializing in background
-        if (!clerkLoaded && !clerkCheckingConfig) {
+        // Try initializing Clerk in the background ONLY if we haven't fetched the config yet
+        if (!clerkLoaded && !clerkCheckingConfig && !clerkConfigFetched) {
             initClerk().catch(e => console.warn("[AUTH] Settings retry of Clerk failed:", e));
         }
 
