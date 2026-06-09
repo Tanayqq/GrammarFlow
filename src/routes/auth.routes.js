@@ -14,4 +14,7 @@ router.post('/verify-code', authController.verifyCode);
 // Login verification check
 router.post('/login', authController.login);
 
+// Public Clerk configuration route
+router.get('/config', authController.getAuthConfig);
+
 module.exports = router;

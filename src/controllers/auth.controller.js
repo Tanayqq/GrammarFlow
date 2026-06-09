@@ -342,9 +342,28 @@ const login = async (req, res) => {
     }
 };
 
+const getAuthConfig = async (req, res) => {
+    try {
+        const key = (process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || '').trim();
+        res.json({
+            success: true,
+            data: {
+                clerkPublishableKey: key || null
+            }
+        });
+    } catch (error) {
+        console.error("[AUTH CONTROLLER ERROR] Get auth config failed:", error.message);
+        res.status(500).json({
+            success: false,
+            error: { message: "Internal server error during config retrieval", code: "SERVER_ERROR" }
+        });
+    }
+};
+
 module.exports = {
     syncSession,
     sendVerificationCode,
     verifyCode,
-    login
+    login,
+    getAuthConfig
 };

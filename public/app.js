@@ -36,7 +36,18 @@ const GrammarFlowAPI = {
         const headers = {
             "x-guest-session-id": getOrCreateGuestSessionId()
         };
-        const token = localStorage.getItem("gf_token");
+        let token = localStorage.getItem("gf_token");
+        if (window.Clerk && window.Clerk.isReady && window.Clerk.session) {
+            try {
+                const clerkToken = await window.Clerk.session.getToken();
+                if (clerkToken) {
+                    token = clerkToken;
+                    localStorage.setItem("gf_token", token);
+                }
+            } catch (err) {
+                console.warn("[API] Failed to retrieve dynamic Clerk token:", err.message);
+            }
+        }
         if (token) {
             headers["Authorization"] = `Bearer ${token}`;
         }
@@ -946,9 +957,60 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
+    // Clerk Integration State
+    let clerkLoaded = false;
+    let isClerkEnabled = false;
+
+    const initClerk = async () => {
+        if (clerkLoaded) return;
+        try {
+            const configRes = await fetch(`${getBaseUrl()}/auth/config`);
+            const config = await configRes.json();
+            if (config.success && config.data && config.data.clerkPublishableKey) {
+                const publishableKey = config.data.clerkPublishableKey;
+                isClerkEnabled = true;
+                console.log("[AUTH] Clerk config found. Loading Clerk JS...");
+                
+                await new Promise((resolve, reject) => {
+                    const script = document.createElement("script");
+                    script.setAttribute("data-clerk-publishable-key", publishableKey);
+                    script.async = true;
+                    script.src = "https://cdn.clerk.com/dist/clerk.browser.js";
+                    script.crossOrigin = "anonymous";
+                    script.onload = async () => {
+                        try {
+                            if (window.Clerk) {
+                                await window.Clerk.load();
+                                clerkLoaded = true;
+                                console.log("[AUTH] Clerk JS loaded and initialized successfully.");
+                                resolve();
+                            } else {
+                                reject(new Error("Clerk global not found after script load"));
+                            }
+                        } catch (e) {
+                            reject(e);
+                        }
+                    };
+                    script.onerror = (err) => reject(err);
+                    document.body.appendChild(script);
+                });
+
+                // Add state listener to update UI when session changes
+                window.Clerk.addListener(async ({ session, user }) => {
+                    console.log("[AUTH] Clerk auth state changed:", user ? user.primaryEmailAddress?.emailAddress : "No user");
+                    await checkAuthState();
+                });
+            } else {
+                console.log("[AUTH] Clerk Publishable Key not configured. Using mock auth fallback.");
+            }
+        } catch (err) {
+            console.error("[AUTH] Failed to initialize Clerk:", err.message);
+        }
+    };
+
     // Auth State Check
     const checkAuthState = async () => {
-        const token = localStorage.getItem("gf_token");
+        let token = localStorage.getItem("gf_token");
         const profileSection = document.getElementById("profileSection");
         const userName = document.getElementById("userName");
         const userEmail = document.getElementById("userEmail");
@@ -958,6 +1020,56 @@ document.addEventListener("DOMContentLoaded", () => {
         const signOutBtn = document.getElementById("signOutBtn");
         
         if (!syncText || !syncStatusDot || !signInBtn || !signOutBtn || !profileSection) return;
+
+        // If Clerk is loaded and active, we override mock auth checks with Clerk state
+        if (window.Clerk && window.Clerk.isReady && window.Clerk.user) {
+            try {
+                const user = window.Clerk.user;
+                token = await window.Clerk.session.getToken();
+                if (token) {
+                    localStorage.setItem("gf_token", token);
+                }
+                
+                // Sync session with the backend so their user details and guest history are stored
+                const res = await GrammarFlowAPI.request("/auth/sync", {
+                    guestSessionId: getOrCreateGuestSessionId()
+                }, "POST");
+
+                if (res.success && res.data && res.data.user) {
+                    const dbUser = res.data.user;
+                    if (userName) userName.textContent = dbUser.name || user.fullName || user.username || 'Anonymous User';
+                    if (userEmail) userEmail.textContent = dbUser.email || user.primaryEmailAddress?.emailAddress;
+                    profileSection.classList.remove("hidden");
+                    
+                    // Connected green dot
+                    syncStatusDot.className = "inline-block w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.6)] shrink-0";
+                    syncText.textContent = "Synced with your GrammarFlow account. Your writing drafts are backed up.";
+                    
+                    signInBtn.classList.add("hidden");
+                    signOutBtn.classList.remove("hidden");
+                    return;
+                }
+            } catch (err) {
+                console.warn("[AUTH] Clerk sync session failed:", err.message);
+                // Fallback to client-side Clerk state display even if backend sync temporarily fails/offline
+                const user = window.Clerk.user;
+                if (userName) userName.textContent = user.fullName || user.username || 'Anonymous User';
+                if (userEmail) userEmail.textContent = user.primaryEmailAddress?.emailAddress;
+                profileSection.classList.remove("hidden");
+                
+                // Offline yellow dot
+                syncStatusDot.className = "inline-block w-2.5 h-2.5 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.6)] animate-pulse shrink-0";
+                syncText.textContent = "Offline. Local changes will sync when connection is restored.";
+                
+                signInBtn.classList.add("hidden");
+                signOutBtn.classList.remove("hidden");
+                return;
+            }
+        } else if (window.Clerk && window.Clerk.isReady && !window.Clerk.user) {
+            // Explicitly logged out from Clerk
+            localStorage.removeItem("gf_token");
+            token = null;
+        }
 
         if (token) {
             try {
@@ -1026,8 +1138,31 @@ document.addEventListener("DOMContentLoaded", () => {
         
         const signInBtn = document.getElementById("signInBtn");
         const signOutBtn = document.getElementById("signOutBtn");
-        if (signInBtn) signInBtn.onclick = showLoginForm;
-        if (signOutBtn) signOutBtn.onclick = performSignOut;
+        
+        if (signInBtn) {
+            signInBtn.onclick = () => {
+                if (isClerkEnabled) {
+                    if (window.Clerk && window.Clerk.isReady) {
+                        window.Clerk.openSignIn();
+                    } else {
+                        alert("Clerk is still loading. Please wait a moment...");
+                    }
+                } else {
+                    showLoginForm();
+                }
+            };
+        }
+        if (signOutBtn) {
+            signOutBtn.onclick = () => {
+                if (isClerkEnabled) {
+                    if (window.Clerk && window.Clerk.isReady) {
+                        window.Clerk.signOut();
+                    }
+                } else {
+                    performSignOut();
+                }
+            };
+        }
         
         // Ensure state is updated correctly after innerHTML replace
         checkAuthState();
@@ -1485,7 +1620,10 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     // Auto-verify Auth State on Load
-    checkAuthState();
+    (async () => {
+        await initClerk();
+        await checkAuthState();
+    })();
 
     // Set initial tab state
     window.documentProcessor.switchTab('text');

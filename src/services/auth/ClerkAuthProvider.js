@@ -19,10 +19,10 @@ class ClerkAuthProvider extends AuthProvider {
             if (frontendApi) {
                 // E.g., https://clerk.example.com/.well-known/jwks.json
                 this.jwksUri = `https://${frontendApi.replace(/^https?:\/\//, '')}/.well-known/jwks.json`;
-            } else if (process.env.CLERK_PUBLISHABLE_KEY) {
+            } else if (process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
                 try {
                     // Clerk Publishable Keys contain a base64 encoded payload that contains the frontend API URL
-                    const rawKey = process.env.CLERK_PUBLISHABLE_KEY;
+                    const rawKey = (process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || '').trim();
                     const encodedPayload = rawKey.split('_')[2];
                     if (encodedPayload) {
                         const decoded = Buffer.from(encodedPayload, 'base64').toString('utf-8');
@@ -69,16 +69,28 @@ class ClerkAuthProvider extends AuthProvider {
                 });
             };
 
-            jwt.verify(token, getKey, { algorithms: ['RS256'] }, (err, decoded) => {
+            jwt.verify(token, getKey, { algorithms: ['RS256'] }, async (err, decoded) => {
                 if (err) {
                     return reject(err);
                 }
                 
-                // Resolve user claims from decoded token
+                let email = decoded.email || decoded.email_address || null;
+                let name = decoded.name || null;
+                
+                if ((!email || !name) && this.secretKey) {
+                    try {
+                        const details = await this.getUserDetails(decoded.sub);
+                        email = details.email || email;
+                        name = details.name || name;
+                    } catch (e) {
+                        console.warn("[CLERK AUTH] Failed to fetch user details dynamically:", e.message);
+                    }
+                }
+                
                 resolve({
                     id: decoded.sub,
-                    email: decoded.email || decoded.email_address || null,
-                    name: decoded.name || null
+                    email,
+                    name
                 });
             });
         });

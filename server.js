@@ -17,7 +17,10 @@ const startTime = Date.now();
 
 // 1. Production-ready CORS (Stabilized for Phase 3)
 app.use(cors({
-    origin: '*', 
+    origin: (origin, callback) => {
+        // Allow all origins (compatible with credentials: true)
+        callback(null, true);
+    },
     methods: ['GET', 'POST', 'OPTIONS'],
     credentials: true
 }));
