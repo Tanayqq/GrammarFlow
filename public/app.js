@@ -1000,7 +1000,32 @@ document.addEventListener("DOMContentLoaded", () => {
                             reject(e);
                         }
                     };
-                    script.onerror = (err) => reject(new Error("Failed to load Clerk script file. It may be blocked by Brave Shield or an adblocker."));
+                    script.onerror = (err) => {
+                        console.warn("[AUTH] Primary Clerk CDN failed to load. Trying jsDelivr fallback...");
+                        const fallbackScript = document.createElement("script");
+                        fallbackScript.setAttribute("data-clerk-publishable-key", publishableKey);
+                        fallbackScript.async = true;
+                        fallbackScript.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@4/dist/clerk.browser.js";
+                        fallbackScript.crossOrigin = "anonymous";
+                        fallbackScript.onload = async () => {
+                            try {
+                                if (window.Clerk) {
+                                    await window.Clerk.load();
+                                    clerkLoaded = true;
+                                    console.log("[AUTH] Clerk JS loaded from jsDelivr successfully.");
+                                    resolve();
+                                } else {
+                                    reject(new Error("Clerk global not found after jsDelivr script load"));
+                                }
+                            } catch (e) {
+                                reject(e);
+                            }
+                        };
+                        fallbackScript.onerror = (err2) => {
+                            reject(new Error("Failed to load Clerk script from both primary and fallback CDNs."));
+                        };
+                        document.body.appendChild(fallbackScript);
+                    };
                     document.body.appendChild(script);
                 });
 
