@@ -213,10 +213,12 @@ const sendVerificationCode = async (req, res) => {
             }
         }
         
+        const isMockMode = !(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
         res.json({
             success: true,
             data: {
-                message: "Verification code sent successfully."
+                message: "Verification code sent successfully.",
+                otpCode: isMockMode ? code : null
             }
         });
     } catch (error) {
