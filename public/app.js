@@ -1042,7 +1042,7 @@ document.addEventListener("DOMContentLoaded", () => {
             <div class="flex flex-col gap-2 mt-1">
                 <input type="email" id="loginEmail" placeholder="Enter email (e.g. user@domain.com)" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
                 <input type="text" id="loginName" placeholder="Enter full name" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
-                <input type="password" id="loginPassword" placeholder="Enter password (any)" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
+                <input type="password" id="loginPassword" placeholder="Password (min 8 chars, A-z, special char)" class="bg-[#120e26] border border-white/10 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-purple-500/40 w-full">
             </div>
         `;
         
@@ -1059,6 +1059,17 @@ document.addEventListener("DOMContentLoaded", () => {
             const password = document.getElementById("loginPassword").value.trim();
             if (!email || !name || !password) {
                 alert("Please fill in all fields (Email, Name, and Password).");
+                return;
+            }
+            
+            // Password Validation: 8+ chars, lowercase, uppercase, special symbol
+            const hasMinLength = password.length >= 8;
+            const hasLowercase = /[a-z]/.test(password);
+            const hasUppercase = /[A-Z]/.test(password);
+            const hasSpecialSym = /[!@#$%^&*(),.?":{}|<>_\-]/.test(password);
+            
+            if (!hasMinLength || !hasLowercase || !hasUppercase || !hasSpecialSym) {
+                alert("Password must be at least 8 characters long and contain at least one lowercase letter, one uppercase letter, and one special symbol (e.g. @, #, $, %, etc.).");
                 return;
             }
             
