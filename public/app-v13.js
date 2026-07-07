@@ -1243,7 +1243,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!syncText || !syncStatusDot || !signInBtn || !signOutBtn || !profileSection) return;
 
         // If Clerk is loaded and active, we override mock auth checks with Clerk state
-        if (window.Clerk && window.Clerk.isReady && window.Clerk.user) {
+        if (clerkLoaded && window.Clerk && window.Clerk.user) {
             try {
                 const user = window.Clerk.user;
                 token = await window.Clerk.session.getToken();
@@ -1286,7 +1286,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 signOutBtn.classList.remove("hidden");
                 return;
             }
-        } else if (window.Clerk && window.Clerk.isReady && !window.Clerk.user) {
+        } else if (clerkLoaded && window.Clerk && !window.Clerk.user) {
             // Explicitly logged out from Clerk
             localStorage.removeItem("gf_token");
             token = null;
@@ -1402,7 +1402,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (signInBtn) {
             signInBtn.onclick = () => {
                 if (isClerkEnabled) {
-                    if (window.Clerk && window.Clerk.isReady) {
+                    if (clerkLoaded && window.Clerk) {
                         window.Clerk.openSignIn();
                     } else {
                         alert("Clerk is still loading. Please wait a moment...");
@@ -1415,7 +1415,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (signOutBtn) {
             signOutBtn.onclick = () => {
                 if (isClerkEnabled) {
-                    if (window.Clerk && window.Clerk.isReady) {
+                    if (clerkLoaded && window.Clerk) {
                         window.Clerk.signOut();
                     }
                 } else {
