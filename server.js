@@ -91,7 +91,16 @@ app.use('/api/v1', aiRoutes);
 
 // 6. Static Frontend Serving (Phase 3 Unified Architecture)
 // Serves the web app from the public directory
-app.use(express.static(path.join(__dirname, 'public')));
+// Force no-cache on ALL static files so browsers never serve stale JS/CSS
+app.use(express.static(path.join(__dirname, 'public'), {
+    etag: false,
+    lastModified: false,
+    setHeaders: (res, filePath) => {
+        res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+    }
+}));
 
 // Fallback to index.html for SPA-like behavior (Phase 3 Final Middleware)
 app.use((req, res) => {

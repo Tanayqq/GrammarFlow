@@ -41,9 +41,10 @@ const GrammarFlowAPI = {
         let token = localStorage.getItem("gf_token");
 
         // If Clerk is loaded but the user has signed out, NEVER send a stale token.
-        // This prevents history from leaking after logout due to residual gf_token in localStorage.
-        const clerkLoaded = !!(window.Clerk && window.Clerk.user !== undefined);
-        if (clerkLoaded && !window.Clerk.user) {
+        // Check window.Clerk exists AND user is falsy (null or undefined = signed out).
+        const clerkIsReady = !!(window.Clerk);
+        const clerkUserSignedIn = !!(window.Clerk && window.Clerk.user);
+        if (clerkIsReady && !clerkUserSignedIn) {
             // Clerk is active but user is signed out — forcefully clear any stale token
             if (token) {
                 localStorage.removeItem("gf_token");
@@ -1752,14 +1753,12 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!container) return;
 
         // ─── AUTH GATE ────────────────────────────────────────────────────────
-        // If Clerk is loaded and the user is signed out, show empty state immediately.
-        // Never call the API when the user is not authenticated — this prevents
-        // history from leaking after logout regardless of any other timing issues.
-        const isClerkReady = !!(window.Clerk && window.Clerk.user !== undefined);
-        const isClerkSignedIn = !!(window.Clerk && window.Clerk.user);
+        // If Clerk is loaded and the user is signed out, show a sign-in prompt.
+        // Use the outer-scope clerkLoaded flag which is set only after Clerk fully
+        // initializes — this is more reliable than checking window.Clerk.user !== undefined.
+        // Also check that no mock-auth token exists in localStorage.
         const storedToken = localStorage.getItem("gf_token");
-
-        if (isClerkReady && !isClerkSignedIn && !storedToken) {
+        if (clerkLoaded && !window.Clerk.user && !storedToken) {
             // Clerk is loaded and user is definitely signed out
             container.innerHTML = `
                 <div class="text-center py-12 flex flex-col items-center gap-3">
