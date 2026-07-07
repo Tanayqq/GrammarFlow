@@ -111,7 +111,7 @@ const rewrite = async (req, res, next) => {
 
 const grammarFix = async (req, res, next) => {
     try {
-        const { text, language = "English", humanize = false, learningMode = false, _extensionPrompt } = req.body;
+        const { text, language = "English", style = "Standard", tone = "Neutral", humanize = false, learningMode = false, _extensionPrompt } = req.body;
         const guestSessionId = req.headers['x-guest-session-id'] || null;
         const userId = req.userId || null;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required" } });
@@ -120,7 +120,7 @@ const grammarFix = async (req, res, next) => {
         const sentences = text.split(/[.!?।]+/).map(s => s.trim()).filter(s => s.length > 2);
         const sentenceCount = sentences.length || 1;
         
-        const prompt = _extensionPrompt || prompts.getGrammarFixPrompt(language, humanize, sentenceCount, learningMode);
+        const prompt = _extensionPrompt || prompts.getGrammarFixPrompt(language, style, tone, humanize, sentenceCount);
         
         console.log(`[API v1] Queueing grammarFix job...`);
         const job = await aiQueue.add('grammar-fix', {
@@ -131,7 +131,8 @@ const grammarFix = async (req, res, next) => {
             user_id:        userId,
             operation_type: 'grammar_fix',
             language,
-            style:          null
+            style,
+            tone
         });
         
         console.log(`[API v1] grammarFix job queued. Job ID: ${job.id}`);

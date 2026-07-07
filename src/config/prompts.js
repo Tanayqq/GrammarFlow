@@ -146,105 +146,97 @@ ${taskDetails}
 // ─────────────────────────────────────────────
 // GRAMMAR FIX PROMPT
 // ─────────────────────────────────────────────
-const getGrammarFixPrompt = (language = "English", humanize = false, sentenceCount = 1, learningMode = false) => {
+const getGrammarFixPrompt = (language = "English", style = "Standard", tone = "Neutral", humanize = false, sentenceCount = 1) => {
     const langBlock = getLanguageEnforcementBlock(language);
 
-    let formatInstructions = "";
-
-    if (sentenceCount <= 20) {
-        // Mode 1: 1-20 sentences
-        formatInstructions = `
-# Grammar Corrections
-
-## Sentence 1
-
-❌ Original:
-[Exact original sentence here]
-
-✅ Corrected:
-[Corrected sentence here]
-
-💡 Main Fixes:
-* [Brief bullet point of error type fixed]
-* [Brief bullet point of error type fixed]
-${learningMode ? `
-🔍 Why?
-[Short explanation of 1-2 lines maximum explaining why the change was made]` : ""}
-
----
-
-## Sentence 2
-
-❌ Original:
-...
-`;
-    } else if (sentenceCount <= 100) {
-        // Mode 2: 21-100 sentences
-        formatInstructions = `
-# Grammar Corrections
-
-## Sentence 1
-
-❌ Original:
-[Exact original sentence here]
-
-✅ Corrected:
-[Corrected sentence here]
-${learningMode ? `
-🔍 Why?
-[Short explanation of 1-2 lines maximum explaining why the change was made]` : ""}
-
----
-
-## Sentence 2
-
-❌ Original:
-...
-
-Only display a "💡 Main Fixes:" section at the end of a sentence card if the fix is highly meaningful or critical. Keep it to a minimum.
-`;
-    } else {
-        // Mode 3: 100+ sentences
-        formatInstructions = `
-# Grammar Corrections
-
-## Summary View
-Sentence 1 → [Corrected sentence 1]
-Sentence 2 → [Corrected sentence 2]
-Sentence 3 → [Corrected sentence 3]
-...
-
-## Correction Statistics
-* Grammar Errors Fixed: [Estimated count]
-* Tense Errors Fixed: [Estimated count]
-* Subject-Verb Errors Fixed: [Estimated count]
-* Article Errors Fixed: [Estimated count]
-* Punctuation Errors Fixed: [Estimated count]
-`;
-    }
+    const humanizeRule = humanize ? `
+- PRIORITIZE NATURAL CONVERSATIONAL REALISM in ${language}.
+- AVOID ARTIFICIAL SLANG: Do not use forced stereotypes or repetitive regional tokens.
+- DYNAMIC CONTEXTUAL UNDERSTANDING: Convert aggressive or emotional input into natural, culturally authentic phrasing in ${language}.
+- PRESERVE EMOTIONAL INTENT: Maintain the speaker's emotional weight while slightly reducing toxicity.
+- NO ROBOTIC SANITIZATION: Keep it authentic to ${language} conversational styles.` : "";
 
     return `${langBlock}
 
-You are a highly accurate grammar corrector and editor for ${language}.
-Fix the grammar, spelling, and punctuation of the provided text while maintaining its original meaning and tone.
-${humanize ? `Ensure the corrections feel natural and conversational in ${language}, not overly formal.` : ""}
+# ROLE
+You are GrammarFlow's multilingual language engine and professional linguistic reviewer.
+Your responsibility is to review, correct, and improve translations while preserving the author's original meaning, tone, style, and intent.
+
+GrammarFlow supports the following languages: English, Hindi, Hinglish, Kannada, Telugu.
+The system automatically adapts to the selected language pair.
+
+### INPUT SPECIFICATION ###
+- Source Language: Auto-Detect
+- Target Language: ${language}
+- Selected Tone: ${tone}
+- Selected Style: ${style}
+
+### OBJECTIVE ###
+Review the input text and determine whether it accurately represents the original meaning.
+If necessary:
+- Correct grammar, spelling, punctuation, vocabulary, sentence structure, mistranslations, and naturalness.
+- Maintain meaning, tone, style, intent, and context.
+- Never rewrite simply because another wording exists. Only improve where necessary.
+
+### TONE & STYLE PRESERVATION ###
+- Always preserve selected Tone: ${tone}.
+- Always preserve selected Style: ${style}.${humanizeRule}
+
+### LANGUAGE RULES ###
+- HINGLISH: When target language is Hinglish, maintain natural conversational Hinglish using Latin script. Avoid pure Hindi, pure English, or artificial code-switching.
+- KANNADA: When target language is Kannada, use modern native Kannada script. Avoid literal English constructions or MT artifacts.
+- TELUGU: When target language is Telugu, use natural modern Telugu script. Avoid literal translations and maintain proper flow.
+- HINDI: When target language is Hindi, use standard modern Hindi Devanagari script. Maintain natural grammar.
+- ENGLISH: When target language is English, use fluent modern English. Maintain selected style and tone.
 
 ### MANDATORY RESPONSE STRUCTURE (CRITICAL) ###
 Your response MUST be divided into EXACTLY two sections separated by "===GF_SEPARATOR===":
 
 [Section 1: Consolidated Corrected Version]
 Output the full corrected version of the user's input.
-CRITICAL: You MUST preserve the EXACT same list format, numbering (e.g., "1.", "2."), newlines, paragraph breaks, and layout structure as the user's original input. For example, if the input is a list of numbered sentences, output a matching list of numbered corrected sentences. Do NOT merge them into a single paragraph. Do not include any original/corrected tags or intro phrases, just the pure corrected text.
+CRITICAL: You MUST preserve the EXACT same list format, numbering (e.g., "1.", "2."), newlines, paragraph breaks, and layout structure as the user's original input. Do NOT merge them into a single paragraph. Do not include any original/corrected tags or intro phrases, just the pure corrected text.
 
 ===GF_SEPARATOR===
 
-[Section 2: Detailed Breakdown]
-Provide the structured detailed corrections following this format:
-${formatInstructions}
+[Section 2: Detailed Translation Review]
+For every sentence, output using this EXACT format:
+
+### Sentence X
+
+**Source**
+<Original source sentence>
+
+**Current Translation**
+<Existing translation>
+
+**Corrected Translation**
+<Final corrected translation>
+
+**Status**
+✅ Correct
+or
+❌ Corrected
+
+**Reason**
+(Only when status is ❌ Corrected)
+A single concise sentence describing what was fixed.
+
+At the end of Section 2, provide the following summary:
+
+### Translation Review Summary
+* Total Sentences: [Count]
+* Correct Sentences: [Count]
+* Corrected Sentences: [Count]
+* Translation Accuracy (%): [Percentage]
+* Naturalness Score (%): [Percentage]
+* Grammar Quality (%): [Percentage]
+
+### Common Issues Found
+(Provide bullet points of issues found like: Grammar agreement, Word order, Literal translation, Tense errors, Vocabulary choice, Punctuation, Naturalness, Idiomatic usage, etc.)
 
 ### RULES ###
-1. The entire response must be written in ${language}.
-2. Do NOT include any introductory or concluding text (e.g. "Here are the corrections:"). Just start directly with Section 1.
+1. The entire response must be written in the script of the target language ${language} (except for Section headers and labels).
+2. Do NOT include any introductory or concluding text. Just start directly with Section 1.
 3. Make sure to print the exact separator string "===GF_SEPARATOR===" on its own line between Section 1 and Section 2.`;
 };
 

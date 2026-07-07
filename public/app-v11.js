@@ -568,6 +568,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const res = await GrammarFlowAPI.request("/grammar-fix", {
                     text: chunkText,
                     language: UI.languageSelect.value,
+                    style: UI.styleSelect.value,
+                    tone: UI.toneSelect.value,
                     humanize: UI.humanizeToggle.checked,
                     learningMode: false
                 });
@@ -647,6 +649,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const res = await GrammarFlowAPI.request("/grammar-fix", {
                     text,
                     language: UI.languageSelect.value,
+                    style: UI.styleSelect.value,
+                    tone: UI.toneSelect.value,
                     humanize: UI.humanizeToggle.checked,
                     learningMode: false
                 });
