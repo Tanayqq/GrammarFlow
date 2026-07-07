@@ -1152,7 +1152,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const script = document.createElement("script");
                     script.setAttribute("data-clerk-publishable-key", publishableKey);
                     script.async = true;
-                    script.src = "https://cdn.clerk.com/dist/clerk.browser.js";
+                    script.src = "https://js.clerk.com/v1/clerk.browser.js";
                     script.crossOrigin = "anonymous";
                     script.onload = async () => {
                         try {
@@ -1169,11 +1169,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                     };
                     script.onerror = (err) => {
-                        console.warn("[AUTH] Primary Clerk CDN failed to load. Trying jsDelivr fallback...");
+                        console.warn("[AUTH] Primary Clerk CDN failed to load. Trying @clerk/clerk-js@5 jsDelivr fallback...");
                         const fallbackScript = document.createElement("script");
                         fallbackScript.setAttribute("data-clerk-publishable-key", publishableKey);
                         fallbackScript.async = true;
-                        fallbackScript.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@4/dist/clerk.browser.js";
+                        fallbackScript.src = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
                         fallbackScript.crossOrigin = "anonymous";
                         fallbackScript.onload = async () => {
                             try {
