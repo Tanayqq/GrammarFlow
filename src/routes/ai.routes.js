@@ -3,6 +3,7 @@ const router = express.Router();
 const aiController = require('../controllers/ai.controller');
 const { aiCacheCheck } = require('../middlewares/cacheCheck');
 const { aiLimiter, docLimiter, readLimiter } = require('../middlewares/rateLimiter');
+const { passiveAuth } = require('../middlewares/auth');
 const authRoutes = require('./auth.routes');
 
 router.use('/auth', authRoutes);
@@ -17,7 +18,8 @@ router.post('/process-document', aiCacheCheck, docLimiter, aiController.processD
 
 router.get('/job/:jobId', readLimiter, aiController.checkJobStatus);               // Poll job status (GET)
 router.post('/job/:jobId', readLimiter, aiController.checkJobStatus);              // Poll job status (POST support for extension background script)
-router.get('/history', readLimiter, aiController.getHistory);               // Retrieve paginated history for guest session
-router.get('/history/:id', readLimiter, aiController.getHistoryDetail); // Retrieve detailed operation
+router.get('/history', passiveAuth, readLimiter, aiController.getHistory);               // Retrieve paginated history (auth-aware)
+router.get('/history/:id', passiveAuth, readLimiter, aiController.getHistoryDetail); // Retrieve detailed operation (auth-aware)
 
 module.exports = router;
+
