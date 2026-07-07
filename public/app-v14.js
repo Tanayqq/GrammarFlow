@@ -1200,10 +1200,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Add state listener to update UI when session changes
                 window.Clerk.addListener(async ({ session, user }) => {
                     console.log("[AUTH] Clerk auth state changed:", user ? user.primaryEmailAddress?.emailAddress : "No user");
+                    
+                    // Clear history cache on any user/session change to avoid cross-user leak
+                    localStorage.removeItem("gf_history_cache");
+                    const container = document.getElementById("historyContent");
+                    if (container) container.innerHTML = "";
+
                     await checkAuthState();
                     const settingsModal = document.getElementById("settingsModal");
                     if (settingsModal && !settingsModal.classList.contains("hidden")) {
                         restoreSyncSection();
+                    }
+                    if (historyModal && !historyModal.classList.contains("hidden")) {
+                        loadHistory();
                     }
                 });
 
@@ -1289,6 +1298,7 @@ document.addEventListener("DOMContentLoaded", () => {
         } else if (clerkLoaded && window.Clerk && !window.Clerk.user) {
             // Explicitly logged out from Clerk
             localStorage.removeItem("gf_token");
+            localStorage.removeItem("gf_history_cache");
             token = null;
         }
 
@@ -1575,6 +1585,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     const registeredUser = registerRes.data.user;
                     const token = `mock_token_${email}_${encodeURIComponent(registeredUser.name || name)}`;
                     localStorage.setItem("gf_token", token);
+                    
+                    // Clear history cache to avoid leak
+                    localStorage.removeItem("gf_history_cache");
+                    const container = document.getElementById("historyContent");
+                    if (container) container.innerHTML = "";
 
                     await checkAuthState();
                     restoreSyncSection();
@@ -1654,6 +1669,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         const token = `mock_token_${email}_${encodeURIComponent(nameToUse)}`;
                         localStorage.setItem("gf_token", token);
                         
+                        // Clear history cache to avoid leak
+                        localStorage.removeItem("gf_history_cache");
+                        const container = document.getElementById("historyContent");
+                        if (container) container.innerHTML = "";
+                        
                         await checkAuthState();
                         restoreSyncSection();
                     } else {
@@ -1672,7 +1692,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const performSignOut = () => {
         localStorage.removeItem("gf_token");
+        localStorage.removeItem("gf_history_cache");
         localStorage.removeItem("guest_session_id");
+        const container = document.getElementById("historyContent");
+        if (container) container.innerHTML = "";
         getOrCreateGuestSessionId();
         checkAuthState();
         if (historyModal && !historyModal.classList.contains("hidden")) {
