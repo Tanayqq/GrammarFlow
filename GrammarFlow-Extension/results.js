@@ -68,8 +68,12 @@ function parseJob(params) {
 }
 
 function formatResults(data, label) {
-    if (typeof data === 'string' && data.includes('===_SEPARATOR===')) {
-        data = data.split('===_SEPARATOR===').map(s => s.trim()).filter(Boolean);
+    if (Array.isArray(data) && data.length === 1 && typeof data[0] === 'string') {
+        data = data[0];
+    }
+    
+    if (typeof data === 'string' && (data.includes('===_SEPARATOR===') || data.includes('===REWRITE_SEPARATOR==='))) {
+        data = data.split(/===_SEPARATOR===|===REWRITE_SEPARATOR===/).map(s => s.trim()).filter(Boolean);
     }
     
     if (Array.isArray(data)) {

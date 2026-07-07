@@ -288,9 +288,14 @@ function processAndRenderResponseData(data, endpoint) {
     // Logic for different return types
     let results = [];
     
-    // If the backend returned a single string with separators, split it into an array
-    if (typeof data === 'string' && data.includes('===_SEPARATOR===')) {
-        data = data.split('===_SEPARATOR===').map(s => s.trim()).filter(Boolean);
+    // If the backend wrapped the combined string in an array of length 1, extract it
+    if (Array.isArray(data) && data.length === 1 && typeof data[0] === 'string') {
+        data = data[0];
+    }
+    
+    // Split the string if it contains any of the known separators
+    if (typeof data === 'string' && (data.includes('===_SEPARATOR===') || data.includes('===REWRITE_SEPARATOR==='))) {
+        data = data.split(/===_SEPARATOR===|===REWRITE_SEPARATOR===/).map(s => s.trim()).filter(Boolean);
     }
 
     if (Array.isArray(data)) {
