@@ -39,7 +39,18 @@ const GrammarFlowAPI = {
             "Pragma": "no-cache"
         };
         let token = localStorage.getItem("gf_token");
-        if (window.Clerk && window.Clerk.isReady && window.Clerk.session) {
+
+        // If Clerk is loaded but the user has signed out, NEVER send a stale token.
+        // This prevents history from leaking after logout due to residual gf_token in localStorage.
+        const clerkLoaded = !!(window.Clerk && window.Clerk.user !== undefined);
+        if (clerkLoaded && !window.Clerk.user) {
+            // Clerk is active but user is signed out — forcefully clear any stale token
+            if (token) {
+                localStorage.removeItem("gf_token");
+                console.log("[API] Clerk signed out — removed stale gf_token from localStorage");
+            }
+            token = null;
+        } else if (window.Clerk && window.Clerk.user && window.Clerk.session) {
             try {
                 const clerkToken = await window.Clerk.session.getToken();
                 if (clerkToken) {
@@ -1210,25 +1221,41 @@ document.addEventListener("DOMContentLoaded", () => {
                 let wasLoggedIn = !!(window.Clerk && window.Clerk.user);
                 window.Clerk.addListener(async ({ session, user }) => {
                     console.log("[AUTH] Clerk auth state changed:", user ? user.primaryEmailAddress?.emailAddress : "No user");
-                    
-                    // Clear history cache on any user/session change to avoid cross-user leak
-                    localStorage.removeItem("gf_history_cache");
-                    const container = document.getElementById("historyContent");
-                    if (container) container.innerHTML = "";
 
                     if (!user && wasLoggedIn) {
+                        // User just signed out — IMMEDIATELY clear all auth data BEFORE any async work
+                        // This prevents race conditions where checkAuthState still sees the old user
+                        console.log("[AUTH] Sign-out detected. Clearing all auth state immediately.");
+                        localStorage.removeItem("gf_token");
+                        localStorage.removeItem("gf_history_cache");
                         localStorage.removeItem("guest_session_id");
-                        getOrCreateGuestSessionId();
-                    }
-                    wasLoggedIn = !!user;
+                        getOrCreateGuestSessionId(); // Generate a fresh guest session ID
 
-                    await checkAuthState();
-                    const settingsModal = document.getElementById("settingsModal");
-                    if (settingsModal && !settingsModal.classList.contains("hidden")) {
-                        restoreSyncSection();
-                    }
-                    if (historyModal && !historyModal.classList.contains("hidden")) {
-                        loadHistory();
+                        // Clear history UI immediately without waiting for any async call
+                        const container = document.getElementById("historyContent");
+                        if (container) container.innerHTML = "";
+
+                        wasLoggedIn = false;
+                        // Update UI to guest mode, then show empty history if modal is open
+                        await checkAuthState();
+                        if (historyModal && !historyModal.classList.contains("hidden")) {
+                            loadHistory();
+                        }
+                    } else if (user) {
+                        wasLoggedIn = true;
+                        // Clear history cache on login to refresh with new user's data
+                        localStorage.removeItem("gf_history_cache");
+                        const container = document.getElementById("historyContent");
+                        if (container) container.innerHTML = "";
+
+                        await checkAuthState();
+                        const settingsModal = document.getElementById("settingsModal");
+                        if (settingsModal && !settingsModal.classList.contains("hidden")) {
+                            restoreSyncSection();
+                        }
+                        if (historyModal && !historyModal.classList.contains("hidden")) {
+                            loadHistory();
+                        }
                     }
                 });
 
@@ -1723,7 +1750,28 @@ document.addEventListener("DOMContentLoaded", () => {
     const loadHistory = async () => {
         const container = document.getElementById("historyContent");
         if (!container) return;
-        
+
+        // ─── AUTH GATE ────────────────────────────────────────────────────────
+        // If Clerk is loaded and the user is signed out, show empty state immediately.
+        // Never call the API when the user is not authenticated — this prevents
+        // history from leaking after logout regardless of any other timing issues.
+        const isClerkReady = !!(window.Clerk && window.Clerk.user !== undefined);
+        const isClerkSignedIn = !!(window.Clerk && window.Clerk.user);
+        const storedToken = localStorage.getItem("gf_token");
+
+        if (isClerkReady && !isClerkSignedIn && !storedToken) {
+            // Clerk is loaded and user is definitely signed out
+            container.innerHTML = `
+                <div class="text-center py-12 flex flex-col items-center gap-3">
+                    <svg class="w-10 h-10 text-gray-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                    <p class="text-gray-400 font-medium text-sm">Sign in to view your writing history</p>
+                    <p class="text-gray-600 text-xs text-center px-6">Your history is saved to your account. Sign in to access it from any device.</p>
+                </div>
+            `;
+            return;
+        }
+        // ─── END AUTH GATE ────────────────────────────────────────────────────
+
         container.innerHTML = `<p class="text-gray-400 text-center py-8">Loading history...</p>`;
         
         try {

@@ -401,9 +401,23 @@ const getHistory = async (req, res) => {
             return sendResponse(res, true, { operations: [], total: 0, page, limit });
         }
 
-        // Security check: if unauthenticated request, prevent returning history of a registered user
+        // Security check: if unauthenticated request resolved a user via guest_session_id,
+        // NEVER return history if that user record belongs to a registered (non-guest) account.
+        // Registered accounts have an email (Clerk or mock auth) or password_hash (mock auth).
+        // A pure guest account has no email and no password_hash.
         if (!req.userId && (user.email || user.password_hash)) {
-            console.log(`[API v1] Blocking unauthenticated history request for registered user ID: ${user.id}`);
+            console.log(`[API v1] Blocking unauthenticated history request for registered user ID: ${user.id} (email: ${user.email ? 'yes' : 'no'}, password: ${user.password_hash ? 'yes' : 'no'})`);
+            // Clear the guest_session_id link from this registered user to prevent future leaks
+            // (this can happen when the new guest_session_id gets linked during a logout race condition)
+            try {
+                await prisma.user.update({
+                    where: { id: user.id },
+                    data: { guest_session_id: null }
+                });
+                console.log(`[API v1] Cleared guest_session_id link from registered user ${user.id} to prevent future leaks`);
+            } catch (clearErr) {
+                console.warn(`[API v1] Could not clear guest_session_id from registered user:`, clearErr.message);
+            }
             return sendResponse(res, true, { operations: [], total: 0, page, limit, totalPages: 0 });
         }
 
