@@ -28,6 +28,10 @@ const rewrite = async (req, res, next) => {
 
         console.log(`[API v1] /rewrite. Lang: ${language}, Humanize: ${humanize}`);
 
+        const words = text.split(/\s+/).filter(Boolean).length;
+        const sentences = text.split(/[.!?।]+/).map(s => s.trim()).filter(s => s.length > 2);
+        const isLongText = words > 150 || sentences.length > 10;
+
         let resultText = "";
         let source = "groq";
         if (req.isCacheHit && req.cachedResponse) {
@@ -36,8 +40,10 @@ const rewrite = async (req, res, next) => {
         } else {
             let attempts = 0;
             while (attempts < 2) {
-                let prompt = prompts.getRewritePrompt(style, tone, language, humanize);
-                if (attempts > 0) prompt = `CRITICAL: Previous response was invalid. Provide exactly 3 numbered rewrites in ${language} now.\n\n${prompt}`;
+                let prompt = prompts.getRewritePrompt(style, tone, language, humanize, isLongText);
+                if (attempts > 0 && !isLongText) {
+                    prompt = `CRITICAL: Previous response was invalid. Provide exactly 3 rewrites separated by ===REWRITE_SEPARATOR=== in ${language} now.\n\n${prompt}`;
+                }
                 try {
                     const response = await aiService.callGroqAPI(prompt, text, 0.7);
                     resultText = response.text;
@@ -56,15 +62,25 @@ const rewrite = async (req, res, next) => {
         resultText = resultText.replace(/Rewrite\s*[0-9]?:?/gi, '');
 
         let rewrites = [];
-        const parts = resultText.split(/^[1-9][.\)]\s+/m);
-        if (parts.length > 1) {
-            rewrites = parts.slice(1).map(p => {
-                return p.replace(/###.*/g, '')
-                    .replace(/Rewrite\s*[0-9]?:?/gi, '')
-                    .trim();
-            }).filter(p => p);
-        } else {
+        if (isLongText) {
             rewrites = [resultText.trim()];
+        } else {
+            const parts = resultText.split("===REWRITE_SEPARATOR===");
+            if (parts.length > 1) {
+                rewrites = parts.map(p => {
+                    return p.replace(/###.*/g, '')
+                        .replace(/Rewrite\s*[0-9]?:?/gi, '')
+                        .trim();
+                }).filter(p => p);
+            } else {
+                // Fallback to splitting by numbered lines if separator failed
+                const fallbackParts = resultText.split(/^[1-9][.\)]\s+/m);
+                if (fallbackParts.length > 1) {
+                    rewrites = fallbackParts.slice(1).map(p => p.trim()).filter(p => p);
+                } else {
+                    rewrites = [resultText.trim()];
+                }
+            }
         }
 
         const processingTime = Date.now() - startTime;

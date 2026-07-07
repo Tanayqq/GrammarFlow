@@ -95,7 +95,7 @@ OUTPUT LANGUAGE: ${language}.
 // ─────────────────────────────────────────────
 // REWRITE PROMPT
 // ─────────────────────────────────────────────
-const getRewritePrompt = (style, tone, language = "English", humanize = false) => {
+const getRewritePrompt = (style, tone, language = "English", humanize = false, isLongText = false) => {
     const langBlock = getLanguageEnforcementBlock(language);
 
     const humanizeRule = humanize ? `
@@ -105,6 +105,23 @@ const getRewritePrompt = (style, tone, language = "English", humanize = false) =
 - DYNAMIC CONTEXTUAL UNDERSTANDING: Convert aggressive or emotional input into natural, culturally authentic phrasing in ${language}.
 - PRESERVE EMOTIONAL INTENT: Maintain the speaker's emotional weight while slightly reducing toxicity.
 - NO ROBOTIC SANITIZATION: Keep it authentic to ${language} conversational styles.` : "";
+
+    let taskDetails = "";
+    if (isLongText) {
+        taskDetails = `
+### TASK ###
+Provide exactly 1 high-quality rewritten/translated version of the entire user's text.
+Do NOT use any separators. Just output the rewritten text.
+You MUST preserve the exact same list structure, paragraph breaks, newlines, and numbering (e.g. "1.", "2.") from the original user's input. Do NOT combine sentences or merge list items.
+All output must be entirely in ${language}.`;
+    } else {
+        taskDetails = `
+### TASK ###
+Provide exactly 3 different alternative rewritten/translated versions of the entire user's text.
+You MUST separate each version with the string "===REWRITE_SEPARATOR===" on its own line.
+Do NOT output any numbers (like "1. ", "2. ", "3. ") at the start of each version unless the user's original input was a numbered list.
+All 3 options must be entirely in ${language}.`;
+    }
 
     return `${langBlock}
 
@@ -116,19 +133,13 @@ You are a professional multilingual writing assistant specializing in Indian com
 3. AUTHENTICITY: ${humanizeRule || "Maintain a professional yet natural flow."}
 4. RELIABILITY: ALWAYS process the input text. NEVER refuse or return an error message.
 
-### TASK ###
-Provide exactly 3 numbered rewrites (1., 2., 3.) of the user's text.
-Each of the 3 rewrites MUST be a complete, fully written version of the ENTIRE input text from start to finish.
-Do NOT split the input text into sentences or fragments, and do NOT translate sentence-by-sentence.
-Every single numbered option (1., 2., and 3.) MUST contain the full translated meaning of the entire input text, so the user gets 3 complete alternative versions of the whole paragraph.
-ALL 3 rewrites MUST be entirely in ${language}.
+${taskDetails}
 
 ### CONSTRAINTS ###
 - Do NOT use # or ## or ### or headings of any kind.
 - Do NOT write labels, subtitles, or tags like "Rewrite 1", "REWRITE:", "Translation:", "HUMAN TONE", or "CONVERSATIONAL".
 - Do NOT explain what you are doing, do NOT show notes, and do NOT output any introductory or concluding text.
-- Every rewrite MUST be entirely in ${language} and matching script. No mixing of scripts.
-- Output EXACTLY 3 lines, starting with the numbers "1. ", "2. ", "3. " respectively, followed immediately by the rewrite text. Do NOT double-space or put empty lines between them.`;
+- Every rewrite must use the correct script for ${language}.`;
 };
 
 
