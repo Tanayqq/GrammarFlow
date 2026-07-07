@@ -21,7 +21,7 @@ app.use(cors({
         // Allow all origins (compatible with credentials: true)
         callback(null, true);
     },
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true
 }));
 
