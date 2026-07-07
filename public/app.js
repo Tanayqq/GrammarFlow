@@ -1608,7 +1608,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 </div>
                 <div class="flex items-center gap-2">
                     ${op.cached ? `<span class="text-[9px] font-bold text-green-400 uppercase tracking-widest bg-green-500/10 px-2 py-0.5 rounded border border-green-500/25">Cached</span>` : ''}
-                    <button class="delete-history-btn opacity-0 group-hover:opacity-100 transition-all w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-500/20 text-gray-500 hover:text-red-400" data-id="${op.id}" title="Delete this entry">
+                    <button class="delete-history-btn opacity-70 hover:opacity-100 transition-all w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400" data-id="${op.id}" title="Delete this entry">
                         <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                     <svg class="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
