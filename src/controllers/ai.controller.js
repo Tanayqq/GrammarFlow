@@ -333,7 +333,9 @@ const checkJobStatus = async (req, res, next) => {
 
         if (state === 'completed') {
             const result = job.returnvalue;
-            return sendResponse(res, true, { status: "completed", result: result.text }, null, { source: result.source });
+            const resultText = result ? (result.text || "") : "";
+            const source = result ? (result.source || "groq") : "groq";
+            return sendResponse(res, true, { status: "completed", result: resultText }, null, { source });
         }
 
         if (state === 'failed') {

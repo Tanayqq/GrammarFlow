@@ -245,7 +245,6 @@ document.addEventListener("DOMContentLoaded", () => {
         toneSelect:         document.getElementById("toneSelect"),
         languageSelect:     document.getElementById("languageSelect"),
         humanizeToggle:     document.getElementById("humanizeToggle"),
-        learningModeToggle: document.getElementById("learningModeToggle"),
         rewriteBtn:         document.getElementById("rewriteBtn"),
         fixGrammarBtn:      document.getElementById("fixGrammarBtn"),
         outputSection:      document.getElementById("outputSection"),
@@ -565,7 +564,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 text,
                 language: UI.languageSelect.value,
                 humanize: UI.humanizeToggle.checked,
-                learningMode: UI.learningModeToggle.checked
+                learningMode: false
             });
             if (res.data && res.data.status === "queued" && res.data.jobId) {
                 const result = await pollJobStatus(res.data.jobId);
