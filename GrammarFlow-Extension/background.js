@@ -1,5 +1,5 @@
 const API_BASE = "https://grammarflow-brain.onrender.com/api/v1";
-const WEB_APP_URL = "https://grammarflowt.vercel.app";
+const WEB_APP_URL = "https://grammarflow-brain.onrender.com";
 
 self.addEventListener("unhandledrejection", (event) => {
     console.error("[GrammarFlow] Unhandled rejection:", event.reason);
@@ -466,6 +466,17 @@ async function getOrCreateGuestSessionId() {
     });
 }
 
+// Get the auth token from storage (set when user signs in on the web app)
+async function getAuthToken() {
+    return new Promise((resolve) => {
+        // The web app stores the token in localStorage which isn't accessible to extensions.
+        // We use chrome.storage.local as the bridge — the web app should sync the token here.
+        chrome.storage.local.get(["gf_token"], (result) => {
+            resolve(result.gf_token || null);
+        });
+    });
+}
+
 async function handleApiCall(endpoint, payload, promptOverride = null, triggerAction = null) {
     const guestSessionId = await getOrCreateGuestSessionId();
     const prefs = await chrome.storage.sync.get({
@@ -497,14 +508,21 @@ async function handleApiCall(endpoint, payload, promptOverride = null, triggerAc
         chrome.runtime.getPlatformInfo(() => {});
     }, 20000);
 
+    // Build request headers — include auth token if user is signed in
+    const authToken = await getAuthToken();
+    const requestHeaders = { 
+        "Content-Type": "application/json",
+        "x-guest-session-id": guestSessionId
+    };
+    if (authToken) {
+        requestHeaders["Authorization"] = `Bearer ${authToken}`;
+    }
+
     let response;
     try {
         response = await fetch(`${API_BASE}${endpoint}`, {
             method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-                "x-guest-session-id": guestSessionId
-            },
+            headers: requestHeaders,
             body: JSON.stringify(body),
             signal: controller.signal
         });

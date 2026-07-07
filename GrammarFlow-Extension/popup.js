@@ -1,4 +1,4 @@
-const WEB_APP_URL = "https://grammarflowt.vercel.app";
+const WEB_APP_URL = "https://grammarflow-brain.onrender.com";
 
 document.addEventListener('DOMContentLoaded', () => {
     // ── Element refs ─────────────────────────
