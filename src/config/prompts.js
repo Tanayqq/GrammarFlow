@@ -135,17 +135,104 @@ ALL 3 rewrites MUST be entirely in ${language}.
 // ─────────────────────────────────────────────
 // GRAMMAR FIX PROMPT
 // ─────────────────────────────────────────────
-const getGrammarFixPrompt = (language = "English", humanize = false) => {
+const getGrammarFixPrompt = (language = "English", humanize = false, sentenceCount = 1, learningMode = false) => {
     const langBlock = getLanguageEnforcementBlock(language);
+
+    let formatInstructions = "";
+
+    if (sentenceCount <= 20) {
+        // Mode 1: 1-20 sentences
+        formatInstructions = `
+### OUTPUT FORMAT (1-20 Sentences Mode) ###
+You MUST split the text into individual sentences and format the response EXACTLY like this for EACH sentence (use "Sentence 1", "Sentence 2", etc.):
+
+# Grammar Corrections
+
+## Sentence 1
+
+❌ Original:
+[Exact original sentence here]
+
+✅ Corrected:
+[Corrected sentence here]
+
+💡 Main Fixes:
+* [Brief bullet point of error type fixed]
+* [Brief bullet point of error type fixed]
+${learningMode ? `
+🔍 Why?
+[Short explanation of 1-2 lines maximum explaining why the change was made]` : ""}
+
+---
+
+## Sentence 2
+
+❌ Original:
+...
+`;
+    } else if (sentenceCount <= 100) {
+        // Mode 2: 21-100 sentences
+        formatInstructions = `
+### OUTPUT FORMAT (21-100 Sentences Mode) ###
+You MUST split the text into individual sentences and format the response EXACTLY like this for EACH sentence (use "Sentence 1", "Sentence 2", etc.):
+
+# Grammar Corrections
+
+## Sentence 1
+
+❌ Original:
+[Exact original sentence here]
+
+✅ Corrected:
+[Corrected sentence here]
+${learningMode ? `
+🔍 Why?
+[Short explanation of 1-2 lines maximum explaining why the change was made]` : ""}
+
+---
+
+## Sentence 2
+
+❌ Original:
+...
+
+Only display a "💡 Main Fixes:" section at the end of a sentence card if the fix is highly meaningful or critical. Keep it to a minimum.
+`;
+    } else {
+        // Mode 3: 100+ sentences
+        formatInstructions = `
+### OUTPUT FORMAT (100+ Sentences Mode) ###
+You MUST format the response EXACTLY as a summary view and error statistics section like this:
+
+# Grammar Corrections
+
+## Summary View
+Sentence 1 → [Corrected sentence 1]
+Sentence 2 → [Corrected sentence 2]
+Sentence 3 → [Corrected sentence 3]
+...
+
+## Correction Statistics
+* Grammar Errors Fixed: [Estimated count]
+* Tense Errors Fixed: [Estimated count]
+* Subject-Verb Errors Fixed: [Estimated count]
+* Article Errors Fixed: [Estimated count]
+* Punctuation Errors Fixed: [Estimated count]
+`;
+    }
 
     return `${langBlock}
 
-You are a highly accurate grammar corrector for ${language}.
+You are a highly accurate grammar corrector and editor for ${language}.
 Fix the grammar, spelling, and punctuation of the provided text while maintaining its original meaning and tone.
-${humanize ? `Ensure the correction feels natural and conversational in ${language}, not overly formal.` : ""}
-Provide exactly one corrected version and absolutely no other text.
-The corrected output MUST be entirely in ${language}. Do NOT refuse processing.
-VERIFY: Before returning, confirm the output is 100% in ${language}. If not, regenerate.`;
+${humanize ? `Ensure the corrections feel natural and conversational in ${language}, not overly formal.` : ""}
+
+${formatInstructions}
+
+### RULES ###
+1. Do NOT return the corrected text as a single block or paragraph. Follow the format above exactly.
+2. The entire response must be written in ${language}.
+3. Do NOT include any introductory or concluding text (e.g. "Here are the corrections:"). Just start directly with the markdown.`;
 };
 
 
@@ -498,7 +585,25 @@ const getDocumentProcessingPrompt = (mode, language, style, tone, humanize, isCo
       modeInstruction = "Explain the concepts in this document as if you were talking to a 10-year-old child. Use analogies if helpful.";
       break;
     case "Grammar":
-      modeInstruction = "Fix all grammar, spelling, and OCR artifacts (like random symbols or misread letters) without fundamentally changing the content.";
+      modeInstruction = `Fix all grammar, spelling, and OCR artifacts (like random symbols or misread letters) without fundamentally changing the content.
+
+You MUST format the response EXACTLY like this:
+
+# Document Summary
+* Total Corrections: [Estimated Count]
+* Grammar Issues: [Estimated Count]
+* Tense Issues: [Estimated Count]
+* Punctuation Issues: [Estimated Count]
+
+# Corrected Document
+> [Put the ENTIRE corrected document text here. Ensure it is complete and formatted nicely.]
+
+<details>
+<summary>Show Detailed Corrections</summary>
+
+### Detailed Corrections
+[Provide a list of major corrections made, e.g. sentence by sentence or issue by issue]
+</details>`;
       break;
     default:
       modeInstruction = "Summarize the key points of the document.";

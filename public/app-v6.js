@@ -245,6 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
         toneSelect:         document.getElementById("toneSelect"),
         languageSelect:     document.getElementById("languageSelect"),
         humanizeToggle:     document.getElementById("humanizeToggle"),
+        learningModeToggle: document.getElementById("learningModeToggle"),
         rewriteBtn:         document.getElementById("rewriteBtn"),
         fixGrammarBtn:      document.getElementById("fixGrammarBtn"),
         outputSection:      document.getElementById("outputSection"),
@@ -362,9 +363,23 @@ document.addEventListener("DOMContentLoaded", () => {
         data.forEach(text => {
             const card = document.createElement("div");
             card.className = "result-card";
+            
+            // Format Markdown
+            let formattedHtml = text;
+            if (window.marked) {
+                // Configure marked to render linebreaks natively
+                marked.setOptions({ breaks: true, gfm: true });
+                formattedHtml = marked.parse(text);
+            } else {
+                formattedHtml = text.replace(/\n/g, '<br>');
+            }
+
+            // Custom inline styles/classes for markdown elements inside result-card
             card.innerHTML = `
-                <div class="result-text">${text}</div>
-                <button class="copy-btn-mini" onclick="navigator.clipboard.writeText(this.previousElementSibling.textContent)">
+                <div class="result-text prose prose-invert max-w-none text-gray-200 text-sm md:text-base space-y-4">
+                    ${formattedHtml}
+                </div>
+                <button class="copy-btn-mini" onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText || this.previousElementSibling.textContent)">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -485,7 +500,10 @@ document.addEventListener("DOMContentLoaded", () => {
         setBusy(true);
         try {
             const res = await GrammarFlowAPI.request("/grammar-fix", {
-                text, language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
+                text,
+                language: UI.languageSelect.value,
+                humanize: UI.humanizeToggle.checked,
+                learningMode: UI.learningModeToggle.checked
             });
             if (res.data && res.data.status === "queued" && res.data.jobId) {
                 const result = await pollJobStatus(res.data.jobId);
