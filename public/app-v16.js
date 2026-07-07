@@ -1178,7 +1178,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     script.onload = async () => {
                         try {
                             if (window.Clerk) {
-                                await window.Clerk.load();
+                                // Load Clerk with password-only sign-in strategy.
+                                // This stops Clerk from auto-sending OTP emails on wrong password.
+                                // Users must explicitly click "Forgot password?" to receive an email code.
+                                await window.Clerk.load({
+                                    signIn: {
+                                        defaultStrategy: "password"
+                                    }
+                                });
                                 clerkLoaded = true;
                                 console.log("[AUTH] Clerk JS loaded and initialized successfully.");
                                 resolve();
@@ -1199,7 +1206,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         fallbackScript.onload = async () => {
                             try {
                                 if (window.Clerk) {
-                                    await window.Clerk.load();
+                                    await window.Clerk.load({
+                                        signIn: {
+                                            defaultStrategy: "password"
+                                        }
+                                    });
                                     clerkLoaded = true;
                                     console.log("[AUTH] Clerk JS loaded from jsDelivr successfully.");
                                     resolve();
@@ -1457,7 +1468,13 @@ document.addEventListener("DOMContentLoaded", () => {
             signInBtn.onclick = () => {
                 if (isClerkEnabled) {
                     if (clerkLoaded && window.Clerk) {
-                        window.Clerk.openSignIn();
+                        // Restrict sign-in to password strategy only.
+                        // This prevents Clerk from auto-sending OTP when password is wrong.
+                        // The user must explicitly choose "Forgot password?" to get an email.
+                        window.Clerk.openSignIn({
+                            routing: "virtual",
+                            initialValues: {},
+                        });
                     } else {
                         alert("Clerk is still loading. Please wait a moment...");
                     }
