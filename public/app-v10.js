@@ -541,16 +541,95 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error("Job timed out. Please try again.");
     };
 
+    const processLargeText = async (text, actionType) => {
+        const rawLines = text.split("\n");
+        const lines = rawLines.map(line => line.trim()).filter(Boolean);
+        
+        // Group into chunks of 15 lines/sentences
+        const chunkSize = 15;
+        const chunks = [];
+        for (let i = 0; i < lines.length; i += chunkSize) {
+            chunks.push(lines.slice(i, i + chunkSize).join("\n"));
+        }
+
+        console.log(`[Chunker] Processing ${lines.length} lines in ${chunks.length} chunks of size ${chunkSize}...`);
+        
+        let mergedCorrected = [];
+        let mergedAnalysis = [];
+        let mergedRewrites = [];
+
+        for (let i = 0; i < chunks.length; i++) {
+            const chunkText = chunks[i];
+            
+            // Show progressive progress
+            renderResults([`Processing part ${i + 1} of ${chunks.length}...`]);
+
+            if (actionType === "grammar-fix") {
+                const res = await GrammarFlowAPI.request("/grammar-fix", {
+                    text: chunkText,
+                    language: UI.languageSelect.value,
+                    humanize: UI.humanizeToggle.checked,
+                    learningMode: false
+                });
+                
+                let chunkResult = "";
+                if (res.data && res.data.status === "queued" && res.data.jobId) {
+                    chunkResult = await pollJobStatus(res.data.jobId);
+                } else {
+                    chunkResult = res.data;
+                }
+
+                if (chunkResult && chunkResult.includes("===GF_SEPARATOR===")) {
+                    const parts = chunkResult.split("===GF_SEPARATOR===");
+                    mergedCorrected.push(parts[0].trim());
+                    mergedAnalysis.push(parts[1].trim());
+                } else {
+                    mergedCorrected.push(chunkResult.trim());
+                }
+            } else if (actionType === "rewrite") {
+                const res = await GrammarFlowAPI.request("/rewrite", {
+                    text: chunkText,
+                    style: UI.styleSelect.value,
+                    tone: UI.toneSelect.value,
+                    language: UI.languageSelect.value,
+                    humanize: UI.humanizeToggle.checked
+                });
+                
+                const option = (Array.isArray(res.data) ? res.data[0] : res.data) || "";
+                mergedRewrites.push(option.trim());
+            }
+
+            // Wait 1.5s between chunks to keep Groq API stable and avoid 429 Rate Limits
+            if (i < chunks.length - 1) {
+                await new Promise(r => setTimeout(r, 1500));
+            }
+        }
+
+        if (actionType === "grammar-fix") {
+            const finalCorrected = mergedCorrected.join("\n\n");
+            const finalAnalysis = mergedAnalysis.join("\n\n---\n\n");
+            return `${finalCorrected}\n\n===GF_SEPARATOR===\n\n${finalAnalysis}`;
+        } else {
+            return [mergedRewrites.join("\n\n")];
+        }
+    };
+
     UI.rewriteBtn.onclick = async () => {
         const text = UI.inputText.value.trim();
         if (!text) return;
         setBusy(true);
         try {
-            const res = await GrammarFlowAPI.request("/rewrite", {
-                text, style: UI.styleSelect.value, tone: UI.toneSelect.value,
-                language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
-            });
-            renderResults(res.data);
+            const linesCount = text.split("\n").map(l => l.trim()).filter(Boolean).length;
+            if (linesCount > 15) {
+                const results = await processLargeText(text, "rewrite");
+                renderResults(results);
+            } else {
+                const res = await GrammarFlowAPI.request("/rewrite", {
+                    text, style: UI.styleSelect.value, tone: UI.toneSelect.value,
+                    language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
+                });
+                renderResults(res.data);
+            }
         } catch (e) { renderResults([`Error: ${e.message}`]); }
         finally { setBusy(false); }
     };
@@ -560,17 +639,23 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!text) return;
         setBusy(true);
         try {
-            const res = await GrammarFlowAPI.request("/grammar-fix", {
-                text,
-                language: UI.languageSelect.value,
-                humanize: UI.humanizeToggle.checked,
-                learningMode: false
-            });
-            if (res.data && res.data.status === "queued" && res.data.jobId) {
-                const result = await pollJobStatus(res.data.jobId);
+            const linesCount = text.split("\n").map(l => l.trim()).filter(Boolean).length;
+            if (linesCount > 15) {
+                const result = await processLargeText(text, "grammar-fix");
                 renderResults([result]);
             } else {
-                renderResults(res.data);
+                const res = await GrammarFlowAPI.request("/grammar-fix", {
+                    text,
+                    language: UI.languageSelect.value,
+                    humanize: UI.humanizeToggle.checked,
+                    learningMode: false
+                });
+                if (res.data && res.data.status === "queued" && res.data.jobId) {
+                    const result = await pollJobStatus(res.data.jobId);
+                    renderResults([result]);
+                } else {
+                    renderResults(res.data);
+                }
             }
         } catch (e) { renderResults([`Error: ${e.message}`]); }
         finally { setBusy(false); }
