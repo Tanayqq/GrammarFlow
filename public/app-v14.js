@@ -34,7 +34,9 @@ const getOrCreateGuestSessionId = () => {
 const GrammarFlowAPI = {
     async request(endpoint, payload, method = "POST") {
         const headers = {
-            "x-guest-session-id": getOrCreateGuestSessionId()
+            "x-guest-session-id": getOrCreateGuestSessionId(),
+            "Cache-Control": "no-cache",
+            "Pragma": "no-cache"
         };
         let token = localStorage.getItem("gf_token");
         if (window.Clerk && window.Clerk.isReady && window.Clerk.session) {
@@ -59,7 +61,14 @@ const GrammarFlowAPI = {
             headers["Content-Type"] = "application/json";
             options.body = JSON.stringify(payload);
         }
-        const response = await fetch(`${getBaseUrl()}${endpoint}`, options);
+        
+        let url = `${getBaseUrl()}${endpoint}`;
+        if (method === "GET") {
+            const separator = url.includes("?") ? "&" : "?";
+            url += `${separator}_=${Date.now()}`;
+        }
+        
+        const response = await fetch(url, options);
         const data = await response.json();
         if (!response.ok || !data.success) throw new Error(data.error?.message || "Server error");
         return data;
