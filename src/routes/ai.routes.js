@@ -22,5 +22,6 @@ router.get('/job/:jobId',    readLimiter, aiController.checkJobStatus);   // Pol
 router.post('/job/:jobId',   readLimiter, aiController.checkJobStatus);   // Poll job status (POST - extension support)
 router.get('/history',       passiveAuth, readLimiter, aiController.getHistory);        // History (auth-aware)
 router.get('/history/:id',   passiveAuth, readLimiter, aiController.getHistoryDetail); // Detail (auth-aware)
+router.delete('/history/:id', passiveAuth, readLimiter, aiController.deleteHistory);   // Delete (auth-aware)
 
 module.exports = router;

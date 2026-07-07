@@ -1589,9 +1589,10 @@ document.addEventListener("DOMContentLoaded", () => {
             const card = document.createElement("div");
             card.className = "p-4 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-between hover:border-purple-500/30 transition-all group cursor-pointer mb-2.5";
             card.dataset.id = op.id;
+            card.style.transition = "opacity 0.25s ease, transform 0.25s ease, max-height 0.3s ease";
             
             let iconSvg = `<svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>`;
-            if (op.operation_type === 'grammar-fix') {
+            if (op.operation_type === 'grammar_fix' || op.operation_type === 'grammar-fix') {
                 iconSvg = `<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`;
             }
             
@@ -1601,20 +1602,57 @@ document.addEventListener("DOMContentLoaded", () => {
                         ${iconSvg}
                     </div>
                     <div class="flex flex-col min-w-0">
-                        <span class="text-xs font-bold text-gray-200 capitalize tracking-wide">${op.operation_type.replace('-', ' ')}</span>
+                        <span class="text-xs font-bold text-gray-200 capitalize tracking-wide">${op.operation_type.replace(/_/g, ' ').replace(/-/g, ' ')}</span>
                         <span class="text-[10px] text-gray-500 font-medium mt-0.5">${date} · ${op.language || 'English'} (${op.style || 'Casual'})</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
                     ${op.cached ? `<span class="text-[9px] font-bold text-green-400 uppercase tracking-widest bg-green-500/10 px-2 py-0.5 rounded border border-green-500/25">Cached</span>` : ''}
+                    <button class="delete-history-btn opacity-0 group-hover:opacity-100 transition-all w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-500/20 text-gray-500 hover:text-red-400" data-id="${op.id}" title="Delete this entry">
+                        <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
                     <svg class="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
                 </div>
             `;
             
+            // Open detail on card click
             card.onclick = () => showHistoryDetail(op.id);
+
+            // Delete button — stop propagation so card click doesn't fire
+            const deleteBtn = card.querySelector(".delete-history-btn");
+            deleteBtn.onclick = async (e) => {
+                e.stopPropagation();
+                deleteBtn.disabled = true;
+                deleteBtn.innerHTML = `<svg class="w-3 h-3 animate-spin pointer-events-none" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>`;
+
+                try {
+                    const res = await GrammarFlowAPI.request(`/history/${op.id}`, undefined, "DELETE");
+                    if (res.success) {
+                        // Smooth fade + shrink out
+                        card.style.opacity = "0";
+                        card.style.transform = "translateX(12px)";
+                        setTimeout(() => {
+                            card.remove();
+                            // Show empty state if no cards left
+                            const remaining = container.querySelectorAll("[data-id]");
+                            if (remaining.length === 0) renderHistoryList([], isOffline);
+                        }, 280);
+                    } else {
+                        deleteBtn.disabled = false;
+                        deleteBtn.innerHTML = `<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>`;
+                        alert("Couldn't delete: " + (res.error?.message || "Unknown error"));
+                    }
+                } catch (err) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = `<svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>`;
+                    alert("Delete failed: " + err.message);
+                }
+            };
+
             container.appendChild(card);
         });
     };
+
 
     // Load detailed view of specific operation
     const showHistoryDetail = async (opId) => {

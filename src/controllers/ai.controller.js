@@ -440,6 +440,42 @@ const getHistoryDetail = async (req, res) => {
     }
 };
 
+const deleteHistory = async (req, res) => {
+    try {
+        const guestSessionId = req.headers['x-guest-session-id'] || null;
+        const opId = req.params.id;
+
+        // Find the operation first to verify ownership
+        let operation = null;
+        try {
+            operation = await prisma.aiOperation.findUnique({
+                where: { id: opId },
+                include: { user: { select: { id: true, guest_session_id: true } } }
+            });
+        } catch (dbError) {
+            return res.status(503).json({ success: false, error: { message: 'Database unavailable', code: 'DATABASE_OFFLINE' } });
+        }
+
+        if (!operation) {
+            return res.status(404).json({ success: false, error: { message: 'Operation not found' } });
+        }
+
+        // Security: only allow deletion if the operation belongs to this user/guest
+        const isOwner = (req.userId && operation.user_id === req.userId) ||
+                        (guestSessionId && operation.user?.guest_session_id === guestSessionId);
+
+        if (!isOwner) {
+            return res.status(403).json({ success: false, error: { message: 'Access denied' } });
+        }
+
+        await prisma.aiOperation.delete({ where: { id: opId } });
+        sendResponse(res, true, { deleted: true, id: opId });
+    } catch (error) {
+        console.error('[API v1] deleteHistory error:', error.message);
+        res.status(500).json({ success: false, error: { message: 'Failed to delete history item' } });
+    }
+};
+
 module.exports = {
     rewrite,
     grammarFix,
@@ -450,5 +486,6 @@ module.exports = {
     processDocument,
     checkJobStatus,
     getHistory,
-    getHistoryDetail
+    getHistoryDetail,
+    deleteHistory
 };
