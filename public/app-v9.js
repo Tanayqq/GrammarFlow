@@ -382,7 +382,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     <!-- Tab Contents -->
                     <div class="tab-content-${tabId}" id="${tabId}_corrected">
-                        <div class="result-text text-gray-200 text-sm md:text-base leading-relaxed select-all">${correctedText}</div>
+                        <div class="result-text text-gray-200 text-sm md:text-base leading-relaxed select-all" style="white-space: pre-wrap;">${correctedText}</div>
                         <button class="copy-btn-mini" onclick="navigator.clipboard.writeText(document.getElementById('${tabId}_corrected').querySelector('.result-text').innerText || document.getElementById('${tabId}_corrected').querySelector('.result-text').textContent)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>

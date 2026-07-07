@@ -222,7 +222,8 @@ ${humanize ? `Ensure the corrections feel natural and conversational in ${langua
 Your response MUST be divided into EXACTLY two sections separated by "===GF_SEPARATOR===":
 
 [Section 1: Consolidated Corrected Version]
-Output the full corrected version of the user's input as one single clean paragraph or continuous text block (no lists, no bullet points, no original/corrected tags, no intro phrases, just the pure fully corrected text).
+Output the full corrected version of the user's input.
+CRITICAL: You MUST preserve the EXACT same list format, numbering (e.g., "1.", "2."), newlines, paragraph breaks, and layout structure as the user's original input. For example, if the input is a list of numbered sentences, output a matching list of numbered corrected sentences. Do NOT merge them into a single paragraph. Do not include any original/corrected tags or intro phrases, just the pure corrected text.
 
 ===GF_SEPARATOR===
 
