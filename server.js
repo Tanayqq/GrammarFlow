@@ -69,6 +69,18 @@ const getHealthStatus = () => {
 app.get('/api/v1/health', (req, res) => res.json(getHealthStatus()));
 app.get('/health', (req, res) => res.json(getHealthStatus()));
 
+// DB connectivity debug endpoint — exposes exact Prisma error for diagnosis
+app.get('/api/v1/db-health', async (req, res) => {
+    const prisma = require('./src/db');
+    try {
+        const count = await prisma.user.count();
+        res.json({ success: true, data: { db: 'connected', userCount: count } });
+    } catch (err) {
+        res.json({ success: false, data: { db: 'error', error: err.message, code: err.code } });
+    }
+});
+
+
 // 4. Rate Limiting Protection (Global Safety-Net Sliding-Window)
 const { passiveAuth } = require('./src/middlewares/auth');
 const { globalSafetyLimiter } = require('./src/middlewares/rateLimiter');
