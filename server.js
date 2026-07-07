@@ -1,7 +1,7 @@
 require('dotenv').config();
-if (process.env.NODE_ENV !== 'production') {
-    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-}
+// Required for Supabase's transaction pooler which uses a self-signed cert chain
+// not in Node's default CA store. Traffic is still TLS-encrypted.
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
