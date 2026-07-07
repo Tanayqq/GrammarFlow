@@ -143,9 +143,6 @@ const getGrammarFixPrompt = (language = "English", humanize = false, sentenceCou
     if (sentenceCount <= 20) {
         // Mode 1: 1-20 sentences
         formatInstructions = `
-### OUTPUT FORMAT (1-20 Sentences Mode) ###
-You MUST split the text into individual sentences and format the response EXACTLY like this for EACH sentence (use "Sentence 1", "Sentence 2", etc.):
-
 # Grammar Corrections
 
 ## Sentence 1
@@ -173,9 +170,6 @@ ${learningMode ? `
     } else if (sentenceCount <= 100) {
         // Mode 2: 21-100 sentences
         formatInstructions = `
-### OUTPUT FORMAT (21-100 Sentences Mode) ###
-You MUST split the text into individual sentences and format the response EXACTLY like this for EACH sentence (use "Sentence 1", "Sentence 2", etc.):
-
 # Grammar Corrections
 
 ## Sentence 1
@@ -201,9 +195,6 @@ Only display a "💡 Main Fixes:" section at the end of a sentence card if the f
     } else {
         // Mode 3: 100+ sentences
         formatInstructions = `
-### OUTPUT FORMAT (100+ Sentences Mode) ###
-You MUST format the response EXACTLY as a summary view and error statistics section like this:
-
 # Grammar Corrections
 
 ## Summary View
@@ -227,12 +218,22 @@ You are a highly accurate grammar corrector and editor for ${language}.
 Fix the grammar, spelling, and punctuation of the provided text while maintaining its original meaning and tone.
 ${humanize ? `Ensure the corrections feel natural and conversational in ${language}, not overly formal.` : ""}
 
+### MANDATORY RESPONSE STRUCTURE (CRITICAL) ###
+Your response MUST be divided into EXACTLY two sections separated by "===GF_SEPARATOR===":
+
+[Section 1: Consolidated Corrected Version]
+Output the full corrected version of the user's input as one single clean paragraph or continuous text block (no lists, no bullet points, no original/corrected tags, no intro phrases, just the pure fully corrected text).
+
+===GF_SEPARATOR===
+
+[Section 2: Detailed Breakdown]
+Provide the structured detailed corrections following this format:
 ${formatInstructions}
 
 ### RULES ###
-1. Do NOT return the corrected text as a single block or paragraph. Follow the format above exactly.
-2. The entire response must be written in ${language}.
-3. Do NOT include any introductory or concluding text (e.g. "Here are the corrections:"). Just start directly with the markdown.`;
+1. The entire response must be written in ${language}.
+2. Do NOT include any introductory or concluding text (e.g. "Here are the corrections:"). Just start directly with Section 1.
+3. Make sure to print the exact separator string "===GF_SEPARATOR===" on its own line between Section 1 and Section 2.`;
 };
 
 

@@ -364,30 +364,92 @@ document.addEventListener("DOMContentLoaded", () => {
             const card = document.createElement("div");
             card.className = "result-card";
             
-            // Format Markdown
-            let formattedHtml = text;
-            if (window.marked) {
-                // Configure marked to render linebreaks natively
-                marked.setOptions({ breaks: true, gfm: true });
-                formattedHtml = marked.parse(text);
-            } else {
-                formattedHtml = text.replace(/\n/g, '<br>');
-            }
+            if (text && text.includes("===GF_SEPARATOR===")) {
+                const parts = text.split("===GF_SEPARATOR===");
+                const correctedText = parts[0].trim();
+                const detailedMarkdown = parts[1].trim();
 
-            // Custom inline styles/classes for markdown elements inside result-card
-            card.innerHTML = `
-                <div class="result-text prose prose-invert max-w-none text-gray-200 text-sm md:text-base space-y-4">
-                    ${formattedHtml}
-                </div>
-                <button class="copy-btn-mini" onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText || this.previousElementSibling.textContent)">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                    </svg>
-                </button>`;
+                const formattedDetailed = window.marked ? marked.parse(detailedMarkdown) : detailedMarkdown.replace(/\n/g, '<br>');
+
+                // Unique ID for this tab instance to avoid ID collisions in multiple cards
+                const tabId = "tab_" + Math.random().toString(36).substring(2, 9);
+
+                card.innerHTML = `
+                    <!-- Tab Headers -->
+                    <div class="flex border-b border-white/10 mb-4 pb-2 gap-4">
+                        <button class="tab-header-${tabId} text-sm font-bold text-purple-400 border-b-2 border-purple-500 pb-1 focus:outline-none cursor-pointer" data-tab="corrected">Corrected Text</button>
+                        <button class="tab-header-${tabId} text-sm font-bold text-gray-400 hover:text-gray-200 pb-1 focus:outline-none cursor-pointer" data-tab="detailed">Detailed Analysis</button>
+                    </div>
+
+                    <!-- Tab Contents -->
+                    <div class="tab-content-${tabId}" id="${tabId}_corrected">
+                        <div class="result-text text-gray-200 text-sm md:text-base leading-relaxed select-all">${correctedText}</div>
+                        <button class="copy-btn-mini" onclick="navigator.clipboard.writeText(document.getElementById('${tabId}_corrected').querySelector('.result-text').innerText || document.getElementById('${tabId}_corrected').querySelector('.result-text').textContent)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="tab-content-${tabId} hidden" id="${tabId}_detailed">
+                        <div class="result-text prose prose-invert max-w-none text-gray-300 text-sm space-y-3">${formattedDetailed}</div>
+                        <button class="copy-btn-mini" onclick="navigator.clipboard.writeText(document.getElementById('${tabId}_detailed').querySelector('.result-text').innerText || document.getElementById('${tabId}_detailed').querySelector('.result-text').textContent)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                    </div>
+                `;
+
+                // Wire up tab switching
+                setTimeout(() => {
+                    const headers = card.querySelectorAll(`.tab-header-${tabId}`);
+                    headers.forEach(h => {
+                        h.onclick = () => {
+                            // Active styling
+                            headers.forEach(header => {
+                                header.classList.remove('text-purple-400', 'border-b-2', 'border-purple-500');
+                                header.classList.add('text-gray-400');
+                            });
+                            h.classList.add('text-purple-400', 'border-b-2', 'border-purple-500');
+                            h.classList.remove('text-gray-400');
+
+                            // Content visibility
+                            const target = h.dataset.tab;
+                            card.querySelectorAll(`.tab-content-${tabId}`).forEach(c => c.classList.add('hidden'));
+                            card.querySelector(`#${tabId}_${target}`).classList.remove('hidden');
+                        };
+                    });
+                }, 50);
+
+            } else {
+                // Format Markdown
+                let formattedHtml = text;
+                if (window.marked) {
+                    marked.setOptions({ breaks: true, gfm: true });
+                    formattedHtml = marked.parse(text);
+                } else {
+                    formattedHtml = text.replace(/\n/g, '<br>');
+                }
+
+                card.innerHTML = `
+                    <div class="result-text prose prose-invert max-w-none text-gray-200 text-sm md:text-base space-y-4">
+                        ${formattedHtml}
+                    </div>
+                    <button class="copy-btn-mini" onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText || this.previousElementSibling.textContent)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>`;
+            }
             resultsList.appendChild(card);
         });
     };
+
+
 
     // ─── REAL-TIME LOOP (Phase 3 + Phase 4) ──
     UI.inputText.addEventListener("keydown", () => momentum.recordStroke());
