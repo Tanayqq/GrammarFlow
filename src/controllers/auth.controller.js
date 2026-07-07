@@ -33,9 +33,12 @@ const syncSession = async (req, res) => {
 
         // 1. Upsert the authenticated User record
         const existingUser = await prisma.user.findUnique({ where: { id: req.userId } });
-        const nameToSave = (authUser.name && authUser.name !== 'Test User') 
-            ? authUser.name 
-            : (existingUser?.name || 'Test User');
+
+        // Name priority: Clerk-provided name > existing DB name (only if not the stale 'Test User') > email prefix > 'User'
+        const emailPrefix = authUser.email ? authUser.email.split('@')[0] : null;
+        const clerkName = (authUser.name && authUser.name !== 'Test User') ? authUser.name : null;
+        const storedName = (existingUser?.name && existingUser.name !== 'Test User') ? existingUser.name : null;
+        const nameToSave = clerkName || storedName || emailPrefix || 'User';
 
         const dbAuthUser = await prisma.user.upsert({
             where: { id: req.userId },

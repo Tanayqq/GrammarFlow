@@ -1322,7 +1322,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (res.success && res.data && res.data.user) {
                     const dbUser = res.data.user;
-                    if (userName) userName.textContent = dbUser.name || user.fullName || user.username || 'Anonymous User';
+                    // Prefer Clerk's live name over a stale DB value (e.g. 'Test User' default)
+                    const clerkName = user.fullName || user.username;
+                    const dbName = (dbUser.name && dbUser.name !== 'Test User') ? dbUser.name : null;
+                    const emailPrefix = (dbUser.email || user.primaryEmailAddress?.emailAddress || '').split('@')[0];
+                    const displayName = dbName || clerkName || emailPrefix || 'User';
+                    if (userName) userName.textContent = displayName;
                     if (userEmail) userEmail.textContent = dbUser.email || user.primaryEmailAddress?.emailAddress;
                     profileSection.classList.remove("hidden");
                     
