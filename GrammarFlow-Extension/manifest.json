@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GrammarFlow AI Writer",
-  "version": "2.3",
+  "version": "2.4",
   "description": "Instant AI writing assistant with multilingual support. Rewrite, fix grammar, summarize, and explain — on any webpage.",
   "action": {
     "default_popup": "popup.html",

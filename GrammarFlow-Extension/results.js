@@ -68,6 +68,10 @@ function parseJob(params) {
 }
 
 function formatResults(data, label) {
+    if (typeof data === 'string' && data.includes('===_SEPARATOR===')) {
+        data = data.split('===_SEPARATOR===').map(s => s.trim()).filter(Boolean);
+    }
+    
     if (Array.isArray(data)) {
         return data.map((str, i) => ({
             text: str,

@@ -287,6 +287,12 @@ function processAndRenderResponseData(data, endpoint) {
 
     // Logic for different return types
     let results = [];
+    
+    // If the backend returned a single string with separators, split it into an array
+    if (typeof data === 'string' && data.includes('===_SEPARATOR===')) {
+        data = data.split('===_SEPARATOR===').map(s => s.trim()).filter(Boolean);
+    }
+
     if (Array.isArray(data)) {
         // /rewrite returns array of strings
         results = data.map((str, i) => ({
