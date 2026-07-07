@@ -1198,6 +1198,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
 
                 // Add state listener to update UI when session changes
+                let wasLoggedIn = !!(window.Clerk && window.Clerk.user);
                 window.Clerk.addListener(async ({ session, user }) => {
                     console.log("[AUTH] Clerk auth state changed:", user ? user.primaryEmailAddress?.emailAddress : "No user");
                     
@@ -1205,6 +1206,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     localStorage.removeItem("gf_history_cache");
                     const container = document.getElementById("historyContent");
                     if (container) container.innerHTML = "";
+
+                    if (!user && wasLoggedIn) {
+                        localStorage.removeItem("guest_session_id");
+                        getOrCreateGuestSessionId();
+                    }
+                    wasLoggedIn = !!user;
 
                     await checkAuthState();
                     const settingsModal = document.getElementById("settingsModal");

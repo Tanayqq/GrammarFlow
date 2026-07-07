@@ -398,6 +398,12 @@ const getHistory = async (req, res) => {
             return sendResponse(res, true, { operations: [], total: 0, page, limit });
         }
 
+        // Security check: if unauthenticated request, prevent returning history of a registered user
+        if (!req.userId && (user.email || user.password_hash)) {
+            console.log(`[API v1] Blocking unauthenticated history request for registered user ID: ${user.id}`);
+            return sendResponse(res, true, { operations: [], total: 0, page, limit, totalPages: 0 });
+        }
+
         try {
             const [operations, total] = await Promise.all([
                 prisma.aiOperation.findMany({
@@ -448,9 +454,9 @@ const getHistoryDetail = async (req, res) => {
             return res.status(404).json({ success: false, error: { message: 'Operation not found' } });
         }
 
-        // Security: only return operation if it belongs to this authenticated user or guest session
+        // Security: only return operation if it belongs to this authenticated user or guest session (if guest, target user must not be registered)
         const isOwner = (req.userId && operation.user_id === req.userId) ||
-                        (guestSessionId && operation.user?.guest_session_id === guestSessionId);
+                        (guestSessionId && operation.user?.guest_session_id === guestSessionId && !operation.user.email && !operation.user.password_hash);
 
         if (!isOwner) {
             return res.status(403).json({ success: false, error: { message: 'Access denied' } });
@@ -483,9 +489,9 @@ const deleteHistory = async (req, res) => {
             return res.status(404).json({ success: false, error: { message: 'Operation not found' } });
         }
 
-        // Security: only allow deletion if the operation belongs to this user/guest
+        // Security: only allow deletion if the operation belongs to this user/guest (if guest, target user must not be registered)
         const isOwner = (req.userId && operation.user_id === req.userId) ||
-                        (guestSessionId && operation.user?.guest_session_id === guestSessionId);
+                        (guestSessionId && operation.user?.guest_session_id === guestSessionId && !operation.user.email && !operation.user.password_hash);
 
         if (!isOwner) {
             return res.status(403).json({ success: false, error: { message: 'Access denied' } });
