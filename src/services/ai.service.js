@@ -2,7 +2,12 @@ const { Redis } = require('@upstash/redis');
 const { generateCacheKey } = require('../utils/cacheKey');
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const MODEL_NAME = "llama-3.3-70b-versatile";
+const FALLBACK_MODELS = [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant",
+    "mixtral-8x7b-32768",
+    "gemma2-9b-it"
+];
 
 // Initialize Upstash Redis client
 let redis = null;
@@ -46,7 +51,7 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7) {
 
     // 2. Call Groq API on Cache Miss
     let attempts = 0;
-    const maxRetries = Math.max(3, apiKeys.length + 1);
+    const maxRetries = Math.max(FALLBACK_MODELS.length, apiKeys.length + 1);
     const timeoutMs = 90000; // 90 seconds
 
     while (attempts < maxRetries) {
@@ -67,7 +72,7 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7) {
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    model: MODEL_NAME,
+                    model: FALLBACK_MODELS[attempts % FALLBACK_MODELS.length],
                     messages: [
                         { role: "system", content: systemPrompt },
                         { role: "user", content: userText }
