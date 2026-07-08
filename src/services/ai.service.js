@@ -16,9 +16,15 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
     console.warn("[REDIS WARNING] UPSTASH_REDIS_REST_URL and/or UPSTASH_REDIS_REST_TOKEN are not set. Caching will be bypassed.");
 }
 
+let currentKeyIndex = 0;
+
 async function callGroqAPI(systemPrompt, userText, temperature = 0.7) {
-    const apiKey = process.env.GROQ_API_KEY;
-    if (!apiKey) {
+    const apiKeys = (process.env.GROQ_API_KEY || "")
+        .split(",")
+        .map(k => k.trim())
+        .filter(Boolean);
+
+    if (apiKeys.length === 0) {
         throw new Error("GROQ_API_KEY is not configured on the server.");
     }
 
@@ -40,12 +46,16 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7) {
 
     // 2. Call Groq API on Cache Miss
     let attempts = 0;
-    const maxRetries = 3;
+    const maxRetries = Math.max(3, apiKeys.length + 1);
     const timeoutMs = 90000; // 90 seconds
 
     while (attempts < maxRetries) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        
+        // Round robin API key selection per attempt
+        const apiKey = apiKeys[currentKeyIndex % apiKeys.length];
+        currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
 
         try {
             console.log(`[AI SERVICE] Calling Groq API (Attempt ${attempts + 1})...`);
@@ -114,7 +124,10 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7) {
                     : `Connection to AI failed: ${error.message}`);
             }
             
-            await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempts - 1)));
+            const delay = (error.message.includes("rate limit") && apiKeys.length > 1) 
+                ? 500 
+                : 1000 * Math.pow(2, attempts - 1);
+            await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
 }
