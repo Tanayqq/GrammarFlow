@@ -30,7 +30,7 @@ const rewrite = async (req, res, next) => {
 
         const words = text.split(/\s+/).filter(Boolean).length;
         const sentences = text.split(/[.!?।]+/).map(s => s.trim()).filter(s => s.length > 2);
-        const isLongText = words > 150 || sentences.length > 10;
+        const isLongText = words > 400 || sentences.length > 30;
 
         let resultText = "";
         let source = "groq";
