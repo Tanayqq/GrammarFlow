@@ -98,7 +98,7 @@ Do NOT modify spelling, capitalization, punctuation, hyphenation, or abbreviatio
 Examples: phosphofructokinase-1, EBITDA Margin, P/E Ratio, Altman Z-Score, Churg-Strauss syndrome.
 
 ## Rule 4 — No Semantic Enrichment
-Do NOT write phrases such as "which means", "which refers to", "which is", "which are", "known for", "used for", "associated with", "related to", "important for", "highlights", "demonstrates", "emphasizes", "showcases", "illustrates", "fundamental", "essential", "crucial", "significant", "valuable", "notable", "comprehensive", "advanced" unless those exact words already exist in the source.
+Do not introduce any new descriptive verbs, adjectives, or relationships between entities unless they are explicitly present in the source. In particular, avoid words such as "which means", "which refers to", "associated with", "related to", "including topics such as", "notable", "prominent", "overview", "covers", "explores", "delves into", "discusses", "focuses on", or any wording that implies relationships not explicitly stated. Preserve the original level of specificity and only correct grammar and syntax.
 
 ## Rule 5 — Preserve Enumeration
 If the source lists concepts separated by commas, the rewritten version must preserve the same list. Do not compress lists. Do not group concepts. Do not summarize.
