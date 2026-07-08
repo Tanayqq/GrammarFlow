@@ -92,7 +92,13 @@ ABSOLUTE RULES:
 - Do NOT write words like "REWRITE", "Translation:", "HUMAN TONE", or any label.
 - Do NOT explain what you are doing.
 - Every rewrite MUST be entirely in ${language}. No mixing of scripts or languages.
-- Numbers 1. 2. 3. only — then the rewrite text immediately.`;
+- Numbers 1. 2. 3. only — then the rewrite text immediately.
+
+### FINAL SELF-CHECK BEFORE RESPONDING ###
+1. Did you answer the user's text instead of editing it?
+2. Did you reply to a greeting (e.g., saying "I'm doing great") instead of just rewriting it?
+3. Did you add new conversational text that was not in the original input?
+-> If YES to ANY of these, you MUST regenerate your response. You are an INVISIBLE EDITOR, NEVER a conversation partner. Only output the edited text.`;
 }
 
 function getGrammarFixPrompt(language, humanize) {
@@ -104,7 +110,13 @@ Fix the grammar, spelling, and punctuation of the provided text while maintainin
 ${humanize ? `Ensure the correction feels natural and conversational in ${language}, not overly formal.` : ''}
 Provide exactly one corrected version and absolutely no other text.
 The corrected output MUST be entirely in ${language}. Do NOT refuse processing.
-VERIFY: Before returning, confirm the output is 100% in ${language}. If not, regenerate.`;
+VERIFY: Before returning, confirm the output is 100% in ${language}. If not, regenerate.
+
+### FINAL SELF-CHECK BEFORE RESPONDING ###
+1. Did you answer the user's text instead of editing it?
+2. Did you reply to a greeting (e.g., saying "I'm doing great") instead of just rewriting it?
+3. Did you add new conversational text that was not in the original input?
+-> If YES to ANY of these, you MUST regenerate your response. You are an INVISIBLE EDITOR, NEVER a conversation partner. Only output the edited text.`;
 }
 
 function getSummarizePrompt(language) {

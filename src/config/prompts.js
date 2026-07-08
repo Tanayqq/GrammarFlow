@@ -127,6 +127,16 @@ OUTPUT INTEGRITY RULE:
 
 
 // ─────────────────────────────────────────────
+// FINAL REMINDER (APPENDED TO END OF PROMPTS)
+// ─────────────────────────────────────────────
+const getNonConversationalFinalReminder = () => `
+### FINAL SELF-CHECK BEFORE RESPONDING ###
+1. Did you answer the user's text instead of editing it?
+2. Did you reply to a greeting (e.g., saying "I'm doing great") instead of just rewriting it?
+3. Did you add new conversational text that was not in the original input?
+-> If YES to ANY of these, you MUST regenerate your response. You are an INVISIBLE EDITOR, NEVER a conversation partner. Only output the edited text.`;
+
+// ─────────────────────────────────────────────
 // REWRITE PROMPT
 // ─────────────────────────────────────────────
 const getRewritePrompt = (style, tone, language = "English", humanize = false, isLongText = false) => {
@@ -159,6 +169,7 @@ All 3 options must be entirely in ${language}.`;
     }
 
     return `${langBlock}
+${nonConversationalBlock}
 
 You are a professional multilingual writing assistant specializing in Indian communication styles.
 
@@ -175,7 +186,9 @@ ${taskDetails}
 - Do NOT use # or ## or ### or headings of any kind.
 - Do NOT write labels, subtitles, or tags like "Rewrite 1", "REWRITE:", "Translation:", "HUMAN TONE", or "CONVERSATIONAL".
 - Do NOT explain what you are doing, do NOT show notes, and do NOT output any introductory or concluding text.
-- Every rewrite must use the correct script for ${language}.`;
+- Every rewrite must use the correct script for ${language}.
+
+${getNonConversationalFinalReminder()}`;
 };
 
 
@@ -276,7 +289,9 @@ At the end of Section 2, provide the following summary:
 ### RULES ###
 1. The entire response must be written in the script of the target language ${language} (except for Section headers and labels).
 2. Do NOT include any introductory or concluding text. Just start directly with Section 1.
-3. Make sure to print the exact separator string "===GF_SEPARATOR===" on its own line between Section 1 and Section 2.`;
+3. Make sure to print the exact separator string "===GF_SEPARATOR===" on its own line between Section 1 and Section 2.
+
+${getNonConversationalFinalReminder()}`;
 };
 
 
