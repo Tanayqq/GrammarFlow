@@ -65,7 +65,7 @@ const rewrite = async (req, res, next) => {
         if (isLongText) {
             rewrites = [resultText.trim()];
         } else {
-            const parts = resultText.split("===REWRITE_SEPARATOR===");
+            const parts = resultText.split(/===REWRITE_SEPARATOR===|===_SEPARATOR===/);
             if (parts.length > 1) {
                 rewrites = parts.map(p => {
                     return p.replace(/###.*/g, '')

@@ -577,7 +577,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         let mergedCorrected = [];
         let mergedAnalysis = [];
-        let mergedRewrites = [];
+        let mergedRewrites = [[], [], []];
 
         for (let i = 0; i < chunks.length; i++) {
             const chunkText = chunks[i];
@@ -618,8 +618,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     humanize: UI.humanizeToggle.checked
                 });
                 
-                const option = (Array.isArray(res.data) ? res.data[0] : res.data) || "";
-                mergedRewrites.push(option.trim());
+                const options = Array.isArray(res.data) ? res.data : [res.data, res.data, res.data];
+                mergedRewrites[0].push((options[0] || options[0] || "").trim());
+                mergedRewrites[1].push((options[1] || options[0] || "").trim());
+                mergedRewrites[2].push((options[2] || options[0] || "").trim());
             }
 
             // Wait 1.5s between chunks to keep Groq API stable and avoid 429 Rate Limits
@@ -633,7 +635,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const finalAnalysis = mergedAnalysis.join("\n\n---\n\n");
             return `${finalCorrected}\n\n===GF_SEPARATOR===\n\n${finalAnalysis}`;
         } else {
-            return [mergedRewrites.join("\n\n")];
+            return mergedRewrites.map(arr => arr.join("\n\n")).filter(s => s.trim().length > 0);
         }
     };
 
