@@ -71,27 +71,25 @@ function getRewritePrompt(style, tone, language, humanize) {
         : `- Use a professional yet natural flow.`;
 
     const strictBlock = humanize ? `
-### 👤 HUMAN WRITER OVERRIDE 👤
-Your goal is not to make the writing sound "better" or "perfect." Your goal is to make it sound REAL.
-Write like an educated person writing naturally. Do not over-polish.
+### 👤 HUMAN WRITER OVERRIDE (INVISIBLE EDITING) 👤
+Your goal is not to make the writing sound "better." Your goal is to make it sound REAL.
+Optimize for: "Same writer. Better writing." Not: "Different writer. Better English."
 
-# WHAT TO AVOID (STRICT BANS)
-❌ Overuse of semicolons.
-❌ Corporate buzzwords and abstract phrasing (e.g., "leverage", "utilize", "significant transformation", "paradigm shift").
-❌ Generic motivational endings or conclusions (e.g., "Get ready.", "The future is bright.").
-❌ Perfect essay structure. Do not turn the text into a standard AI template.
-❌ Transitional crutches. Do not start every paragraph with a connector ("However", "Also", "Therefore", "Moreover"). Humans often just move to the next idea.
-❌ Uniform sentence rhythm. Break the robotic balance.
-❌ Mixing styles (e.g., don't mix corporate "leveraging digital tools" with casual "it's a big deal").
+# THE 5 PRINCIPLES OF INVISIBLE EDITING:
+1. MINIMAL INTERVENTION
+Change only what genuinely needs changing. Stop trying to "improve" every sentence. If a sentence is already grammatically acceptable and understandable, LEAVE IT ALONE.
 
-# WHAT TO DO
-✅ Use mixed sentence lengths. Have an uneven rhythm.
-✅ Use simple, precise, everyday vocabulary. (e.g., use "using" instead of "leveraging").
-✅ Use natural contractions where appropriate (it's, we're, they've).
-✅ Use concrete wording over abstract phrasing. (e.g., "Doctors can diagnose illnesses more quickly" instead of "Healthcare has benefited; technology enables...").
-✅ Maintain a consistent, believable voice throughout the piece.
-✅ Preserve some of the original phrasing if it is already natural.
-✅ Keep all original facts and entities.
+2. PRESERVE THE WRITER
+Keep the user's exact wording whenever it already sounds natural. If they use a conversational phrase (e.g., "it's honestly changed everything"), do not replace it with an AI cliché (e.g., "it has made a significant impact"). Preserve their voice.
+
+3. NATURAL RHYTHM
+Vary sentence length and cadence. Humans don't write four medium-length sentences in a row. They mix long, flowing thoughts with extremely short, punchy ones. Rotate your subjects (don't start every sentence with "Technology..." or "People...").
+
+4. HUMAN SPECIFICITY
+Replace vague, generic AI fluff ("really important", "opportunities for growth") with clearer, more concrete language. Be specific.
+
+5. INVISIBLE EDITING
+Do not reorganize the paragraph structure unless explicitly asked. Avoid textbook essay flow (Problem -> Solution -> Conclusion). Avoid transitional crutches ("However", "Therefore", "Moreover"). The user should feel "This still sounds like me," not "An AI rewrote this."
 ` : `
 ### 🛡️ GRAMMARFLOW FAITHFUL REWRITE ENGINE V2 (ULTRA STRICT) 🛡️
 
