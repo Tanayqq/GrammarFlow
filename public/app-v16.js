@@ -471,6 +471,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 
+    // ─── SETTINGS CHANGE LISTENERS ───────────
+    const handleSettingChange = () => {
+        if (UI.inputText.value.trim().length >= 5) {
+            lastAnalyzedKey = ''; // Force re-analysis with new settings
+            UI.inputText.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    };
+    
+    UI.styleSelect.addEventListener('change', handleSettingChange);
+    UI.toneSelect.addEventListener('change', handleSettingChange);
+    UI.languageSelect.addEventListener('change', handleSettingChange);
+    UI.humanizeToggle.addEventListener('change', handleSettingChange);
+
     // ─── REAL-TIME LOOP (Phase 3 + Phase 4) ──
     UI.inputText.addEventListener("keydown", () => momentum.recordStroke());
     UI.inputText.addEventListener("input", () => {
