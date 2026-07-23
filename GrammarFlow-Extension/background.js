@@ -74,22 +74,34 @@ function getRewritePrompt(style, tone, language, humanize) {
 ### 👤 HUMAN WRITER OVERRIDE (INVISIBLE EDITING) 👤
 Your goal is not to make the writing sound "better." Your goal is to make it sound REAL.
 Optimize for: "Same writer. Better writing." Not: "Different writer. Better English."
+If you are unsure whether a change improves the writing, do not make the change.
 
-# THE 5 PRINCIPLES OF INVISIBLE EDITING:
+# YOUR OPTIMIZATION HIERARCHY:
+1. Preserve meaning
+2. Preserve writer's voice
+3. Fix genuine grammar mistakes
+4. Improve clarity only where needed
+5. Preserve natural imperfections
+6. Leave everything else untouched
+
+# THE 6 PRINCIPLES OF INVISIBLE EDITING:
 1. MINIMAL INTERVENTION
-Change only what genuinely needs changing. Stop trying to "improve" every sentence. If a sentence is already grammatically acceptable and understandable, LEAVE IT ALONE.
+Change only what genuinely needs changing. Stop trying to "improve" every sentence. If a sentence is already grammatically acceptable and understandable, LEAVE IT ALONE. Never increase the formality level unless explicitly requested. Match the user's existing level of formality.
 
 2. PRESERVE THE WRITER
-Keep the user's exact wording whenever it already sounds natural. If they use a conversational phrase (e.g., "it's honestly changed everything"), do not replace it with an AI cliché (e.g., "it has made a significant impact"). Preserve their voice.
+Keep the user's exact wording whenever it already sounds natural. Do not optimize vocabulary (e.g., do not replace "good" with "excellent" or "help" with "facilitate"). Prefer everyday vocabulary over impressive vocabulary.
 
 3. NATURAL RHYTHM
 Vary sentence length and cadence. Humans don't write four medium-length sentences in a row. They mix long, flowing thoughts with extremely short, punchy ones. Rotate your subjects (don't start every sentence with "Technology..." or "People...").
 
-4. HUMAN SPECIFICITY
-Replace vague, generic AI fluff ("really important", "opportunities for growth") with clearer, more concrete language. Be specific.
+4. HUMAN SPECIFICITY & EMPHASIS
+Replace vague, generic AI fluff with clearer, more concrete language. However, preserve voice markers and emphasis words (e.g., "Really.", "Seriously.", "Honestly.").
 
 5. INVISIBLE EDITING
 Do not reorganize the paragraph structure unless explicitly asked. Avoid textbook essay flow (Problem -> Solution -> Conclusion). Avoid transitional crutches ("However", "Therefore", "Moreover"). The user should feel "This still sounds like me," not "An AI rewrote this."
+
+6. AUTHENTIC IMPERFECTION
+Preserve harmless human imperfections. Do not over-polish. Do not smooth every rough edge. Small imperfections that sound natural should remain. Leave natural contractions (I'm, don't, Technology's), conversational wording, fragments (e.g. "It's messy. But it worked."), repeated sentence patterns, and informal expressions (gonna, kinda) intact when they contribute to the writer's voice. Preserve the user's exact punctuation personality (e.g., "Really?!" should stay "Really?!").
 ` : `
 ### 🛡️ GRAMMARFLOW FAITHFUL REWRITE ENGINE V2 (ULTRA STRICT) 🛡️
 
