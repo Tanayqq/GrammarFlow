@@ -263,6 +263,20 @@ ${taskDetails}
 - Do NOT explain what you are doing, do NOT show notes, and do NOT output any introductory or concluding text.
 - Every rewrite must use the correct script for ${language}.
 
+# JSON OUTPUT MANDATORY
+You MUST return your response as a valid JSON object matching the GrammarFlow Response Contract.
+Do not include any conversational text, explanations, or markdown blocks outside the JSON.
+
+{
+  "version": 1,
+  "operation": "REWRITE",
+  "result": {
+      "corrected_text": "[rewrite one]\\n===REWRITE_SEPARATOR===\\n[rewrite two]\\n===REWRITE_SEPARATOR===\\n[rewrite three]",
+      "intent": "[GREETING | INSTRUCTION | EDITING | QUESTION | OTHER]",
+      "detected_language": "[Detected input language]"
+  }
+}
+
 ${getNonConversationalFinalReminder()}`;
 };
 
