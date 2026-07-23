@@ -162,11 +162,6 @@ Before generating the final answer, silently verify:
 □ No domain knowledge was injected.
 If **any** check fails, rewrite again before producing the answer.
 
----
-# OUTPUT FORMAT Constraints
-Do not include notes, comments, explanations, reasoning, summaries, markdown, bullet points (unless in original), or confidence scores.
-The output must be indistinguishable from a human grammar rewrite that preserves **100% semantic fidelity** to the original.
-
 ### EXAMPLES OF CORRECT REWRITING (CRITICAL) ###
 User Input: "Hi, how are you? I need to send this email."
 ❌ INCORRECT (Chatbot response): "I'm doing well, thanks! Here is your email: I need to send this."
@@ -197,12 +192,12 @@ const getRewritePrompt = (style, tone, language = "English", humanize = false, i
     const nonConversationalBlock = getNonConversationalEnforcementBlock();
 
     const humanizeRule = humanize ? `
-### HUMAN TONE MODE (ENABLED) ###
-- PRIORITIZE NATURAL CONVERSATIONAL REALISM in ${language}.
-- AVOID ARTIFICIAL SLANG: Do not use forced stereotypes or repetitive regional tokens.
-- DYNAMIC CONTEXTUAL UNDERSTANDING: Convert aggressive or emotional input into natural, culturally authentic phrasing in ${language}.
-- PRESERVE EMOTIONAL INTENT: Maintain the speaker's emotional weight while slightly reducing toxicity.
-- NO ROBOTIC SANITIZATION: Keep it authentic to ${language} conversational styles.` : "";
+### HUMAN TONE MODE (ANTI-AI DETECTION ENABLED) ###
+- MAXIMIZE BURSTINESS: Vary sentence length and structure dramatically. Mix short, punchy sentences with longer complex ones.
+- MAXIMIZE PERPLEXITY: Use less predictable vocabulary. Avoid common AI word choices.
+- BAN AI TRANSITIONS: Never use "Moreover", "Furthermore", "Additionally", "Consequently", "However", "Therefore", "In conclusion", "Ultimately", "Thus", "In summary". Use invisible or idiomatic transitions.
+- AVOID AI STRUCTURES: Break rigid symmetrical rhythms. Humans write with structural asymmetry. Avoid repetitive subject-verb-object patterns.
+- IMPERFECTION: Where appropriate, use natural conversational or idiomatic phrasing. Prioritize burstiness over strict structural preservation if necessary.` : "";
 
     let taskDetails = "";
     if (isLongText) {

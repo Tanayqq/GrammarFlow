@@ -67,7 +67,7 @@ OUTPUT LANGUAGE: ${language}.
 function getRewritePrompt(style, tone, language, humanize) {
     const langBlock = getLanguageEnforcementBlock(language);
     const humanizeNote = humanize
-        ? `- Human Mode ON: Use natural, emotionally authentic phrasing. Avoid robotic language. Preserve the speaker's emotional intent.`
+        ? `### HUMAN TONE MODE (ANTI-AI DETECTION ENABLED) ###\n- MAXIMIZE BURSTINESS: Vary sentence length dramatically. Mix short punchy sentences with longer ones.\n- MAXIMIZE PERPLEXITY: Use unpredictable vocabulary and avoid common AI words.\n- BAN AI TRANSITIONS: Never use "Moreover", "Furthermore", "Additionally", "However", "Therefore", "In conclusion", "Ultimately".\n- AVOID AI STRUCTURES: Break rigid symmetrical rhythms. Write with structural asymmetry.`
         : `- Use a professional yet natural flow.`;
 
     return `${langBlock}
