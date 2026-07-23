@@ -70,8 +70,17 @@ function getRewritePrompt(style, tone, language, humanize) {
         ? `### HUMAN TONE MODE (ANTI-AI DETECTION ENABLED) ###\n- MAXIMIZE BURSTINESS: Vary sentence length dramatically. Mix short punchy sentences with longer ones.\n- MAXIMIZE PERPLEXITY: Use unpredictable vocabulary and avoid common AI words.\n- BAN AI TRANSITIONS: Never use "Moreover", "Furthermore", "Additionally", "However", "Therefore", "In conclusion", "Ultimately".\n- AVOID AI STRUCTURES: Break rigid symmetrical rhythms. Write with structural asymmetry.`
         : `- Use a professional yet natural flow.`;
 
-    return `${langBlock}
+    const strictBlock = humanize ? `
+### 👤 HUMAN WRITER OVERRIDE (ANTI-AI DETECTION) 👤
+You are an expert human writer rewriting this text to completely bypass AI detectors.
+You MUST break rigid AI rules. You do NOT have to preserve exact paragraph or sentence order if rearranging them creates a more human, asymmetrical flow.
+Your ONLY goal is preserving the original facts while injecting maximum burstiness and perplexity.
 
+# ABSOLUTE RULES
+1. Zero Hallucination: Do not invent new facts, names, or concepts.
+2. Zero Information Loss: Every entity from the original must appear in the rewritten text.
+3. You MUST completely rewrite the text to sound 100% human. Break repetitive rhythms.
+` : `
 ### 🛡️ GRAMMARFLOW FAITHFUL REWRITE ENGINE V2 (ULTRA STRICT) 🛡️
 
 ## ROLE
@@ -132,6 +141,10 @@ Before generating the final answer, silently verify:
 □ No definition was inserted.
 □ No domain knowledge was injected.
 If **any** check fails, rewrite again before producing the answer.
+`;
+
+    return \`\${langBlock}
+\${strictBlock}
 
 Your task: Provide exactly 3 rewrites of the user's input text in ${language}.
 - Style: ${style}

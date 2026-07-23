@@ -95,7 +95,21 @@ OUTPUT LANGUAGE: ${language}.
 // ─────────────────────────────────────────────
 // NON-CONVERSATIONAL ENFORCEMENT (PRIMARY EDITOR RULE)
 // ─────────────────────────────────────────────
-const getNonConversationalEnforcementBlock = () => {
+const getNonConversationalEnforcementBlock = (humanize = false) => {
+    if (humanize) {
+        return `
+### 👤 HUMAN WRITER OVERRIDE (ANTI-AI DETECTION) 👤
+You are an expert human writer rewriting this text to completely bypass AI detectors.
+You MUST break rigid AI rules. You do NOT have to preserve exact paragraph or sentence order if rearranging them creates a more human, asymmetrical flow.
+Your ONLY goal is preserving the original facts while injecting maximum burstiness and perplexity.
+
+# ABSOLUTE RULES
+1. Zero Hallucination: Do not invent new facts, names, or concepts.
+2. Zero Information Loss: Every entity from the original must appear in the rewritten text.
+3. You MUST completely rewrite the text to sound 100% human. Break repetitive rhythms.
+`;
+    }
+
     return `
 ### 🛡️ GRAMMARFLOW FAITHFUL REWRITE ENGINE V2 (ULTRA STRICT) 🛡️
 
@@ -189,7 +203,7 @@ const getNonConversationalFinalReminder = () => `
 // ─────────────────────────────────────────────
 const getRewritePrompt = (style, tone, language = "English", humanize = false, isLongText = false) => {
     const langBlock = getLanguageEnforcementBlock(language);
-    const nonConversationalBlock = getNonConversationalEnforcementBlock();
+    const nonConversationalBlock = getNonConversationalEnforcementBlock(humanize);
 
     const humanizeRule = humanize ? `
 ### HUMAN TONE MODE (ANTI-AI DETECTION ENABLED) ###
@@ -245,7 +259,7 @@ ${getNonConversationalFinalReminder()}`;
 // ─────────────────────────────────────────────
 const getGrammarFixPrompt = (language = "English", style = "Standard", tone = "Neutral", humanize = false, sentenceCount = 1) => {
     const langBlock = getLanguageEnforcementBlock(language);
-    const nonConversationalBlock = getNonConversationalEnforcementBlock();
+    const nonConversationalBlock = getNonConversationalEnforcementBlock(humanize);
 
     const humanizeRule = humanize ? `
 - PRIORITIZE NATURAL CONVERSATIONAL REALISM in ${language}.
@@ -377,7 +391,7 @@ The prediction MUST be in ${language}. Do NOT predict words in any other languag
 // ─────────────────────────────────────────────
 const getStableRealtimePrompt = (language = "English", humanize = false) => {
     const langBlock = getLanguageEnforcementBlock(language);
-    const nonConversationalBlock = getNonConversationalEnforcementBlock();
+    const nonConversationalBlock = getNonConversationalEnforcementBlock(humanize);
 
     return `${langBlock}
 ${nonConversationalBlock}
@@ -542,7 +556,7 @@ const getSmartSuggestionsPrompt = (language = "English", humanize = false, writi
         ? `\n### PARAGRAPH INTELLIGENCE FOCUS:\n${focusPoints.join('\n')}`
         : '';
         
-    const nonConversationalBlock = getNonConversationalEnforcementBlock();
+    const nonConversationalBlock = getNonConversationalEnforcementBlock(humanize);
 
     return `${langBlock}
 ${nonConversationalBlock}
