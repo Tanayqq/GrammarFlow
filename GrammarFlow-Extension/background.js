@@ -67,20 +67,19 @@ OUTPUT LANGUAGE: ${language}.
 function getRewritePrompt(style, tone, language, humanize) {
     const langBlock = getLanguageEnforcementBlock(language);
     const humanizeNote = humanize
-        ? `### HUMAN TONE MODE (ANTI-AI DETECTION ENABLED) ###\n- BAN MELODRAMA & CLICHÉS: NO dramatic or flowery language (e.g. "fabric of society", "treasure trove", "game-changer", "revolutionizing").\n- CONVERSATIONAL SIMPLICITY: Use plain, everyday vocabulary. Write like an average person typing an email.\n- BAN AI TRANSITIONS: Never use "Moreover", "Furthermore", "Additionally", "Consequently", "However", "Therefore", "In conclusion", "Ultimately", "Thus", "In summary", "Delve into", "Tapestry".\n- STRUCTURAL ASYMMETRY: Mix very short sentences (2-4 words) with longer ones. Start sentences with "But" or "And". Break perfect rhythms.`
+        ? `### HUMAN TONE MODE ###\n- BURSTINESS: Wildly vary sentence lengths. Mix long, complex sentences with extremely short, punchy ones.\n- AVOID AI "TELLS": No transitional adverbs (Furthermore, Moreover, Additionally, Consequently, Thus).\n- PRECISE, NOT FLOWERY: Avoid melodramatic clichés. Use grounded, specific vocabulary.\n- ASYMMETRICAL SYNTAX: Write with slight structural asymmetry, like a passionate expert speaking.`
         : `- Use a professional yet natural flow.`;
 
     const strictBlock = humanize ? `
-### 👤 HUMAN WRITER OVERRIDE (ANTI-AI DETECTION) 👤
-You are an ordinary human writing casually. Your goal is to bypass AI detectors by writing simply, plainly, and conversationally.
-You MUST NOT use flowery language, dramatic adjectives, or AI clichés.
+### 👤 HUMAN WRITER OVERRIDE 👤
+You must rewrite the text to be completely indistinguishable from human writing. To achieve this, follow these structural rules strictly:
 
 # ABSOLUTE RULES
-1. BAN MELODRAMA: Do NOT use dramatic phrases like "fabric of our daily lives", "treasure trove", "game-changer", "unshackled", "seismic shift", "revolutionizing", "groundbreaking", or "veritable".
-2. BAN AI TRANSITIONS: Never use "Moreover", "Furthermore", "Additionally", "Consequently", "However", "Therefore", "In conclusion", "Ultimately", "Thus", "In summary", "Delve into", "Tapestry".
-3. CONVERSATIONAL SIMPLICITY: Write exactly like an average person typing an email or a Reddit post. Use plain, direct vocabulary. Avoid complex SAT words.
-4. STRUCTURAL ASYMMETRY: Do not write perfectly balanced sentences. Mix very short sentences (2-4 words) with normal ones. It is okay to start sentences with "But," "And," or "Because".
-5. ZERO HALLUCINATION & NO LOSS: Keep all original facts and entities, but simplify their delivery. Break repetitive rhythms.
+1. SENTENCE VARIANCE (BURSTINESS): You must wildly vary your sentence lengths. Combine long, complex sentences (using em-dashes, semicolons, or parentheticals) with extremely short, punchy sentences (2-5 words).
+2. AVOID AI "TELLS": Never use transitional adverbs at the start of sentences (e.g., "Furthermore," "Moreover," "Additionally," "Consequently," "Therefore," "Thus"). Instead, transition ideas invisibly through context.
+3. PRECISE, NOT FLOWERY: Do not use melodramatic clichés ("fabric of our daily lives", "treasure trove", "game-changer", "seismic shift"). Use grounded, concrete, and highly specific vocabulary.
+4. ASYMMETRICAL SYNTAX: Humans rarely write perfectly balanced paragraphs. Allow for structural asymmetry. Use active voice. The text must flow like a passionate expert speaking, not an encyclopedia summarizing.
+5. PRESERVE ALL FACTS: Keep every original entity and concept, but express them with natural human rhythm.
 ` : `
 ### 🛡️ GRAMMARFLOW FAITHFUL REWRITE ENGINE V2 (ULTRA STRICT) 🛡️
 
