@@ -99,14 +99,26 @@ const getNonConversationalEnforcementBlock = (humanize = false) => {
     if (humanize) {
         return `
 ### 👤 HUMAN WRITER OVERRIDE 👤
-You must rewrite the text to be completely indistinguishable from human writing. To achieve this, follow these structural rules strictly:
+Your goal is not to make the writing sound "better" or "perfect." Your goal is to make it sound REAL.
+Write like an educated person writing naturally. Do not over-polish.
 
-# ABSOLUTE RULES
-1. SENTENCE VARIANCE (BURSTINESS): You must wildly vary your sentence lengths. Combine long, complex sentences (using em-dashes, semicolons, or parentheticals) with extremely short, punchy sentences (2-5 words).
-2. AVOID AI "TELLS": Never use transitional adverbs at the start of sentences (e.g., "Furthermore," "Moreover," "Additionally," "Consequently," "Therefore," "Thus"). Instead, transition ideas invisibly through context.
-3. PRECISE, NOT FLOWERY: Do not use melodramatic clichés ("fabric of our daily lives", "treasure trove", "game-changer", "seismic shift"). Use grounded, concrete, and highly specific vocabulary.
-4. ASYMMETRICAL SYNTAX: Humans rarely write perfectly balanced paragraphs. Allow for structural asymmetry. Use active voice. The text must flow like a passionate expert speaking, not an encyclopedia summarizing.
-5. PRESERVE ALL FACTS: Keep every original entity and concept, but express them with natural human rhythm.
+# WHAT TO AVOID (STRICT BANS)
+❌ Overuse of semicolons.
+❌ Corporate buzzwords and abstract phrasing (e.g., "leverage", "utilize", "significant transformation", "paradigm shift").
+❌ Generic motivational endings or conclusions (e.g., "Get ready.", "The future is bright.").
+❌ Perfect essay structure. Do not turn the text into a standard AI template.
+❌ Transitional crutches. Do not start every paragraph with a connector ("However", "Also", "Therefore", "Moreover"). Humans often just move to the next idea.
+❌ Uniform sentence rhythm. Break the robotic balance.
+❌ Mixing styles (e.g., don't mix corporate "leveraging digital tools" with casual "it's a big deal").
+
+# WHAT TO DO
+✅ Use mixed sentence lengths. Have an uneven rhythm.
+✅ Use simple, precise, everyday vocabulary. (e.g., use "using" instead of "leveraging").
+✅ Use natural contractions where appropriate (it's, we're, they've).
+✅ Use concrete wording over abstract phrasing. (e.g., "Doctors can diagnose illnesses more quickly" instead of "Healthcare has benefited; technology enables...").
+✅ Maintain a consistent, believable voice throughout the piece.
+✅ Preserve some of the original phrasing if it is already natural.
+✅ Keep all original facts and entities.
 `;
     }
 
@@ -207,10 +219,10 @@ const getRewritePrompt = (style, tone, language = "English", humanize = false, i
 
     const humanizeRule = humanize ? `
 ### HUMAN TONE MODE ###
-- BURSTINESS: Wildly vary sentence lengths. Mix long, complex sentences with extremely short, punchy ones.
-- AVOID AI "TELLS": No transitional adverbs (Furthermore, Moreover, Additionally, Consequently, Thus).
-- PRECISE, NOT FLOWERY: Avoid melodramatic clichés. Use grounded, specific vocabulary.
-- ASYMMETRICAL SYNTAX: Write with slight structural asymmetry, like a passionate expert speaking.` : "";
+- SOUND REAL, NOT PERFECT: Write like an educated person writing naturally. Don't over-polish.
+- NO CORPORATE BUZZWORDS: Avoid "leverage", "utilize", "significant transformation". Use simple, precise words ("using", "changed a lot").
+- NO ROBOTIC TRANSITIONS: Do not start ideas with "However", "Also", "Moreover". Just move to the next idea.
+- RHYTHM: Use uneven sentence lengths, natural contractions, and concrete phrasing. Avoid semicolons.` : "";
 
     let taskDetails = "";
     if (isLongText) {
