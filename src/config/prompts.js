@@ -99,14 +99,15 @@ const getNonConversationalEnforcementBlock = (humanize = false) => {
     if (humanize) {
         return `
 ### 👤 HUMAN WRITER OVERRIDE (ANTI-AI DETECTION) 👤
-You are an expert human writer rewriting this text to completely bypass AI detectors.
-You MUST break rigid AI rules. You do NOT have to preserve exact paragraph or sentence order if rearranging them creates a more human, asymmetrical flow.
-Your ONLY goal is preserving the original facts while injecting maximum burstiness and perplexity.
+You are an ordinary human writing casually. Your goal is to bypass AI detectors by writing simply, plainly, and conversationally.
+You MUST NOT use flowery language, dramatic adjectives, or AI clichés.
 
 # ABSOLUTE RULES
-1. Zero Hallucination: Do not invent new facts, names, or concepts.
-2. Zero Information Loss: Every entity from the original must appear in the rewritten text.
-3. You MUST completely rewrite the text to sound 100% human. Break repetitive rhythms.
+1. BAN MELODRAMA: Do NOT use dramatic phrases like "fabric of our daily lives", "treasure trove", "game-changer", "unshackled", "seismic shift", "revolutionizing", "groundbreaking", or "veritable".
+2. BAN AI TRANSITIONS: Never use "Moreover", "Furthermore", "Additionally", "Consequently", "However", "Therefore", "In conclusion", "Ultimately", "Thus", "In summary", "Delve into", "Tapestry".
+3. CONVERSATIONAL SIMPLICITY: Write exactly like an average person typing an email or a Reddit post. Use plain, direct vocabulary. Avoid complex SAT words.
+4. STRUCTURAL ASYMMETRY: Do not write perfectly balanced sentences. Mix very short sentences (2-4 words) with normal ones. It is okay to start sentences with "But," "And," or "Because".
+5. ZERO HALLUCINATION & NO LOSS: Keep all original facts and entities, but simplify their delivery. Break repetitive rhythms.
 `;
     }
 
@@ -207,11 +208,10 @@ const getRewritePrompt = (style, tone, language = "English", humanize = false, i
 
     const humanizeRule = humanize ? `
 ### HUMAN TONE MODE (ANTI-AI DETECTION ENABLED) ###
-- MAXIMIZE BURSTINESS: Vary sentence length and structure dramatically. Mix short, punchy sentences with longer complex ones.
-- MAXIMIZE PERPLEXITY: Use less predictable vocabulary. Avoid common AI word choices.
-- BAN AI TRANSITIONS: Never use "Moreover", "Furthermore", "Additionally", "Consequently", "However", "Therefore", "In conclusion", "Ultimately", "Thus", "In summary". Use invisible or idiomatic transitions.
-- AVOID AI STRUCTURES: Break rigid symmetrical rhythms. Humans write with structural asymmetry. Avoid repetitive subject-verb-object patterns.
-- IMPERFECTION: Where appropriate, use natural conversational or idiomatic phrasing. Prioritize burstiness over strict structural preservation if necessary.` : "";
+- BAN MELODRAMA & CLICHÉS: NO dramatic or flowery language (e.g. "fabric of society", "treasure trove", "game-changer", "revolutionizing").
+- CONVERSATIONAL SIMPLICITY: Use plain, everyday vocabulary. Write like an average person typing an email.
+- BAN AI TRANSITIONS: Never use "Moreover", "Furthermore", "Additionally", "Consequently", "However", "Therefore", "In conclusion", "Ultimately", "Thus", "In summary", "Delve into", "Tapestry".
+- STRUCTURAL ASYMMETRY: Mix very short sentences (2-4 words) with longer ones. Start sentences with "But" or "And". Break perfect rhythms.` : "";
 
     let taskDetails = "";
     if (isLongText) {
