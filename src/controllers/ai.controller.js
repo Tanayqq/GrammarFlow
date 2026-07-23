@@ -45,8 +45,13 @@ const rewrite = async (req, res, next) => {
                     prompt = `CRITICAL: Previous response was invalid. Provide exactly 3 rewrites separated by ===REWRITE_SEPARATOR=== in ${language} now.\n\n${prompt}`;
                 }
                 try {
-                    const response = await aiService.callGroqAPI(prompt, text, 0.7);
-                    resultText = response.text;
+                    const response = await aiService.callGroqAPI(prompt, text, 0.7, { responseFormat: 'json' });
+                    try {
+                        const parsed = JSON.parse(response.text);
+                        resultText = parsed?.result?.corrected_text || parsed?.corrected_text || response.text;
+                    } catch(e) {
+                        resultText = response.text;
+                    }
                     source = response.source;
                     if (resultText.trim().length > 0 && !resultText.toLowerCase().includes("sorry")) break;
                 } catch (err) {
@@ -127,6 +132,7 @@ const grammarFix = async (req, res, next) => {
             prompt,
             text,
             temperature:    0.2,
+            responseFormat: 'json',
             guest_session_id: guestSessionId,
             user_id:        userId,
             operation_type: 'grammar_fix',

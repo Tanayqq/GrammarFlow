@@ -23,7 +23,7 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
 
 let currentKeyIndex = 0;
 
-async function callGroqAPI(systemPrompt, userText, temperature = 0.7) {
+async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = {}) {
     const apiKeys = (process.env.GROQ_API_KEY || "")
         .split(",")
         .map(k => k.trim())
@@ -77,7 +77,8 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7) {
                         { role: "system", content: systemPrompt },
                         { role: "user", content: userText }
                     ],
-                    temperature: temperature
+                    temperature: temperature,
+                    ...(options.responseFormat === 'json' && { response_format: { type: "json_object" } })
                 }),
                 signal: controller.signal
             });

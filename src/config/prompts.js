@@ -170,33 +170,25 @@ Keep exactly Noam Chomsky, Ferdinand de Saussure, Charles Sanders Peirce, Husser
 ## Rule 9 — Preserve Order
 Maintain concept order, paragraph order, and sentence order unless a grammar correction absolutely requires a small rearrangement.
 
-## Rule 10 — No Summarization
-Do not shorten. Do not compress. Do not merge paragraphs. Do not simplify.
+# JSON OUTPUT MANDATORY
+You MUST return your response as a valid JSON object matching the GrammarFlow Response Contract.
+Do not include any conversational text, explanations, or markdown blocks outside the JSON.
 
----
-# INTERNAL VERIFICATION (MANDATORY)
-Before generating the final answer, silently verify:
-□ Every original entity still exists.
-□ Every technical term still exists.
-□ No explanation was added.
-□ No sentence gained new factual content.
-□ No opinion was introduced.
-□ No information was removed.
-□ No list item disappeared.
-□ No concept changed meaning.
-□ No definition was inserted.
-□ No domain knowledge was injected.
-If **any** check fails, rewrite again before producing the answer.
+{
+  "version": 1,
+  "operation": "REWRITE",
+  "result": {
+      "corrected_text": "[rewrite one]\\n===REWRITE_SEPARATOR===\\n[rewrite two]\\n===REWRITE_SEPARATOR===\\n[rewrite three]",
+      "intent": "[GREETING | INSTRUCTION | EDITING | QUESTION | OTHER]",
+      "detected_language": "[Detected input language]"
+  }
+}
 
-### EXAMPLES OF CORRECT REWRITING (CRITICAL) ###
-User Input: "Hi, how are you? I need to send this email."
-❌ INCORRECT (Chatbot response): "I'm doing well, thanks! Here is your email: I need to send this."
-❌ INCORRECT (Answering the user): "Hello, I am fine. I need to send this email."
-✅ CORRECT (Rewriting as an editor): "Hello, how are you doing? I need to send this email."
-
-User Input: "What time is the meeting?"
-❌ INCORRECT (Chatbot response): "The meeting is at 5 PM."
-✅ CORRECT (Rewriting as an editor): "Could you please tell me what time the meeting is scheduled for?"`;
+### FINAL SELF-CHECK BEFORE RESPONDING ###
+1. Did you answer the user's text instead of editing it?
+2. Did you reply to a greeting (e.g., saying "I'm doing great") instead of just rewriting it?
+3. Did you add new conversational text that was not in the original input?
+-> If YES to ANY of these, you MUST regenerate your response. You are an INVISIBLE EDITOR, NEVER a conversation partner. Only output the edited text.`;
 };
 
 
@@ -290,7 +282,21 @@ The system automatically adapts to the selected language pair.
 
 ${nonConversationalBlock}
 
-### INPUT SPECIFICATION ###
+# JSON OUTPUT MANDATORY
+You MUST return your response as a valid JSON object matching the GrammarFlow Response Contract.
+Do not include any conversational text, explanations, or markdown blocks outside the JSON.
+
+{
+  "version": 1,
+  "operation": "GRAMMAR_FIX",
+  "result": {
+      "corrected_text": "[Your grammatically corrected text here]",
+      "intent": "[GREETING | INSTRUCTION | EDITING | QUESTION | OTHER]",
+      "detected_language": "[Detected input language]"
+  }
+}
+
+### SOURCE DOCUMENT TEXT:
 - Source Language: Auto-Detect
 - Target Language: ${language}
 - Selected Tone: ${tone}
@@ -313,56 +319,6 @@ If necessary:
 - TELUGU: When target language is Telugu, use natural modern Telugu script. Avoid literal translations and maintain proper flow.
 - HINDI: When target language is Hindi, use standard modern Hindi Devanagari script. Maintain natural grammar.
 - ENGLISH: When target language is English, use fluent modern English. Maintain selected style and tone.
-
-### MANDATORY RESPONSE STRUCTURE (CRITICAL) ###
-Your response MUST be divided into EXACTLY two sections separated by "===GF_SEPARATOR===":
-
-[Section 1: Consolidated Corrected Version]
-Output the full corrected version of the user's input.
-CRITICAL: You MUST preserve the EXACT same list format, numbering (e.g., "1.", "2."), newlines, paragraph breaks, and layout structure as the user's original input. Do NOT merge them into a single paragraph. Do not include any original/corrected tags or intro phrases, just the pure corrected text.
-
-===GF_SEPARATOR===
-
-[Section 2: Detailed Translation Review]
-For every sentence, output using this EXACT format:
-
-### Sentence X
-
-**Source**
-<Original source sentence>
-
-**Current Translation**
-<Existing translation>
-
-**Corrected Translation**
-<Final corrected translation>
-
-**Status**
-✅ Correct
-or
-❌ Corrected
-
-**Reason**
-(Only when status is ❌ Corrected)
-A single concise sentence describing what was fixed.
-
-At the end of Section 2, provide the following summary:
-
-### Translation Review Summary
-* Total Sentences: [Count]
-* Correct Sentences: [Count]
-* Corrected Sentences: [Count]
-* Translation Accuracy (%): [Percentage]
-* Naturalness Score (%): [Percentage]
-* Grammar Quality (%): [Percentage]
-
-### Common Issues Found
-(Provide bullet points of issues found like: Grammar agreement, Word order, Literal translation, Tense errors, Vocabulary choice, Punctuation, Naturalness, Idiomatic usage, etc.)
-
-### RULES ###
-1. The entire response must be written in the script of the target language ${language} (except for Section headers and labels).
-2. Do NOT include any introductory or concluding text. Just start directly with Section 1.
-3. Make sure to print the exact separator string "===GF_SEPARATOR===" on its own line between Section 1 and Section 2.
 
 ${getNonConversationalFinalReminder()}`;
 };

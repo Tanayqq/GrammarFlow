@@ -40,33 +40,54 @@ const redisConnection = typeof connectionOptions === 'string'
 // Initialize the Worker to process jobs from 'ai-jobs' queue
 const aiWorker = new Worker('ai-jobs', async (job) => {
     console.log(`[WORKER] Starting job ${job.id} of type "${job.name}"...`);
-    const { prompt, text, temperature, guest_session_id, user_id, operation_type, language, style } = job.data;
+    const { prompt, text, temperature, responseFormat, guest_session_id, user_id, operation_type, language, style } = job.data;
     const startTime = Date.now();
 
     try {
         // Execute the AI processing using the existing service
-        const response = await aiService.callGroqAPI(prompt, text, temperature);
+        const response = await aiService.callGroqAPI(prompt, text, temperature, { responseFormat });
         const processingTime = Date.now() - startTime;
         console.log(`[WORKER] Job ${job.id} completed successfully. (${processingTime}ms)`);
 
+        let finalOutputText = response.text;
+        let operationIntent = null;
+        let operationMetadata = { temperature };
+
+        // Parse GrammarFlow Response Contract if JSON was expected
+        if (responseFormat === 'json') {
+            try {
+                const parsed = JSON.parse(response.text);
+                finalOutputText = parsed?.result?.corrected_text || response.text;
+                operationIntent = parsed?.result?.intent || null;
+                if (parsed.metadata) {
+                    operationMetadata = { ...operationMetadata, ...parsed.metadata };
+                }
+            } catch (e) {
+                console.error(`[WORKER] Failed to parse JSON contract for job ${job.id}:`, e.message);
+            }
+        }
         // Queue history logging asynchronously — never block the response
         aiHistoryQueue.add('save-history', {
             guest_session_id:   guest_session_id || 'unknown',
             user_id:            user_id || null,
             input_text:         text,
-            output_text:        response.text,
+            output_text:        finalOutputText,
             operation_type:     operation_type || 'grammar_fix',
+            intent:             operationIntent,
             language:           language || 'English',
             style:              style || null,
             model:              'llama-3.3-70b-versatile',
             cached:             response.source === 'cache',
             status:             'success',
             processing_time_ms: processingTime,
-            operation_metadata: { temperature }
+            operation_metadata: operationMetadata
         }).catch(err => console.error('[WORKER] Failed to queue history:', err.message));
 
-        // The return value is stored in Redis and accessible via job.returnvalue
-        return response;
+        // Return the final response (mutated to safely contain just the corrected_text)
+        return {
+            text: finalOutputText,
+            source: response.source
+        };
     } catch (error) {
         console.error(`[WORKER ERROR] Job ${job.id} failed:`, error.message);
 
