@@ -3,8 +3,9 @@ const { generateCacheKey } = require('../utils/cacheKey');
 
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const FALLBACK_MODELS = [
-    "llama-3.3-70b-versatile",
-    "llama-3.1-8b-instant"
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.8-27b"
 ];
 
 // Initialize Upstash Redis client
@@ -22,6 +23,7 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
 let currentKeyIndex = 0;
 
 async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = {}) {
+    const opts = typeof options === 'string' ? { model: options } : (options || {});
     const apiKeys = (process.env.GROQ_API_KEY || "")
         .split(",")
         .map(k => k.trim())
@@ -63,6 +65,10 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = 
         try {
             console.log(`[AI SERVICE] Calling Groq API (Attempt ${attempts + 1})...`);
             
+            const modelToUse = (attempts === 0 && opts.model)
+                ? opts.model
+                : FALLBACK_MODELS[attempts % FALLBACK_MODELS.length];
+
             const response = await fetch(GROQ_API_URL, {
                 method: "POST",
                 headers: {
@@ -70,13 +76,13 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = 
                     "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
-                    model: FALLBACK_MODELS[attempts % FALLBACK_MODELS.length],
+                    model: modelToUse,
                     messages: [
                         { role: "system", content: systemPrompt },
                         { role: "user", content: userText }
                     ],
                     temperature: temperature,
-                    ...(options.responseFormat === 'json' && { response_format: { type: "json_object" } })
+                    ...(opts.responseFormat === 'json' && { response_format: { type: "json_object" } })
                 }),
                 signal: controller.signal
             });

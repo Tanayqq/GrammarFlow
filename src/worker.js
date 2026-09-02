@@ -76,7 +76,7 @@ const aiWorker = new Worker('ai-jobs', async (job) => {
             intent:             operationIntent,
             language:           language || 'English',
             style:              style || null,
-            model:              'llama-3.3-70b-versatile',
+            model:              'openai/gpt-oss-120b',
             cached:             response.source === 'cache',
             status:             'success',
             processing_time_ms: processingTime,

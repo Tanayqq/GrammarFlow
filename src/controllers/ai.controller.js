@@ -101,7 +101,7 @@ const rewrite = async (req, res, next) => {
                 operation_type:     'rewrite',
                 language,
                 style,
-                model:              'llama-3.3-70b-versatile',
+                model:              'openai/gpt-oss-120b',
                 cached:             source === 'cache',
                 status:             'success',
                 processing_time_ms: processingTime,
@@ -326,7 +326,7 @@ const processDocument = async (req, res, next) => {
             resultText = req.cachedResponse;
             source = "cache";
         } else {
-            const model = "llama-3.1-8b-instant";
+            const model = "openai/gpt-oss-120b";
             const response = await aiService.callGroqAPI(prompt, text, 0.4, model);
             resultText = response.text;
             source = response.source;
