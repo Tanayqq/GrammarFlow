@@ -115,7 +115,9 @@ aiWorker.on('failed', (job, err) => {
 });
 
 aiWorker.on('error', (err) => {
-    console.error('[BULLMQ WORKER ERROR] Worker encountered connection issue:', err.message);
+    if (!err.message?.includes('max requests limit exceeded')) {
+        console.error('[BULLMQ WORKER ERROR] Worker encountered connection issue:', err.message);
+    }
 });
 
 console.log('[BULLMQ] Background Worker initialized and listening for jobs...');

@@ -3,14 +3,15 @@ const { generateCacheKey } = require('../utils/cacheKey');
 const prompts = require('../config/prompts');
 const { detectLanguage } = require('../utils/language');
 
+let isCacheCheckDisabled = false;
+
 /**
  * Pre-rate-limiter cache pre-check middleware.
  * If there's a cache hit in Redis, it sets req.isCacheHit = true and req.cachedResponse
  * so that the rate limiter bypasses quota consumption and the controller serves it instantly.
  */
 async function aiCacheCheck(req, res, next) {
-    // Check if we have a valid request body and text/context
-    if (!req.body) {
+    if (isCacheCheckDisabled || !req.body) {
         return next();
     }
 
@@ -86,7 +87,12 @@ async function aiCacheCheck(req, res, next) {
             }
         }
     } catch (err) {
-        console.error("[CACHE PRE-CHECK ERROR] Failed to perform cache check:", err.message);
+        if (err.message && err.message.includes('max requests limit exceeded')) {
+            isCacheCheckDisabled = true;
+            console.warn("[CACHE PRE-CHECK] Upstash limit exceeded. Cache check disabled.");
+        } else {
+            console.error("[CACHE PRE-CHECK ERROR] Failed to perform cache check:", err.message);
+        }
         // Resilient fallback: call next() to let request proceed through rate limiting & normal path
     }
 

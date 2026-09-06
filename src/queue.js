@@ -40,14 +40,18 @@ redisConnection.on('connect', () => {
 });
 
 redisConnection.on('error', (err) => {
-    console.error('[REDIS QUEUE ERROR] Connection failed:', err.message);
+    if (!err.message?.includes('max requests limit exceeded')) {
+        console.error('[REDIS QUEUE ERROR] Connection failed:', err.message);
+    }
 });
 
 // Initialize the Queue named 'ai-jobs'
 const aiQueue = new Queue('ai-jobs', { connection: redisConnection });
 
 aiQueue.on('error', (err) => {
-    console.error('[BULLMQ QUEUE ERROR] Queue encountered connection issue:', err.message);
+    if (!err.message?.includes('max requests limit exceeded')) {
+        console.error('[BULLMQ QUEUE ERROR] Queue encountered connection issue:', err.message);
+    }
 });
 
 console.log('[BULLMQ] Queue "ai-jobs" initialized successfully.');

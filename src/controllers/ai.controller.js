@@ -1,9 +1,12 @@
 const aiService = require('../services/ai.service');
 const prompts = require('../config/prompts');
-const { aiQueue } = require('../queue');
+const { aiQueue, redisConnection } = require('../queue');
 const { aiHistoryQueue } = require('../historyQueue');
+const { logHistoryRecord } = require('../historyWorker');
 const prisma = require('../db');
 const { detectLanguage } = require('../utils/language');
+
+let isRedisQueueDisabled = false;
 
 // Helper for standardized API responses
 const sendResponse = (res, success, data = null, error = null, metadata = {}) => {
@@ -93,7 +96,7 @@ const rewrite = async (req, res, next) => {
 
         // Queue history logging asynchronously — never blocks response
         if (guestSessionId || userId) {
-            aiHistoryQueue.add('save-history', {
+            const historyPayload = {
                 guest_session_id:   guestSessionId,
                 user_id:            userId,
                 input_text:         text,
@@ -106,7 +109,10 @@ const rewrite = async (req, res, next) => {
                 status:             'success',
                 processing_time_ms: processingTime,
                 operation_metadata: { tone, humanize }
-            }).catch(err => console.error('[API v1] /rewrite history queue error:', err.message));
+            };
+            aiHistoryQueue.add('save-history', historyPayload).catch(err => {
+                logHistoryRecord(historyPayload).catch(() => {});
+            });
         }
     } catch (error) {
         console.error("[API v1] Rewrite error:", error.message);
@@ -127,24 +133,82 @@ const grammarFix = async (req, res, next) => {
         
         const prompt = _extensionPrompt || prompts.getGrammarFixPrompt(language, style, tone, humanize, sentenceCount);
         
-        console.log(`[API v1] Queueing grammarFix job...`);
-        const job = await aiQueue.add('grammar-fix', {
-            prompt,
-            text,
-            temperature:    0.2,
-            responseFormat: 'json',
-            guest_session_id: guestSessionId,
-            user_id:        userId,
-            operation_type: 'grammar_fix',
-            language,
-            style,
-            tone
-        });
-        
-        console.log(`[API v1] grammarFix job queued. Job ID: ${job.id}`);
-        sendResponse(res, true, { status: "queued", jobId: job.id }, null, { language, humanize });
+        // Try background queue only if Redis is healthy and not limit-exceeded
+        if (!isRedisQueueDisabled && redisConnection && redisConnection.status === 'ready') {
+            try {
+                console.log(`[API v1] Queueing grammarFix job...`);
+                const job = await aiQueue.add('grammar-fix', {
+                    prompt,
+                    text,
+                    temperature:    0.2,
+                    responseFormat: 'json',
+                    guest_session_id: guestSessionId,
+                    user_id:        userId,
+                    operation_type: 'grammar_fix',
+                    language,
+                    style,
+                    tone
+                });
+                
+                console.log(`[API v1] grammarFix job queued. Job ID: ${job.id}`);
+                return sendResponse(res, true, { status: "queued", jobId: job.id }, null, { language, humanize });
+            } catch (queueError) {
+                if (queueError.message && queueError.message.includes('max requests limit exceeded')) {
+                    isRedisQueueDisabled = true;
+                    console.warn('[API v1] Upstash limit exceeded. Switched grammarFix to direct execution.');
+                } else {
+                    console.warn('[API v1] Queue unavailable. Falling back to direct execution:', queueError.message);
+                }
+            }
+        }
+
+        // Direct synchronous processing fallback (bypasses Redis when limits are hit or offline)
+        console.log(`[API v1] Executing grammarFix directly...`);
+        const startTime = Date.now();
+        const response = await aiService.callGroqAPI(prompt, text, 0.2, { responseFormat: 'json' });
+
+        let finalOutputText = response.text;
+        let operationIntent = null;
+        let operationMetadata = { temperature: 0.2 };
+
+        try {
+            const parsed = JSON.parse(response.text);
+            finalOutputText = parsed?.result?.corrected_text || response.text;
+            operationIntent = parsed?.result?.intent || null;
+            if (parsed.metadata) {
+                operationMetadata = { ...operationMetadata, ...parsed.metadata };
+            }
+        } catch (e) {
+            console.error('[API v1] Failed to parse JSON in direct grammarFix:', e.message);
+        }
+
+        const processingTime = Date.now() - startTime;
+
+        if (guestSessionId || userId) {
+            const historyData = {
+                guest_session_id:   guestSessionId || 'unknown',
+                user_id:            userId || null,
+                input_text:         text,
+                output_text:        finalOutputText,
+                operation_type:     'grammar_fix',
+                intent:             operationIntent,
+                language:           language || 'English',
+                style:              style || null,
+                model:              'openai/gpt-oss-120b',
+                cached:             response.source === 'cache',
+                status:             'success',
+                processing_time_ms: processingTime,
+                operation_metadata: operationMetadata
+            };
+
+            aiHistoryQueue.add('save-history', historyData).catch(() => {
+                logHistoryRecord(historyData).catch(() => {});
+            });
+        }
+
+        return sendResponse(res, true, [finalOutputText], null, { language, humanize, source: response.source });
     } catch (error) {
-        console.error("[API v1] grammarFix queueing error:", error.message);
+        console.error("[API v1] grammarFix error:", error.message);
         res.status(500).json({ success: false, error: { message: error.message } });
     }
 };
@@ -346,12 +410,23 @@ const checkJobStatus = async (req, res, next) => {
             return res.status(400).json({ success: false, error: { message: "Job ID is required" } });
         }
 
-        const job = await aiQueue.getJob(jobId);
+        let job;
+        try {
+            job = await aiQueue.getJob(jobId);
+        } catch (queueErr) {
+            console.error("[API v1] Failed to retrieve job from queue:", queueErr.message);
+            return res.status(503).json({ success: false, error: { message: "Queue temporarily unavailable. Please retry." } });
+        }
         if (!job) {
             return res.status(404).json({ success: false, error: { message: "Job not found" } });
         }
 
-        const state = await job.getState(); // completed, failed, active, waiting, delayed
+        let state = 'active';
+        try {
+            state = await job.getState();
+        } catch (stateErr) {
+            console.error("[API v1] Failed to get job state:", stateErr.message);
+        }
         console.log(`[API v1] Checking status for Job ID ${jobId}: ${state}`);
 
         if (state === 'completed') {

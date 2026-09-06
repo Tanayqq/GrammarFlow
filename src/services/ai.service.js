@@ -10,6 +10,7 @@ const FALLBACK_MODELS = [
 
 // Initialize Upstash Redis client
 let redis = null;
+let isRedisCacheDisabled = false;
 if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
     redis = new Redis({
         url: process.env.UPSTASH_REDIS_REST_URL,
@@ -35,7 +36,7 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = 
 
     // 1. Check Redis Cache first (if client is configured)
     let cacheKey = "";
-    if (redis) {
+    if (redis && !isRedisCacheDisabled) {
         try {
             cacheKey = generateCacheKey(systemPrompt, userText);
             const cachedResult = await redis.get(cacheKey);
@@ -45,7 +46,12 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = 
             }
             console.log(`[\x1b[33mCACHE MISS\x1b[0m] Key: ${cacheKey}`);
         } catch (cacheError) {
-            console.error("[REDIS ERROR] Failed to fetch from cache:", cacheError.message);
+            if (cacheError.message && cacheError.message.includes('max requests limit exceeded')) {
+                isRedisCacheDisabled = true;
+                console.warn("[REDIS] Max requests limit reached. Bypassing Redis cache.");
+            } else {
+                console.error("[REDIS ERROR] Failed to fetch from cache:", cacheError.message);
+            }
         }
     }
 
@@ -108,12 +114,17 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = 
             const resultText = data.choices[0].message.content.trim();
 
             // 3. Store the result in Redis with a 24-hour TTL (86,400 seconds)
-            if (redis && cacheKey) {
+            if (redis && cacheKey && !isRedisCacheDisabled) {
                 try {
                     await redis.set(cacheKey, resultText, { ex: 86400 });
                     console.log(`[REDIS] Cached result stored for key: ${cacheKey} (TTL: 24h)`);
                 } catch (cacheStoreError) {
-                    console.error("[REDIS ERROR] Failed to store in cache:", cacheStoreError.message);
+                    if (cacheStoreError.message && cacheStoreError.message.includes('max requests limit exceeded')) {
+                        isRedisCacheDisabled = true;
+                        console.warn("[REDIS] Max requests limit reached. Bypassing Redis cache.");
+                    } else {
+                        console.error("[REDIS ERROR] Failed to store in cache:", cacheStoreError.message);
+                    }
                 }
             }
 

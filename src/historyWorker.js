@@ -2,9 +2,9 @@ const { Worker } = require('bullmq');
 const { redisConnection } = require('./queue');
 const prisma = require('./db');
 
-const MODEL_NAME = 'llama-3.3-70b-versatile';
+const MODEL_NAME = 'openai/gpt-oss-120b';
 
-const historyWorker = new Worker('ai-history', async (job) => {
+async function logHistoryRecord(data) {
     const {
         guest_session_id,
         user_id,
@@ -19,11 +19,10 @@ const historyWorker = new Worker('ai-history', async (job) => {
         cached,
         status,
         operation_metadata
-    } = job.data;
+    } = data;
 
     // Safety guard: skip logging if neither ID is provided
     if (!guest_session_id && !user_id) {
-        console.warn('[HISTORY WORKER] Skipping log — neither guest_session_id nor user_id provided.');
         return;
     }
 
@@ -77,21 +76,31 @@ const historyWorker = new Worker('ai-history', async (job) => {
             }
         });
 
-        console.log(`[HISTORY WORKER] ✓ Logged "${operation_type}" for user/guest: ${(user_id || guest_session_id).substring(0, 8)}...`);
+        console.log(`[HISTORY] ✓ Logged "${operation_type}" for user/guest: ${(user_id || guest_session_id).substring(0, 8)}...`);
     } catch (error) {
-        console.error(`[HISTORY WORKER ERROR] Failed to save operation:`, error.message);
-        throw error; // Let BullMQ retry
+        console.error(`[HISTORY ERROR] Failed to save operation:`, error.message);
     }
-}, { connection: redisConnection });
+}
 
-historyWorker.on('failed', (job, err) => {
-    console.error(`[HISTORY WORKER] Job ${job?.id} permanently failed: ${err.message}`);
-});
+let historyWorker = null;
+try {
+    historyWorker = new Worker('ai-history', async (job) => {
+        return logHistoryRecord(job.data);
+    }, { connection: redisConnection });
 
-historyWorker.on('error', (err) => {
-    console.error('[HISTORY WORKER ERROR] Worker connection issue:', err.message);
-});
+    historyWorker.on('failed', (job, err) => {
+        console.error(`[HISTORY WORKER] Job ${job?.id} permanently failed: ${err.message}`);
+    });
 
-console.log('[BULLMQ] History Worker initialized — listening for ai-history jobs...');
+    historyWorker.on('error', (err) => {
+        if (!err.message?.includes('max requests limit exceeded')) {
+            console.error('[HISTORY WORKER ERROR] Worker connection issue:', err.message);
+        }
+    });
 
-module.exports = { historyWorker };
+    console.log('[BULLMQ] History Worker initialized — listening for ai-history jobs...');
+} catch (workerErr) {
+    console.warn('[BULLMQ] History worker initialization skipped:', workerErr.message);
+}
+
+module.exports = { historyWorker, logHistoryRecord };

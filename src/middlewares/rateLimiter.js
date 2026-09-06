@@ -1,6 +1,8 @@
 const { rateLimit } = require('express-rate-limit');
 const { redisConnection } = require('../queue');
 
+let isRedisRateLimiterDisabled = false;
+
 /**
  * Custom Sliding Window Store for express-rate-limit.
  * Uses a Sorted Set (ZSET) in Upstash Redis via the existing ioredis connection.
@@ -22,8 +24,8 @@ class SlidingWindowStore {
         const now = Date.now();
         const windowMs = this.windowMs;
 
-        // Try Redis first if it's connected
-        if (redisConnection && redisConnection.status === 'ready') {
+        // Try Redis first if it's connected and not limit-exceeded
+        if (!isRedisRateLimiterDisabled && redisConnection && redisConnection.status === 'ready') {
             try {
                 const luaScript = `
                     local key = KEYS[1]
@@ -67,7 +69,12 @@ class SlidingWindowStore {
                     resetTime: new Date(result[1])
                 };
             } catch (err) {
-                console.error(`[RATE LIMITER REDIS ERROR] Failed to increment key "${key}" in Redis:`, err.message);
+                if (err.message && err.message.includes('max requests limit exceeded')) {
+                    isRedisRateLimiterDisabled = true;
+                    console.warn('[RATE LIMITER] Upstash limit exceeded. Switched to in-memory sliding window limiter.');
+                } else {
+                    console.error(`[RATE LIMITER REDIS ERROR] Failed to increment key "${key}" in Redis:`, err.message);
+                }
                 // Fall back to memory below
             }
         }

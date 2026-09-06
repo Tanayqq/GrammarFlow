@@ -380,7 +380,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         resultsList.innerHTML = "";
         const data = Array.isArray(results) ? results : [results];
-        data.forEach(text => {
+        data.forEach(item => {
+            const text = (item && typeof item === 'object' && item.text) ? item.text : (typeof item === 'string' ? item : (item ? String(item) : ""));
             const card = document.createElement("div");
             card.className = "result-card";
             
