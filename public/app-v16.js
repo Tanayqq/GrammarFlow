@@ -1208,10 +1208,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 const container = document.createElement("div");
                 container.className = "grammarflow-pdf-export";
                 container.style.cssText = `
-                    width: 750px;
+                    width: 100%;
+                    max-width: 100%;
                     background-color: #ffffff;
                     color: #1f2937;
-                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
                     font-size: 13px;
                     line-height: 1.65;
                     padding: 24px 32px;
@@ -1232,11 +1233,11 @@ document.addEventListener("DOMContentLoaded", () => {
                         .grammarflow-pdf-export code { background: #f3f4f6; padding: 2px 5px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11.5px; color: #6d28d9; }
                         .grammarflow-pdf-export pre { background: #1f2937; color: #f9fafb; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11.5px; margin: 12px 0; page-break-inside: avoid; break-inside: avoid; }
                         .grammarflow-pdf-export pre code { background: transparent; color: inherit; padding: 0; }
-                        .grammarflow-pdf-export table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12px; page-break-inside: avoid; break-inside: avoid; }
-                        .grammarflow-pdf-export th, .grammarflow-pdf-export td { border: 1px solid #d1d5db; padding: 7px 10px; text-align: left; vertical-align: top; color: #1f2937; }
-                        .grammarflow-pdf-export th { background-color: #f3f4f6; font-weight: 700; color: #111827; }
-                        .grammarflow-pdf-export tr:nth-child(even) td { background-color: #f9fafb; }
-                        .grammarflow-pdf-export tr { page-break-inside: avoid; break-inside: avoid; }
+                        .grammarflow-pdf-export table { width: 100% !important; border-collapse: collapse !important; margin: 16px 0 !important; font-size: 11.5px !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+                        .grammarflow-pdf-export th, .grammarflow-pdf-export td { border: 1px solid #cbd5e1 !important; padding: 8px 10px !important; text-align: left !important; vertical-align: top !important; color: #1e293b !important; line-height: 1.5 !important; }
+                        .grammarflow-pdf-export th { background-color: #f1f5f9 !important; font-weight: 700 !important; color: #0f172a !important; }
+                        .grammarflow-pdf-export tr:nth-child(even) td { background-color: #f8fafc !important; }
+                        .grammarflow-pdf-export tr { page-break-inside: avoid !important; break-inside: avoid !important; }
                     </style>
                     
                     <table style="width: 100%; border: none; border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; margin-bottom: 20px;">
@@ -1305,7 +1306,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 pdf.setFontSize(8);
                                 pdf.setTextColor(150, 150, 160);
                                 pdf.text(
-                                    `Page ${p} of ${totalPages}   •   GrammarFlow Document AI`,
+                                    `Page ${p} of ${totalPages}   |   GrammarFlow Document AI`,
                                     pdf.internal.pageSize.getWidth() / 2,
                                     pdf.internal.pageSize.getHeight() - 6,
                                     { align: "center" }
