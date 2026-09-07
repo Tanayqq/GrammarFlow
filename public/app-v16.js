@@ -1010,7 +1010,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 renderResults([finalResult]);
                 this.finalOutput = finalResult;
-                document.getElementById("exportControls").classList.remove("hidden");
+
+                // Show Export Controls with dynamic mode label
+                const exportControls = document.getElementById("exportControls");
+                const modeLabelEl = document.getElementById("docResultModeLabel");
+                if (modeLabelEl) {
+                    if (mode === "Summarize") modeLabelEl.textContent = "Summary Document Ready";
+                    else if (mode === "Explain") modeLabelEl.textContent = "10-Year-Old Explanation Ready";
+                    else if (mode === "Grammar") modeLabelEl.textContent = "Extracted & Corrected Text Ready";
+                    else modeLabelEl.textContent = "Document Processed";
+                }
+                if (exportControls) exportControls.classList.remove("hidden");
                 localStorage.removeItem(cacheKey); // Clear cache on success
 
             } catch (e) {
@@ -1073,12 +1083,170 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         exportToPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            const text = this.finalOutput || "No output to export.";
-            const splitText = doc.splitTextToSize(text, 180);
-            doc.text(splitText, 10, 10);
-            doc.save("GrammarFlow_Result.pdf");
+            try {
+                if (!window.jspdf || !window.jspdf.jsPDF) {
+                    alert("PDF export library is loading. Please try again in a few seconds.");
+                    return;
+                }
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({
+                    orientation: 'portrait',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+
+                const rawText = this.finalOutput || "No content to export.";
+                const mode = (UI.documentModeSelect && UI.documentModeSelect.value) || "Summarize";
+                
+                let modeTitle = "Document AI Result";
+                let filenamePrefix = "GrammarFlow_Document";
+                if (mode === "Summarize") {
+                    modeTitle = "Document Summary";
+                    filenamePrefix = "GrammarFlow_Summary";
+                } else if (mode === "Explain") {
+                    modeTitle = "Explain Like a 10-Year-Old";
+                    filenamePrefix = "GrammarFlow_Explanation";
+                } else if (mode === "Grammar") {
+                    modeTitle = "Extracted & Corrected Text (OCR)";
+                    filenamePrefix = "GrammarFlow_OCR_Grammar";
+                }
+
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
+                const margin = 20;
+                const maxLineWidth = pageWidth - (margin * 2);
+                let currentY = 24;
+
+                // 1. Header Banner
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(20);
+                doc.setTextColor(109, 40, 217); // Purple 700 (#6d28d9)
+                doc.text("GrammarFlow", margin, currentY);
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(9);
+                doc.setTextColor(120, 120, 140);
+                const timestamp = new Date().toLocaleString(undefined, {
+                    year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                doc.text(timestamp, pageWidth - margin, currentY, { align: "right" });
+
+                currentY += 8;
+
+                // 2. Mode Subtitle Badge
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(13);
+                doc.setTextColor(30, 30, 45);
+                doc.text(modeTitle, margin, currentY);
+
+                currentY += 4;
+
+                // Decorative Divider line
+                doc.setDrawColor(216, 180, 254); // Purple 300
+                doc.setLineWidth(0.6);
+                doc.line(margin, currentY, pageWidth - margin, currentY);
+                currentY += 10;
+
+                // Handle dual-section if ===GF_SEPARATOR=== is present
+                let sections = [rawText];
+                if (rawText.includes("===GF_SEPARATOR===")) {
+                    const parts = rawText.split("===GF_SEPARATOR===");
+                    sections = [
+                        `CORRECTED VERSION\n${parts[0].trim()}`,
+                        `DETAILED ANALYSIS\n${parts[1].trim()}`
+                    ];
+                }
+
+                const textToRender = sections.join("\n\n");
+                const rawParagraphs = textToRender.split('\n');
+
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10.5);
+                doc.setTextColor(40, 40, 50);
+
+                const defaultLineHeight = 5.8;
+
+                for (let i = 0; i < rawParagraphs.length; i++) {
+                    let para = rawParagraphs[i].trim();
+                    if (!para) {
+                        currentY += 3.5; // Paragraph spacing
+                        continue;
+                    }
+
+                    // Section Heading detection (e.g. ## Heading or ### Heading or ALL CAPS)
+                    const isHeading = para.startsWith('###') || para.startsWith('##') || para.startsWith('#') || para === 'CORRECTED VERSION' || para === 'DETAILED ANALYSIS';
+                    if (isHeading) {
+                        para = para.replace(/^#+\s*/, '');
+                        if (currentY + 12 > pageHeight - margin) {
+                            doc.addPage();
+                            currentY = margin;
+                        }
+                        currentY += 4;
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(12);
+                        doc.setTextColor(88, 28, 135);
+                        doc.text(para, margin, currentY);
+                        currentY += 6;
+                        doc.setFont("helvetica", "normal");
+                        doc.setFontSize(10.5);
+                        doc.setTextColor(40, 40, 50);
+                        continue;
+                    }
+
+                    // Bullet point detection
+                    let isBullet = false;
+                    let bulletPrefix = "";
+                    if (para.startsWith('- ') || para.startsWith('* ')) {
+                        isBullet = true;
+                        bulletPrefix = "•  ";
+                        para = para.substring(2);
+                    } else if (/^\d+\.\s/.test(para)) {
+                        const match = para.match(/^(\d+\.\s)/);
+                        isBullet = true;
+                        bulletPrefix = match[1];
+                        para = para.substring(match[0].length);
+                    }
+
+                    // Strip markdown bold / italic markers for clean reading
+                    para = para.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+
+                    const indent = isBullet ? 6 : 0;
+                    const availableWidth = maxLineWidth - indent;
+                    const lines = doc.splitTextToSize(para, availableWidth);
+
+                    for (let l = 0; l < lines.length; l++) {
+                        if (currentY + defaultLineHeight > pageHeight - margin) {
+                            doc.addPage();
+                            currentY = margin;
+                        }
+
+                        if (isBullet && l === 0) {
+                            doc.setFont("helvetica", "bold");
+                            doc.text(bulletPrefix, margin, currentY);
+                            doc.setFont("helvetica", "normal");
+                        }
+                        doc.text(lines[l], margin + indent, currentY);
+                        currentY += defaultLineHeight;
+                    }
+                    currentY += 1.5;
+                }
+
+                // Page numbering in footer on all pages
+                const totalPages = doc.internal.getNumberOfPages();
+                for (let p = 1; p <= totalPages; p++) {
+                    doc.setPage(p);
+                    doc.setFont("helvetica", "normal");
+                    doc.setFontSize(8);
+                    doc.setTextColor(150, 150, 170);
+                    doc.text(`Page ${p} of ${totalPages}  •  GrammarFlow Document AI`, pageWidth / 2, pageHeight - 10, { align: "center" });
+                }
+
+                const cleanDate = new Date().toISOString().slice(0, 10);
+                doc.save(`${filenamePrefix}_${cleanDate}.pdf`);
+            } catch (err) {
+                console.error("[EXPORT PDF ERROR]", err);
+                alert("Could not export PDF: " + err.message);
+            }
         }
 
         exportToDOCX() {
@@ -1101,8 +1269,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Initialize Global Processor
     window.documentProcessor = new DocumentProcessor();
-    document.getElementById("downloadPdfBtn").onclick = () => window.documentProcessor.exportToPDF();
-    document.getElementById("downloadDocxBtn").onclick = () => window.documentProcessor.exportToDOCX();
+    const dlPdfBtn = document.getElementById("downloadPdfBtn");
+    if (dlPdfBtn) dlPdfBtn.onclick = () => window.documentProcessor.exportToPDF();
+
+    const dlDocxBtn = document.getElementById("downloadDocxBtn");
+    if (dlDocxBtn) dlDocxBtn.onclick = () => window.documentProcessor.exportToDOCX();
     
     // Wire documentModeSelect change to toggle OCR mode UI
     if (UI.documentModeSelect) {
