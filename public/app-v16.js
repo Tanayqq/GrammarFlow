@@ -1010,6 +1010,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 renderResults([finalResult]);
                 this.finalOutput = finalResult;
+                try {
+                    localStorage.setItem("gf_last_doc_result", finalResult);
+                    localStorage.setItem("gf_last_doc_mode", mode);
+                } catch (e) {}
 
                 // Show Export Controls with dynamic mode label
                 const exportControls = document.getElementById("exportControls");
@@ -1097,8 +1101,42 @@ document.addEventListener("DOMContentLoaded", () => {
                     `;
                 }
 
-                const rawText = this.finalOutput || "No content to export.";
-                const mode = (UI.documentModeSelect && UI.documentModeSelect.value) || "Summarize";
+                // 1. Retrieve the text to export with multi-layered fallbacks
+                let rawText = this.finalOutput;
+                if (!rawText || !rawText.trim()) {
+                    try {
+                        rawText = localStorage.getItem("gf_last_doc_result") || "";
+                    } catch (e) {}
+                }
+                if (!rawText || !rawText.trim()) {
+                    const docResults = document.getElementById("docResultsList");
+                    if (docResults) {
+                        const cards = docResults.querySelectorAll(".result-card");
+                        if (cards.length > 0) {
+                            const lines = [];
+                            cards.forEach(card => {
+                                const rt = card.querySelector(".result-text");
+                                if (rt && rt.innerText.trim()) lines.push(rt.innerText.trim());
+                            });
+                            if (lines.length > 0) rawText = lines.join("\n\n");
+                        }
+                        if (!rawText || !rawText.trim()) {
+                            rawText = docResults.innerText ? docResults.innerText.trim() : "";
+                        }
+                    }
+                }
+
+                if (!rawText || !rawText.trim() || rawText === "No content to export.") {
+                    alert("No processed document content found to download. Please process a document first.");
+                    return;
+                }
+
+                // 2. Identify active mode and metadata
+                let mode = (UI.documentModeSelect && UI.documentModeSelect.value) || "Summarize";
+                try {
+                    const savedMode = localStorage.getItem("gf_last_doc_mode");
+                    if (savedMode) mode = savedMode;
+                } catch (e) {}
 
                 let modeTitle = "Document AI Result";
                 let filenamePrefix = "GrammarFlow_Document";
@@ -1113,20 +1151,51 @@ document.addEventListener("DOMContentLoaded", () => {
                     filenamePrefix = "GrammarFlow_OCR_Grammar";
                 }
 
-                // Render content HTML matching the exact browser output
+                // 3. Setup Markdown parser options
+                if (window.marked) {
+                    marked.setOptions({
+                        gfm: true,
+                        breaks: true
+                    });
+                }
+
+                // 4. Render formatted HTML matching the generated structure
                 let contentHtml = "";
                 if (rawText.includes("===GF_SEPARATOR===")) {
-                    const parts = rawText.split("===GF_SEPARATOR===");
-                    const correctedHtml = window.marked ? marked.parse(parts[0].trim()) : parts[0].replace(/\n/g, '<br>');
-                    const analysisHtml = window.marked ? marked.parse(parts[1].trim()) : parts[1].replace(/\n/g, '<br>');
-                    contentHtml = `
-                        <h2 style="color: #6d28d9; font-size: 17px; font-weight: 700; margin-top: 10px; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;">Corrected Text</h2>
-                        <div>${correctedHtml}</div>
-                        <div style="margin-top: 28px;">
-                            <h2 style="color: #6d28d9; font-size: 17px; font-weight: 700; margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px;">Detailed Analysis</h2>
-                            <div>${analysisHtml}</div>
-                        </div>
-                    `;
+                    const sections = rawText.split("===GF_SEPARATOR===");
+                    if (sections.length === 2) {
+                        const correctedHtml = window.marked ? marked.parse(sections[0].trim()) : sections[0].replace(/\n/g, '<br>');
+                        const analysisHtml = window.marked ? marked.parse(sections[1].trim()) : sections[1].replace(/\n/g, '<br>');
+                        contentHtml = `
+                            <div style="margin-bottom: 24px;">
+                                <h2 style="color: #6d28d9; font-size: 16px; font-weight: 700; margin-top: 10px; margin-bottom: 8px; border-bottom: 1.5px solid #e5e7eb; padding-bottom: 4px;">Corrected Text</h2>
+                                <div style="color: #1f2937; line-height: 1.65;">${correctedHtml}</div>
+                            </div>
+                            <div style="margin-top: 24px;">
+                                <h2 style="color: #6d28d9; font-size: 16px; font-weight: 700; margin-bottom: 8px; border-bottom: 1.5px solid #e5e7eb; padding-bottom: 4px;">Detailed Analysis</h2>
+                                <div style="color: #1f2937; line-height: 1.65;">${analysisHtml}</div>
+                            </div>
+                        `;
+                    } else {
+                        let allCorrected = [];
+                        let allAnalysis = [];
+                        for (let s = 0; s < sections.length; s++) {
+                            if (s % 2 === 0) allCorrected.push(sections[s].trim());
+                            else allAnalysis.push(sections[s].trim());
+                        }
+                        const correctedHtml = window.marked ? marked.parse(allCorrected.join("\n\n")) : allCorrected.join('<br><br>');
+                        const analysisHtml = window.marked ? marked.parse(allAnalysis.join("\n\n---\n\n")) : allAnalysis.join('<br><br>');
+                        contentHtml = `
+                            <div style="margin-bottom: 24px;">
+                                <h2 style="color: #6d28d9; font-size: 16px; font-weight: 700; margin-top: 10px; margin-bottom: 8px; border-bottom: 1.5px solid #e5e7eb; padding-bottom: 4px;">Corrected Text</h2>
+                                <div style="color: #1f2937; line-height: 1.65;">${correctedHtml}</div>
+                            </div>
+                            <div style="margin-top: 24px;">
+                                <h2 style="color: #6d28d9; font-size: 16px; font-weight: 700; margin-bottom: 8px; border-bottom: 1.5px solid #e5e7eb; padding-bottom: 4px;">Detailed Analysis</h2>
+                                <div style="color: #1f2937; line-height: 1.65;">${analysisHtml}</div>
+                            </div>
+                        `;
+                    }
                 } else {
                     contentHtml = window.marked ? marked.parse(rawText) : rawText.replace(/\n/g, '<br>');
                 }
@@ -1135,78 +1204,82 @@ document.addEventListener("DOMContentLoaded", () => {
                     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                 });
 
-                // Dedicated styled container for pristine PDF output
+                // 5. Dedicated styled container for crisp PDF rendering (No offscreen negative offset coordinates)
                 const container = document.createElement("div");
                 container.className = "grammarflow-pdf-export";
                 container.style.cssText = `
-                    position: fixed;
-                    left: -9999px;
-                    top: 0;
-                    width: 780px;
+                    width: 750px;
                     background-color: #ffffff;
                     color: #1f2937;
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
-                    font-size: 13.5px;
+                    font-size: 13px;
                     line-height: 1.65;
-                    padding: 36px 44px;
+                    padding: 24px 32px;
                     box-sizing: border-box;
                 `;
 
                 container.innerHTML = `
                     <style>
-                        .grammarflow-pdf-export h1 { font-size: 22px; font-weight: 700; color: #5b21b6; margin: 20px 0 10px; page-break-after: avoid; }
-                        .grammarflow-pdf-export h2 { font-size: 17px; font-weight: 700; color: #6d28d9; margin: 18px 0 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 4px; page-break-after: avoid; }
-                        .grammarflow-pdf-export h3 { font-size: 15px; font-weight: 600; color: #7c3aed; margin: 14px 0 6px; page-break-after: avoid; }
-                        .grammarflow-pdf-export h4 { font-size: 13.5px; font-weight: 600; color: #374151; margin: 12px 0 4px; page-break-after: avoid; }
-                        .grammarflow-pdf-export p { margin: 0 0 12px; line-height: 1.65; color: #1f2937; page-break-inside: avoid; }
-                        .grammarflow-pdf-export ul, .grammarflow-pdf-export ol { margin: 8px 0 14px 24px; padding: 0; page-break-inside: avoid; }
-                        .grammarflow-pdf-export li { margin-bottom: 6px; line-height: 1.6; color: #1f2937; }
-                        .grammarflow-pdf-export blockquote { border-left: 4px solid #8b5cf6; padding: 8px 16px; background: #f5f3ff; margin: 14px 0; color: #374151; font-style: italic; page-break-inside: avoid; }
-                        .grammarflow-pdf-export hr { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
-                        .grammarflow-pdf-export code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; color: #6d28d9; }
-                        .grammarflow-pdf-export pre { background: #1f2937; color: #f9fafb; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 12px; margin: 12px 0; page-break-inside: avoid; }
-                        .grammarflow-pdf-export table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 12.5px; page-break-inside: avoid; }
-                        .grammarflow-pdf-export th, .grammarflow-pdf-export td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; vertical-align: top; }
-                        .grammarflow-pdf-export th { background-color: #f3f4f6; font-weight: 600; color: #111827; }
-                        .grammarflow-pdf-export tr:nth-child(even) { background-color: #f9fafb; }
-                        .grammarflow-pdf-export tr { page-break-inside: avoid; }
-                        .grammarflow-pdf-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #8b5cf6; padding-bottom: 12px; margin-bottom: 22px; }
-                        .grammarflow-pdf-brand { font-size: 24px; font-weight: 800; color: #6d28d9; margin: 0; }
-                        .grammarflow-pdf-subtitle { font-size: 13px; font-weight: 600; color: #4b5563; margin-top: 4px; }
-                        .grammarflow-pdf-meta { text-align: right; font-size: 11px; color: #6b7280; line-height: 1.4; }
+                        .grammarflow-pdf-export h1 { font-size: 20px; font-weight: 700; color: #5b21b6; margin: 18px 0 8px; page-break-after: avoid; break-after: avoid; }
+                        .grammarflow-pdf-export h2 { font-size: 16px; font-weight: 700; color: #6d28d9; margin: 16px 0 6px; border-bottom: 1.5px solid #e5e7eb; padding-bottom: 4px; page-break-after: avoid; break-after: avoid; }
+                        .grammarflow-pdf-export h3 { font-size: 14px; font-weight: 600; color: #7c3aed; margin: 12px 0 4px; page-break-after: avoid; break-after: avoid; }
+                        .grammarflow-pdf-export h4 { font-size: 13px; font-weight: 600; color: #374151; margin: 10px 0 3px; page-break-after: avoid; break-after: avoid; }
+                        .grammarflow-pdf-export p { margin: 0 0 10px; line-height: 1.65; color: #1f2937; page-break-inside: auto; break-inside: auto; }
+                        .grammarflow-pdf-export ul, .grammarflow-pdf-export ol { margin: 6px 0 12px 22px; padding: 0; page-break-inside: auto; break-inside: auto; }
+                        .grammarflow-pdf-export li { margin-bottom: 4px; line-height: 1.6; color: #1f2937; }
+                        .grammarflow-pdf-export blockquote { border-left: 4px solid #8b5cf6; padding: 8px 14px; background: #f5f3ff; margin: 12px 0; color: #4b5563; font-style: italic; page-break-inside: avoid; break-inside: avoid; }
+                        .grammarflow-pdf-export hr { border: none; border-top: 1px solid #e5e7eb; margin: 18px 0; }
+                        .grammarflow-pdf-export code { background: #f3f4f6; padding: 2px 5px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11.5px; color: #6d28d9; }
+                        .grammarflow-pdf-export pre { background: #1f2937; color: #f9fafb; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11.5px; margin: 12px 0; page-break-inside: avoid; break-inside: avoid; }
+                        .grammarflow-pdf-export pre code { background: transparent; color: inherit; padding: 0; }
+                        .grammarflow-pdf-export table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 12px; page-break-inside: avoid; break-inside: avoid; }
+                        .grammarflow-pdf-export th, .grammarflow-pdf-export td { border: 1px solid #d1d5db; padding: 7px 10px; text-align: left; vertical-align: top; color: #1f2937; }
+                        .grammarflow-pdf-export th { background-color: #f3f4f6; font-weight: 700; color: #111827; }
+                        .grammarflow-pdf-export tr:nth-child(even) td { background-color: #f9fafb; }
+                        .grammarflow-pdf-export tr { page-break-inside: avoid; break-inside: avoid; }
                     </style>
                     
-                    <div class="grammarflow-pdf-header">
-                        <div>
-                            <div class="grammarflow-pdf-brand">GrammarFlow</div>
-                            <div class="grammarflow-pdf-subtitle">${modeTitle}</div>
-                        </div>
-                        <div class="grammarflow-pdf-meta">
-                            <div>${timestamp}</div>
-                            <div style="color: #7c3aed; font-weight: 600;">Document AI</div>
-                        </div>
-                    </div>
+                    <table style="width: 100%; border: none; border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; margin-bottom: 20px;">
+                        <tr>
+                            <td style="border: none; padding: 0; vertical-align: middle;">
+                                <div style="font-size: 22px; font-weight: 800; color: #5b21b6; margin: 0; line-height: 1.2;">GrammarFlow</div>
+                                <div style="font-size: 13px; font-weight: 600; color: #4b5563; margin-top: 3px;">${modeTitle}</div>
+                            </td>
+                            <td style="border: none; padding: 0; text-align: right; vertical-align: middle;">
+                                <div style="font-size: 11px; color: #6b7280; line-height: 1.4;">${timestamp}</div>
+                                <div style="font-size: 11px; color: #7c3aed; font-weight: 600;">Document AI</div>
+                            </td>
+                        </tr>
+                    </table>
 
                     <div class="grammarflow-pdf-body">
                         ${contentHtml}
                     </div>
                 `;
 
-                document.body.appendChild(container);
-
                 const cleanDate = new Date().toISOString().slice(0, 10);
                 const filename = `${filenamePrefix}_${cleanDate}.pdf`;
 
                 if (window.html2pdf) {
+                    // Adaptive scaling for documents of different lengths to avoid Chromium canvas limits
+                    let canvasScale = 2;
+                    if (rawText.length > 15000) {
+                        canvasScale = 1.2;
+                    } else if (rawText.length > 7000) {
+                        canvasScale = 1.5;
+                    }
+
                     const opt = {
-                        margin: [14, 14, 14, 14],
+                        margin: [12, 12, 12, 12],
                         filename: filename,
                         image: { type: 'jpeg', quality: 0.98 },
                         html2canvas: {
-                            scale: 2,
+                            scale: canvasScale,
                             useCORS: true,
                             letterRendering: true,
-                            logging: false
+                            logging: false,
+                            scrollX: 0,
+                            scrollY: 0
                         },
                         jsPDF: {
                             unit: 'mm',
@@ -1214,11 +1287,32 @@ document.addEventListener("DOMContentLoaded", () => {
                             orientation: 'portrait'
                         },
                         pagebreak: {
-                            mode: ['css', 'legacy']
+                            mode: ['css', 'legacy'],
+                            avoid: ['tr', 'pre', 'blockquote', 'h1', 'h2', 'h3']
                         }
                     };
 
-                    await window.html2pdf().from(container).set(opt).save();
+                    await window.html2pdf()
+                        .set(opt)
+                        .from(container)
+                        .toPdf()
+                        .get('pdf')
+                        .then(function(pdf) {
+                            const totalPages = pdf.internal.getNumberOfPages();
+                            for (let p = 1; p <= totalPages; p++) {
+                                pdf.setPage(p);
+                                pdf.setFont("helvetica", "normal");
+                                pdf.setFontSize(8);
+                                pdf.setTextColor(150, 150, 160);
+                                pdf.text(
+                                    `Page ${p} of ${totalPages}   •   GrammarFlow Document AI`,
+                                    pdf.internal.pageSize.getWidth() / 2,
+                                    pdf.internal.pageSize.getHeight() - 6,
+                                    { align: "center" }
+                                );
+                            }
+                        })
+                        .save();
                 } else {
                     // Fallback to printable window
                     const printWin = window.open('', '_blank');
@@ -1228,7 +1322,12 @@ document.addEventListener("DOMContentLoaded", () => {
                             <html>
                             <head>
                                 <title>${modeTitle}</title>
-                                <style>body { padding: 20px; }</style>
+                                <style>
+                                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 24px; color: #111827; }
+                                    table { border-collapse: collapse; width: 100%; margin: 14px 0; }
+                                    th, td { border: 1px solid #d1d5db; padding: 8px 12px; }
+                                    th { background: #f3f4f6; }
+                                </style>
                             </head>
                             <body>
                                 ${container.innerHTML}
@@ -1242,11 +1341,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     } else {
                         alert("PDF generator not ready. Please try again.");
                     }
-                }
-
-                // Cleanup container
-                if (container.parentNode) {
-                    container.parentNode.removeChild(container);
                 }
 
             } catch (err) {
