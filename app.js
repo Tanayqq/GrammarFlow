@@ -575,9 +575,13 @@ document.addEventListener("DOMContentLoaded", () => {
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const textContent = await page.getTextContent();
-                fullText += textContent.items.map(item => item.str).join(' ') + "\\n";
+                let pageText = "";
+                for (const item of textContent.items) {
+                    pageText += item.str + (item.hasEOL ? "\n" : " ");
+                }
+                fullText += `\n--- Page ${i} ---\n` + pageText.trim() + "\n\n";
             }
-            return fullText;
+            return fullText.trim();
         }
 
         async extractImageText(file) {
@@ -589,21 +593,9 @@ document.addEventListener("DOMContentLoaded", () => {
             let combinedText = "";
             for (const file of this.files) {
                 if (file.type === "application/pdf") {
-                    combinedText += await this.extractPdfText(file) + "\\n\\n";
+                    combinedText += await this.extractPdfText(file) + "\n\n";
                 } else if (file.type.startsWith("image/")) {
-                    combinedText += await this.extractImageText(file) + "\\n\\n";
-                }
-            }
-            return combinedText.trim();
-        }
-
-        async extractAll() {
-            let combinedText = "";
-            for (const file of this.files) {
-                if (file.type === "application/pdf") {
-                    combinedText += await this.extractPdfText(file) + "\\n\\n";
-                } else if (file.type.startsWith("image/")) {
-                    combinedText += await this.extractImageText(file) + "\\n\\n";
+                    combinedText += await this.extractImageText(file) + "\n\n";
                 }
             }
             return combinedText.trim();
@@ -636,9 +628,10 @@ document.addEventListener("DOMContentLoaded", () => {
                     break;
                 }
                 
-                // Smart boundary detection: Try sections first, then paragraphs, then sentences
-                let breakIdx = text.lastIndexOf("\\n# ", endIdx); // Markdown Heading
-                if (breakIdx <= currentIdx) breakIdx = text.lastIndexOf("\\n\\n", endIdx); // Paragraph
+                // Smart boundary detection: Try sections first, then page breaks, then paragraphs, then sentences
+                let breakIdx = text.lastIndexOf("\n# ", endIdx); // Markdown Heading
+                if (breakIdx <= currentIdx) breakIdx = text.lastIndexOf("\n--- Page ", endIdx); // Page break
+                if (breakIdx <= currentIdx) breakIdx = text.lastIndexOf("\n\n", endIdx); // Paragraph
                 if (breakIdx <= currentIdx) breakIdx = text.lastIndexOf(". ", endIdx); // Sentence
                 
                 if (breakIdx <= currentIdx) {
@@ -731,15 +724,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 if (this.isCanceled) throw new Error("Canceled by user.");
 
-                // Final Pass
+                // Final Pass: Preserve all chunk topics, ASCII diagrams, and tables without lossy compression
                 let finalResult = "";
                 if (chunks.length === 1) {
                     finalResult = intermediateResults[0];
-                } else if (mode === "Summarize") {
-                    renderResults([...intermediateResults, "Finalizing document structure and weaving summaries together... (Please wait)"]);
-                    finalResult = await this.hierarchicalConsolidate(intermediateResults, mode, lang);
                 } else {
-                    finalResult = intermediateResults.join("\n\n");
+                    finalResult = intermediateResults.join("\n\n---\n\n");
                 }
 
                 renderResults([finalResult]);
@@ -945,10 +935,8 @@ document.addEventListener("DOMContentLoaded", () => {
                         .grammarflow-pdf-export ul, .grammarflow-pdf-export ol { margin: 6px 0 12px 22px; padding: 0; page-break-inside: auto; break-inside: auto; }
                         .grammarflow-pdf-export li { margin-bottom: 4px; line-height: 1.6; color: #1f2937; }
                         .grammarflow-pdf-export blockquote { border-left: 4px solid #8b5cf6; padding: 8px 14px; background: #f5f3ff; margin: 12px 0; color: #4b5563; font-style: italic; page-break-inside: avoid; break-inside: avoid; }
-                        .grammarflow-pdf-export hr { border: none; border-top: 1px solid #e5e7eb; margin: 18px 0; }
-                        .grammarflow-pdf-export code { background: #f3f4f6; padding: 2px 5px; border-radius: 4px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11.5px; color: #6d28d9; }
-                        .grammarflow-pdf-export pre { background: #1f2937; color: #f9fafb; padding: 12px; border-radius: 8px; overflow-x: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: 11.5px; margin: 12px 0; page-break-inside: avoid; break-inside: avoid; }
-                        .grammarflow-pdf-export pre code { background: transparent; color: inherit; padding: 0; }
+                        .grammarflow-pdf-export pre { background: #1e293b; color: #f8fafc; padding: 12px; border-radius: 6px; overflow-x: auto; font-family: "Courier New", Courier, monospace; font-size: 10px; line-height: 1.25; margin: 12px 0; page-break-inside: avoid; break-inside: avoid; white-space: pre; }
+                        .grammarflow-pdf-export pre code { background: transparent; color: inherit; padding: 0; font-family: inherit; font-size: inherit; }
                         .grammarflow-pdf-export table { width: 100% !important; border-collapse: collapse !important; margin: 16px 0 !important; font-size: 11.5px !important; page-break-inside: avoid !important; break-inside: avoid !important; }
                         .grammarflow-pdf-export th, .grammarflow-pdf-export td { border: 1px solid #cbd5e1 !important; padding: 8px 10px !important; text-align: left !important; vertical-align: top !important; color: #1e293b !important; line-height: 1.5 !important; }
                         .grammarflow-pdf-export th { background-color: #f1f5f9 !important; font-weight: 700 !important; color: #0f172a !important; }

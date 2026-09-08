@@ -699,20 +699,61 @@ const getDocumentProcessingPrompt = (mode, language, style, tone, humanize, isCo
   switch(mode) {
     case "Summarize":
       modeInstruction = isConsolidation 
-        ? "The text provided consists of multiple intermediate summaries of a large document. Weave them together into one cohesive, final, high-level summary."
-        : "Extract the key information and provide a concise, high-level summary of the entire document.";
+        ? `You are integrating multiple intermediate document summaries into a final master summary document.
+CRITICAL RULES:
+1. PRESERVE EVERY SINGLE TOPIC: Do NOT compress away, skip, or omit any section or concept. Retain all topics, definitions, actors, advantages, and principles.
+2. PRESERVE ALL VISUAL DIAGRAMS: Keep all ASCII/Box-art architecture diagrams, system flows, and their detailed component breakdowns intact.
+3. PRESERVE ALL TABLES: Retain all Markdown data tables, schemas, and relational examples.
+4. COHESIVE FORMAT: Merge smoothly under clean Markdown headings (# for Document Title, ## for Main Topics, ### for Subtopics) with zero loss of depth.`
+        : `You are GrammarFlow's master academic and technical document summarization engine. Your mission is to provide an exhaustive, structured, and crystal-clear summary that covers the ENTIRE document thoroughly without skipping anything.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MANDATORY REQUIREMENTS (MUST FOLLOW STRICTLY):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. TOUCH EVERY SINGLE TOPIC (ZERO SKIPPING):
+   - You MUST cover and summarize EVERY single topic, section, subsection, property, definition, actor/worker role, component, advantage, disadvantage, and concept present in the source text.
+   - NEVER skip, gloss over, or omit any topic, no matter how minor. Traverse the document sequentially from beginning to end.
+   - Organize with clean Markdown headings (# Document Title, ## Main Sections/Topics, ### Subsections).
+
+2. MANDATORY VISUAL DIAGRAM RECONSTRUCTION:
+   - Technical textbooks and documents frequently contain architecture diagrams, workflows, system environments, component stacks, and process flows (e.g., "A simplified database system environment", client-server models, query processors, life cycles, etc.).
+   - Whenever any diagram, architecture, workflow, system model, or interaction is present or described in the source text (including labeled components, data flows, and arrows):
+     * You MUST reconstruct it as a clean, beautiful ASCII / Box-Art diagram inside a markdown code block (\`\`\`text ... \`\`\`).
+     * Use clear box characters (e.g., +---+ or ┌───┐), labeled component nodes, and directional arrows (--> or │ v) showing data/control flow.
+     * Directly beneath the ASCII diagram, provide an "Architecture & Component Breakdown" explaining each layer, module, and how data moves between them in simple, crystal-clear terms.
+
+3. STRUCTURED TABLES & RELATIONAL MODELS:
+   - Whenever the source document mentions or contains tables, database records, schemas (e.g., Student, Course, Section, Grade_Report tables), or comparative matrices:
+     * You MUST reconstruct them as complete, clean Markdown tables (| Column 1 | Column 2 | ...).
+     * Explain what each table represents, primary/foreign keys, and how relations link together.
+
+4. EASY & UNDERSTANDABLE WITH REAL-WORLD ANALOGIES:
+   - Make explanations remarkably intuitive, friendly, and easy to grasp for students and learners.
+   - Pair every abstract or complex technical term with a relatable everyday analogy (e.g., library catalogs, bank account transactions, blueprints, filing cabinets, traffic signals) alongside clear, rigorous technical definitions.
+   - Use bold highlights for key terms, bullet points for key properties/advantages, and numbered lists for sequential steps.`;
       break;
     case "Simplify":
-      modeInstruction = "Rewrite the document text to be simpler and easier to read. Remove jargon and complex sentence structures.";
+      modeInstruction = `Rewrite and explain the entire document so that every single topic is easy to understand for any reader.
+- Cover EVERY topic and section sequentially without skipping.
+- If diagrams, architectures, or workflows are present, reconstruct them as simple ASCII flowcharts inside code blocks (\`\`\`text ... \`\`\`) with easy-to-follow explanations.
+- Reconstruct any data tables as clean Markdown tables.
+- Remove heavy jargon and complex sentence structures, replacing them with clear, engaging explanations.`;
       break;
     case "Translate":
-      modeInstruction = `Translate the entire document into ${language}. Preserve the formatting and paragraph structure as much as possible.`;
+      modeInstruction = `Translate the entire document into ${language}.
+- Cover EVERY topic and section sequentially without skipping any content.
+- Reconstruct any diagrams, architectures, or workflows as clean ASCII flowcharts with translated labels where appropriate.
+- Preserve all Markdown tables, bullet points, and formatting structure exactly.`;
       break;
     case "Explain":
-      modeInstruction = "Explain the concepts in this document as if you were talking to a 10-year-old child. Use analogies if helpful.";
+      modeInstruction = `Explain every single topic, concept, and diagram in this document as if you were talking to a smart, curious 10-year-old child.
+- COVER EVERY TOPIC: Walk through each section and concept in the document sequentially without skipping anything.
+- VISUAL DIAGRAMS: For any system architecture, diagram, or workflow mentioned in the text, draw a simple, fun ASCII box diagram inside a code block (\`\`\`text ... \`\`\`) and explain it like a toy factory, Lego castle, or school library.
+- RELATABLE ANALOGIES: Use vivid, fun analogies (toys, video games, kitchen recipes, backpacks, bicycles) to make hard concepts instantly click.
+- EASY & ACCURATE: Keep the underlying technical principles 100% accurate while using friendly, encouraging, and easy-to-understand language.`;
       break;
     case "Grammar":
-      modeInstruction = `Fix all grammar, spelling, and OCR artifacts (like random symbols or misread letters) without fundamentally changing the content.
+      modeInstruction = `Fix all grammar, spelling, and OCR artifacts (like random symbols, misread letters, or broken words) without fundamentally changing the content or omitting any section.
 
 You MUST format the response EXACTLY like this:
 
@@ -723,7 +764,7 @@ You MUST format the response EXACTLY like this:
 * Punctuation Issues: [Estimated Count]
 
 # Corrected Document
-> [Put the ENTIRE corrected document text here. Ensure it is complete and formatted nicely.]
+> [Put the ENTIRE corrected document text here. Ensure it is complete, every topic is retained, and formatted nicely.]
 
 <details>
 <summary>Show Detailed Corrections</summary>
@@ -733,7 +774,7 @@ You MUST format the response EXACTLY like this:
 </details>`;
       break;
     default:
-      modeInstruction = "Summarize the key points of the document.";
+      modeInstruction = "Summarize the key points of the document thoroughly, covering every topic and reconstructing any diagrams.";
   }
 
   // --- STRICT STYLE ENFORCEMENT ---
