@@ -12,7 +12,7 @@ const pool = new Pool({
         ...(process.env.DATABASE_CA_CERT ? { ca: process.env.DATABASE_CA_CERT.replace(/\\n/g, '\n') } : {})
     }
 });
-const adapter = new PrismaPg(pool);
+const adapter = new PrismaPg(pool, { disposeExternalPool: true });
 
 // Singleton pattern: prevents multiple Prisma instances in development hot-reloads
 const prisma = new PrismaClient({
