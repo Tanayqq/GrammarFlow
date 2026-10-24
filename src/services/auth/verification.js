@@ -8,6 +8,7 @@ function connection() {
     if (redisConnection.status !== 'ready') {
         const error = new Error('Email verification is temporarily unavailable.');
         error.status = 503;
+        error.expose = true;
         throw error;
     }
     return redisConnection;
@@ -19,6 +20,7 @@ async function createChallenge(email) {
     if (!result) {
         const error = new Error('A code was already sent. Please wait five minutes before requesting another.');
         error.status = 429;
+        error.expose = true;
         throw error;
     }
     return code;

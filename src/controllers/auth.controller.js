@@ -220,7 +220,7 @@ const sendVerificationCode = async (req, res) => {
         console.error("[AUTH CONTROLLER ERROR] Send verification code failed:", error.message);
         res.status(error.status || 500).json({
             success: false,
-            error: { message: "Internal server error during verification code delivery", code: "SERVER_ERROR" }
+            error: { message: error.expose ? error.message : "Internal server error during verification code delivery", code: "SERVER_ERROR" }
         });
     }
 };
@@ -254,7 +254,7 @@ const verifyCode = async (req, res) => {
         console.error("[AUTH CONTROLLER ERROR] Verify code failed:", error.message);
         res.status(error.status || 500).json({
             success: false,
-            error: { message: "Internal server error during verification check", code: "SERVER_ERROR" }
+            error: { message: error.expose ? error.message : "Internal server error during verification check", code: "SERVER_ERROR" }
         });
     }
 };

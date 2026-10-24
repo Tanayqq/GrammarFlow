@@ -176,6 +176,9 @@ test('HTTP registration requires OTP proof and login issues a verified server se
         const sent = await request('send-verification-code', { email: address });
         assert.equal(sent.status, 200);
         assert.equal(JSON.stringify(sent.body).includes(sentCode), false);
+        const resent = await request('send-verification-code', { email: address });
+        assert.equal(resent.status, 429);
+        assert.match(resent.body.error.message, /wait five minutes/);
         const verified = await request('verify-code', { email: address, code: sentCode });
         assert.equal(verified.status, 200);
         const verificationToken = verified.body.data.verificationToken;
@@ -200,6 +203,13 @@ test('HTTP registration requires OTP proof and login issues a verified server se
         users.set(legacy.id, legacy);
         const legacyLogin = await request('login', { email: legacy.email, password: userData.password });
         assert.equal(sessions.verifySession(legacyLogin.body.data.token).id, legacy.id);
+        const secret = process.env.SESSION_SECRET;
+        delete process.env.SESSION_SECRET;
+        try {
+            const unavailable = await request('register', { ...userData, email: email() });
+            assert.equal(unavailable.status, 503);
+            assert.equal(JSON.stringify(unavailable.body).includes('SESSION_SECRET'), false);
+        } finally { process.env.SESSION_SECRET = secret; }
         let limited = false;
         for (let i = 0; i < 20; i++) {
             if ((await request('login', { email: address, password: 'wrong' })).status === 429) { limited = true; break; }
