@@ -1,15 +1,13 @@
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
-const AuthProvider = require('./AuthProvider');
 
 /**
- * Clerk concrete implementation of AuthProvider.
+ * Clerk authentication provider.
  * Verifies JWT session tokens against Clerk's JSON Web Key Set (JWKS)
  * and retrieves user profiles using Clerk's backend API.
  */
-class ClerkAuthProvider extends AuthProvider {
+class ClerkAuthProvider {
     constructor() {
-        super();
         this.jwksUri = process.env.CLERK_JWKS_URI || '';
         this.secretKey = process.env.CLERK_SECRET_KEY || '';
         

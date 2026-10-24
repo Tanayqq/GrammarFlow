@@ -1,5 +1,4 @@
 require('dotenv').config();
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const http = require('http');
 const app = require('./server');
 const authService = require('./src/services/auth/AuthService');
