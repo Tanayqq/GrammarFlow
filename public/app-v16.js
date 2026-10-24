@@ -44,7 +44,7 @@ const GrammarFlowAPI = {
         // Check window.Clerk exists AND user is falsy (null or undefined = signed out).
         const clerkIsReady = !!(window.Clerk);
         const clerkUserSignedIn = !!(window.Clerk && window.Clerk.user);
-        if (clerkIsReady && !clerkUserSignedIn) {
+        if (clerkIsReady && !clerkUserSignedIn && !token?.startsWith("gf_session_")) {
             // Clerk is active but user is signed out — forcefully clear any stale token
             if (token) {
                 localStorage.removeItem("gf_token");
@@ -1636,7 +1636,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 signOutBtn.classList.remove("hidden");
                 return;
             }
-        } else if (clerkLoaded && window.Clerk && !window.Clerk.user) {
+        } else if (clerkLoaded && window.Clerk && !window.Clerk.user && !token?.startsWith("gf_session_")) {
             // Explicitly logged out from Clerk
             localStorage.removeItem("gf_token");
             localStorage.removeItem("gf_history_cache");
@@ -1665,26 +1665,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             } catch (err) {
                 console.warn("[AUTH] Passive sync check failed/offline:", err.message);
-                if (token.startsWith("mock_token_")) {
-                    try {
-                        const parts = token.split("_");
-                        const email = parts[2] || "guest@grammarflow.com";
-                        const name = parts[3] ? decodeURIComponent(parts[3]) : "Guest User";
-                        if (userName) userName.textContent = name;
-                        if (userEmail) userEmail.textContent = email;
-                        profileSection.classList.remove("hidden");
-                        
-                        // Offline yellow dot
-                        syncStatusDot.className = "inline-block w-2.5 h-2.5 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.6)] animate-pulse shrink-0";
-                        syncText.textContent = "Offline. Local changes will sync when connection is restored.";
-                        
-                        signInBtn.classList.add("hidden");
-                        signOutBtn.classList.remove("hidden");
-                        return;
-                    } catch (e) {
-                        console.error("[AUTH] Failed to decode offline mock token", e);
-                    }
-                }
+
             }
         }
         
@@ -1920,7 +1901,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     // Step 2: Register the user in the database with their password
                     verifyBtn.textContent = "Creating Account...";
-                    const registerRes = await GrammarFlowAPI.request("/auth/register", { email, name, password }, "POST");
+                    const registerRes = await GrammarFlowAPI.request("/auth/register", { email, name, password, verificationToken: verifyRes.data.verificationToken }, "POST");
                     if (!registerRes.success) {
                         alert("Registration Failed: " + (registerRes.error?.message || "Could not create account."));
                         verifyBtn.disabled = false;
@@ -1929,8 +1910,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
 
                     // Step 3: Store token and sync session
-                    const registeredUser = registerRes.data.user;
-                    const token = `mock_token_${email}_${encodeURIComponent(registeredUser.name || name)}`;
+                    const token = registerRes.data.token;
                     localStorage.setItem("gf_token", token);
                     
                     // Clear history cache to avoid leak
@@ -2012,8 +1992,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const res = await GrammarFlowAPI.request("/auth/login", { email, password }, "POST");
                     if (res.success && res.data && res.data.user) {
                         document.getElementById("confirmLoginBtn").textContent = "Syncing...";
-                        const nameToUse = res.data.user.name || 'Test User';
-                        const token = `mock_token_${email}_${encodeURIComponent(nameToUse)}`;
+                        const token = res.data.token;
                         localStorage.setItem("gf_token", token);
                         
                         // Clear history cache to avoid leak

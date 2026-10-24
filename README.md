@@ -1,81 +1,31 @@
 # GrammarFlow
 
-**Offline-first desktop grammar assistant with real-time AI predictions**
+GrammarFlow is a web writing assistant with grammar correction, rewriting, suggestions, document processing, and writing history. The active application is the root Express backend and the frontend in `public/`.
 
-## Architecture
+## Project layout
 
-GrammarFlow uses **Pure Native** architecture for deepest OS integration:
+- `server.js`, `src/`: API, authentication, PostgreSQL access, Redis queues and workers.
+- `public/index.html`, `public/app-v16.js`: currently served browser application.
+- `GrammarFlow-Extension/`: browser extension sources.
+- `GrammarFlow-Backend/`: older standalone backend; it is not used by the root start command.
+- Root `index.html` and `app.js`: older standalone frontend.
 
-- **macOS** (v1.0): Swift + SwiftUI + CoreML + Accessibility API
-- **Windows** (v1.1): C# + .NET MAUI + ONNX Runtime + UI Automation
+The previous native macOS/offline roadmap is historical; it does not describe this hosted application.
 
-## Current Status
+## Run
 
-🚧 **In Development** - Phase 5: Polish & Testing
+Use Node.js 22. Install with `npm ci` (which generates the Prisma client), then `npm start`. Configure the environment described in [DEPLOYMENT.md](DEPLOYMENT.md). PostgreSQL, Redis, and a Groq API key are required for the full application. Background workers start with the server.
 
-### Phase 1: macOS Foundation ✅
-- [x] Architecture pivot to Pure Native approved
-- [x] All documentation updated
-- [x] Electron codebase removed
-- [x] macOS project structure created
-- [x] Accessibility API integration (AccessibilityMonitor, PermissionManager, CursorTracker)
-- [x] Menu bar app with status indicator
+Password accounts use server-signed 24-hour sessions. Clerk authentication is also supported when configured. Old unsigned mock tokens are rejected; existing password users must sign in again. Their database IDs and history are preserved.
 
-### Phase 2: Text Manipulation ✅
-- [x] TextInjector service (insert/replace text)
-- [x] HotkeyManager service (global shortcuts)
-- [x] Cmd+R rewrite hotkey registered
-- [x] Cmd+Shift+G grammar check hotkey registered
+## Verify
 
-### Phase 3: AI Integration ✅
-- [x] AI/AIModels.swift - Core data models
-- [x] AI/PredictionService.swift - Next-word predictions
-- [x] AI/GrammarService.swift - Grammar/spelling checks
-- [x] AI/RewriteService.swift - Style/tone rewriting
-- [x] Prediction popup window (shows while typing)
-- [ ] CoreML model conversion (when models are trained)
+Start an isolated Redis instance, then run the tests:
 
-### Phase 4: UI Components ✅
-- [x] PredictionPopupView - Glassmorphism word suggestions
-- [x] GrammarAlertView - Error cards with apply/ignore
-- [x] RewriteSheetView - Style/tone picker with alternatives
-- [x] WindowControllers - NSWindow management for SwiftUI
+```sh
+docker run --rm -d --name grammarflow-test-redis -p 127.0.0.1:16379:6379 redis:7-alpine
+npm test
+docker stop grammarflow-test-redis
+```
 
-## Development Timeline
-
-- **Weeks 1-2**: macOS Foundation & Accessibility
-- **Weeks 3-4**: Accessibility Complete
-- **Weeks 5-6**: AI Integration (CoreML)
-- **Week 8**: v1.0 macOS Release 🎉
-- **Weeks 9-16**: Windows Development
-- **Week 16**: v1.1 Windows Release 🎉
-
-## Documentation
-
-Comprehensive documentation available in `/docs`:
-
-- [PRD.md](docs/PRD.md) - Product Requirements
-- [DeepDiveResearch.md](docs/DeepDiveResearch.md) - Technology Stack
-- [MasterImplementationPlan.md](docs/MasterImplementationPlan.md) - Architecture
-- [VisualDesignBlueprint.md](docs/VisualDesignBlueprint.md) - UI/UX Design
-- [TaskList.md](docs/TaskList.md) - Development Tasks
-
-## Prerequisites
-
-**macOS Development:**
-- macOS 13.0+ (Ventura)
-- Xcode 15.0+
-- Swift 5.9+
-
-## Features
-
-- ✨ Real-time next-word predictions (<15ms on M1+)
-- 🔍 Grammar error detection with AI
-- ✍️ AI-powered sentence rewriting
-- 🔒 100% offline - no internet required
-- 🎯 System-wide integration
-- 🚀 Hardware accelerated (Neural Engine)
-
-## License
-
-MIT License
+Set `TEST_REDIS_URL` to use a different test Redis address. These tests use synthetic accounts, mocked database/email boundaries, and a real Redis instance; they do not contact production services. GitHub Actions runs them against its own Redis service. The older root integration scripts require external services and are not part of `npm test`.

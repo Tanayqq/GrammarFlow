@@ -544,7 +544,7 @@ const getHistoryDetail = async (req, res) => {
         try {
             operation = await prisma.aiOperation.findUnique({
                 where: { id: req.params.id },
-                include: { user: { select: { guest_session_id: true } } }
+                include: { user: { select: { guest_session_id: true, email: true, password_hash: true } } }
             });
         } catch (dbError) {
             console.error('[API v1] Database lookup failed in getHistoryDetail:', dbError.message);
@@ -580,7 +580,7 @@ const deleteHistory = async (req, res) => {
         try {
             operation = await prisma.aiOperation.findUnique({
                 where: { id: opId },
-                include: { user: { select: { id: true, guest_session_id: true } } }
+                include: { user: { select: { id: true, guest_session_id: true, email: true, password_hash: true } } }
             });
         } catch (dbError) {
             return res.status(503).json({ success: false, error: { message: 'Database unavailable', code: 'DATABASE_OFFLINE' } });

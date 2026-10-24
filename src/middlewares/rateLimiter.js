@@ -1,4 +1,5 @@
-const { rateLimit } = require('express-rate-limit');
+const { randomUUID } = require('node:crypto');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { redisConnection } = require('../queue');
 
 let isRedisRateLimiterDisabled = false;
@@ -37,7 +38,7 @@ class SlidingWindowStore {
                     redis.call('ZREMRANGEBYSCORE', key, '-inf', clearBefore)
                     
                     -- Add current request timestamp
-                    redis.call('ZADD', key, now, now)
+                    redis.call('ZADD', key, now, ARGV[3])
                     
                     -- Count total hits in the current sliding window
                     local totalHits = redis.call('ZCARD', key)
@@ -46,10 +47,10 @@ class SlidingWindowStore {
                     redis.call('PEXPIRE', key, windowMs * 2)
 
                     -- Find oldest entry in the window to calculate resetTime
-                    local oldest = redis.call('ZRANGE', key, 0, 0)
+                    local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
                     local oldestTime = now
                     if oldest and oldest[1] then
-                        oldestTime = tonumber(oldest[1])
+                        oldestTime = tonumber(oldest[2])
                     end
                     local resetTime = oldestTime + windowMs
 
@@ -61,7 +62,8 @@ class SlidingWindowStore {
                     1,
                     key,
                     now,
-                    windowMs
+                    windowMs,
+                    randomUUID()
                 );
                 
                 return {
@@ -134,12 +136,11 @@ class SlidingWindowStore {
 
 /**
  * Resolves user identifier in order:
- * 1. Authenticated User ID (future support)
- * 2. guest_session_id header (current strategy)
- * 3. IP address (fallback)
+ * Verified user ID, otherwise normalized IP. A caller-controlled guest header
+ * must not allow an attacker to reset their rate-limit quota.
  */
 function getRateLimitKey(req, prefix) {
-    const identifier = req.user?.id || req.headers['x-guest-session-id'] || req.ip || 'unknown';
+    const identifier = req.user?.id || ipKeyGenerator(req.ip || '127.0.0.1');
     // Store rateLimitKey on request for logging purposes
     req.rateLimitKey = identifier;
     return `gf:limiter:${prefix}:${identifier}`;
@@ -240,6 +241,15 @@ const globalSafetyLimiter = rateLimit({
 });
 
 module.exports = {
+    authLimiter: rateLimit({
+        windowMs: 15 * 60 * 1000,
+        limit: 20,
+        standardHeaders: true,
+        legacyHeaders: false,
+        store: new SlidingWindowStore(15 * 60 * 1000),
+        keyGenerator: req => `gf:limiter:auth:${ipKeyGenerator(req.ip || '127.0.0.1')}`,
+        handler: limitReachedHandler
+    }),
     aiLimiter,
     docLimiter,
     readLimiter,

@@ -2,14 +2,15 @@ const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
 
-// Create connection pool and driver adapter
-// ssl.rejectUnauthorized:false is required for Supabase's transaction pooler,
-// which uses a self-signed certificate chain not trusted by Node's default CA store.
-// Traffic is still TLS-encrypted — we're only skipping chain validation.
-const connectionString = process.env.DATABASE_URL;
+// Prevent URL sslmode/sslrootcert parameters from overriding explicit certificate validation.
+const databaseUrl = new URL(process.env.DATABASE_URL);
+for (const key of ['ssl', 'sslmode', 'sslcert', 'sslkey', 'sslrootcert', 'uselibpqcompat']) databaseUrl.searchParams.delete(key);
 const pool = new Pool({
-    connectionString,
-    ssl: { rejectUnauthorized: false }
+    connectionString: databaseUrl.toString(),
+    ssl: {
+        rejectUnauthorized: true,
+        ...(process.env.DATABASE_CA_CERT ? { ca: process.env.DATABASE_CA_CERT.replace(/\\n/g, '\n') } : {})
+    }
 });
 const adapter = new PrismaPg(pool);
 
