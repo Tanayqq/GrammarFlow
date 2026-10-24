@@ -1,13 +1,10 @@
 {
-  "version": 2,
-  "name": "grammarflow-web",
-  "builds": [
-    { "src": "server.js", "use": "@vercel/node" },
-    { "src": "public/**", "use": "@vercel/static" }
-  ],
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "",
+  "outputDirectory": "public",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/server.js" },
-    { "source": "/(.*)", "destination": "/public/$1" }
+    { "source": "/api/:path*", "destination": "https://grammarflow-brain.onrender.com/api/:path*" }
   ],
   "headers": [
     {

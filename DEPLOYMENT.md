@@ -57,3 +57,9 @@ Both `/register` and `/login` return `data.token`; send it as an Authorization B
 Authentication attempts share an IP-based quota (20 per 15 minutes). Guest AI requests also use normalized IPs, so changing a guest-session header does not reset a quota. Configure the hosting proxy correctly before relying on individual client IPs; this revision does not blindly trust forwarded headers.
 
 This revision changes source only. Configure secrets/CA and verify email and database connectivity in staging before production deployment. No database schema migration is required.
+
+## Existing Render and Vercel deployment
+
+Production uses Render `grammarflow-brain` for the API and workers, and Vercel `grammarflowt` for static files from `public/`. Vercel forwards `/api/*` to the existing Render backend; it does not start duplicate queue workers or require database secrets. Both projects follow `main` in `Tanayqq/grammarflowt` on GitLab.
+
+Vercel skips dependency installation and backend builds because these frontend files need no build step. The Render build continues to install dependencies and generate the Prisma client. Configure backend-only secrets in Render. Clerk sign-in can operate without SMTP; the direct password-registration fallback requires SMTP and otherwise fails closed.
