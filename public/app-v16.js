@@ -873,7 +873,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         async extractPdfText(file) {
             const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            // Mozilla's mitigation for GHSA-wgrm-67xf-hhpq on the legacy PDF.js build.
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, isEvalSupported: false }).promise;
             let fullText = "";
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);

@@ -162,3 +162,17 @@ test('document upload is keyboard accessible and processing starts disabled', as
     assert.equal(opens, 2);
     assert.equal(app.get('documentUploadZone').getAttribute('tabindex'), '0');
 });
+
+test('PDF extraction disables dynamic code evaluation and preserves page order', async t => {
+    const app = await editor(t);
+    const data = new ArrayBuffer(4);
+    app.w.pdfjsLib = { getDocument: options => {
+        assert.equal(options.isEvalSupported, false);
+        assert.equal(options.data, data);
+        return { promise: Promise.resolve({ numPages: 2, getPage: async page => ({
+            getTextContent: async () => ({ items: [{ str: `Page ${page} text.`, hasEOL: true }] })
+        }) }) };
+    } };
+    const text = await app.w.documentProcessor.extractPdfText({ arrayBuffer: async () => data });
+    assert.ok(text.indexOf('Page 1 text.') < text.indexOf('Page 2 text.'));
+});
