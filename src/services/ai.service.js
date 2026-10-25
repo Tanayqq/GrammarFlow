@@ -1,158 +1,116 @@
-const { Redis } = require('@upstash/redis');
+const { redisConnection } = require('../queue');
 const { generateCacheKey } = require('../utils/cacheKey');
 
-const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const FALLBACK_MODELS = [
-    "openai/gpt-oss-120b",
-    "openai/gpt-oss-20b",
-    "qwen/qwen3.8-27b"
-];
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
+const cache = new Map();
+const pending = new Map();
+const cooldowns = new Map();
+let cacheDisabledUntil = 0;
+let providerDisabledUntil = 0;
 
-// Initialize Upstash Redis client
-let redis = null;
-let isRedisCacheDisabled = false;
-if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-    redis = new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-    });
-    console.log("[REDIS] Client initialized successfully.");
-} else {
-    console.warn("[REDIS WARNING] UPSTASH_REDIS_REST_URL and/or UPSTASH_REDIS_REST_TOKEN are not set. Caching will be bypassed.");
+function unavailable(retryAfter = 30) {
+    const error = new Error('Writing assistance is temporarily busy. Your text has not been changed. Please try again shortly.');
+    error.code = 'AI_TEMPORARILY_UNAVAILABLE';
+    error.status = 503;
+    error.retryAfter = Math.max(1, Math.ceil(retryAfter));
+    return error;
 }
 
-let currentKeyIndex = 0;
-
-async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = {}) {
-    const opts = typeof options === 'string' ? { model: options } : (options || {});
-    const apiKeys = (process.env.GROQ_API_KEY || "")
-        .split(",")
-        .map(k => k.trim())
-        .filter(Boolean);
-
-    if (apiKeys.length === 0) {
-        throw new Error("GROQ_API_KEY is not configured on the server.");
-    }
-
-    // 1. Check Redis Cache first (if client is configured)
-    let cacheKey = "";
-    if (redis && !isRedisCacheDisabled) {
+async function generate(systemPrompt, userText, temperature, opts, key) {
+    // Keys belonging to the same organization share limits. Rotating them does not add capacity.
+    const apiKey = (process.env.GROQ_API_KEY || '').split(',')[0].trim();
+    if (!apiKey || Date.now() < providerDisabledUntil) throw unavailable();
+    if (redisConnection?.status === 'ready' && Date.now() >= cacheDisabledUntil) {
         try {
-            cacheKey = generateCacheKey(systemPrompt, userText);
-            const cachedResult = await redis.get(cacheKey);
-            if (cachedResult) {
-                console.log(`[\x1b[32mCACHE HIT\x1b[0m] Key: ${cacheKey}`);
-                return { text: cachedResult, source: "cache" };
-            }
-            console.log(`[\x1b[33mCACHE MISS\x1b[0m] Key: ${cacheKey}`);
-        } catch (cacheError) {
-            if (cacheError.message && cacheError.message.includes('max requests limit exceeded')) {
-                isRedisCacheDisabled = true;
-                console.warn("[REDIS] Max requests limit reached. Bypassing Redis cache.");
-            } else {
-                console.error("[REDIS ERROR] Failed to fetch from cache:", cacheError.message);
-            }
+            const value = await redisConnection.get(key);
+            if (typeof value === 'string' && value) return { text: value, source: 'cache' };
+        } catch {
+            cacheDisabledUntil = Date.now() + 60000;
         }
     }
-
-    // 2. Call Groq API on Cache Miss
-    let attempts = 0;
-    const maxRetries = Math.max(FALLBACK_MODELS.length, apiKeys.length + 1);
-    const timeoutMs = 90000; // 90 seconds
-
-    while (attempts < maxRetries) {
+    const deadline = Date.now() + 35000;
+    const models = [...new Set([opts.model, ...MODELS].filter(Boolean))];
+    let retryAfter = 30;
+    for (const model of models) {
+        if (Date.now() >= deadline) break;
+        const cooldown = cooldowns.get(model) || 0;
+        if (cooldown > Date.now()) {
+            retryAfter = Math.max(retryAfter, (cooldown - Date.now()) / 1000);
+            continue;
+        }
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-        
-        // Round robin API key selection per attempt
-        const apiKey = apiKeys[currentKeyIndex % apiKeys.length];
-        currentKeyIndex = (currentKeyIndex + 1) % apiKeys.length;
-
+        const timeout = setTimeout(() => controller.abort(), Math.min(12000, deadline - Date.now()));
         try {
-            console.log(`[AI SERVICE] Calling Groq API (Attempt ${attempts + 1})...`);
-            
-            const modelToUse = (attempts === 0 && opts.model)
-                ? opts.model
-                : FALLBACK_MODELS[attempts % FALLBACK_MODELS.length];
-
             const response = await fetch(GROQ_API_URL, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${apiKey}`,
-                    "Content-Type": "application/json"
-                },
+                method: 'POST',
+                headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    model: modelToUse,
-                    messages: [
-                        { role: "system", content: systemPrompt },
-                        { role: "user", content: userText }
-                    ],
-                    temperature: temperature,
-                    ...(opts.responseFormat === 'json' && { response_format: { type: "json_object" } })
+                    model,
+                    messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }],
+                    temperature,
+                    ...(opts.responseFormat === 'json' && { response_format: { type: 'json_object' } })
                 }),
                 signal: controller.signal
             });
-
-            clearTimeout(timeoutId);
-
             if (!response.ok) {
-                const errorBody = await response.json().catch(() => ({}));
-                const errorMsg = errorBody.error?.message || `Groq API Error: ${response.status}`;
-                console.error(`[\x1b[31mAI ERROR\x1b[0m] Status: ${response.status} - ${errorMsg}`);
-                
-                if (response.status === 401) throw new Error("Invalid API Key");
-                if (response.status === 429) throw new Error("Groq API rate limit exceeded");
-                
-                throw new Error(errorMsg);
+                // Never forward or log provider bodies: they can contain credentials or submitted text.
+                await response.body?.cancel();
+                console.warn(`[AI SERVICE] Provider returned HTTP ${response.status}`);
+                if (response.status === 401 || response.status === 403) {
+                    providerDisabledUntil = Date.now() + 60000;
+                    break;
+                }
+                if (response.status === 429) {
+                    const header = response.headers.get('retry-after');
+                    const seconds = Number(header) || (Date.parse(header) - Date.now()) / 1000;
+                    retryAfter = Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : 60;
+                    cooldowns.set(model, Date.now() + retryAfter * 1000);
+                } else if (response.status >= 500) {
+                    cooldowns.set(model, Date.now() + 5000);
+                } else {
+                    if (response.status !== 404) break;
+                    cooldowns.set(model, Date.now() + 60000);
+                }
+                continue;
             }
-
+            // Keep the timeout active while consuming the response body, too.
             const data = await response.json();
-            if (!data.choices || !data.choices[0]) {
-                throw new Error("Invalid response format from Groq API");
-            }
-            
-            const resultText = data.choices[0].message.content.trim();
-
-            // 3. Store the result in Redis with a 24-hour TTL (86,400 seconds)
-            if (redis && cacheKey && !isRedisCacheDisabled) {
-                try {
-                    await redis.set(cacheKey, resultText, { ex: 86400 });
-                    console.log(`[REDIS] Cached result stored for key: ${cacheKey} (TTL: 24h)`);
-                } catch (cacheStoreError) {
-                    if (cacheStoreError.message && cacheStoreError.message.includes('max requests limit exceeded')) {
-                        isRedisCacheDisabled = true;
-                        console.warn("[REDIS] Max requests limit reached. Bypassing Redis cache.");
-                    } else {
-                        console.error("[REDIS ERROR] Failed to store in cache:", cacheStoreError.message);
-                    }
+            const text = data.choices?.[0]?.message?.content;
+            if (typeof text !== 'string' || !text.trim() || data.choices[0].finish_reason === 'length') continue;
+            const result = { text: text.trim(), source: 'groq' };
+            if (result.text.length <= 100000) {
+                // ponytail: process-local cache/concurrency; use shared coordination before adding replicas.
+                for (const [oldKey, entry] of cache) if (entry.expires <= Date.now()) cache.delete(oldKey);
+                if (cache.size >= 100) cache.delete(cache.keys().next().value);
+                cache.set(key, { text: result.text, expires: Date.now() + 300000 });
+                if (redisConnection?.status === 'ready' && Date.now() >= cacheDisabledUntil) {
+                    redisConnection.set(key, result.text, 'EX', 300).catch(() => { cacheDisabledUntil = Date.now() + 60000; });
                 }
             }
-
-            return { text: resultText, source: "openai" };
-
-        } catch (error) {
-            clearTimeout(timeoutId);
-            attempts++;
-            
-            const isTimeout = error.name === 'AbortError';
-            const errorMessage = isTimeout ? "Request timed out after 90s" : error.message;
-            
-            console.error(`[AI SERVICE] Attempt ${attempts} failed: ${errorMessage}`);
-            
-            if (attempts >= maxRetries) {
-                throw new Error(isTimeout 
-                    ? "Connection to AI timed out. Please try again." 
-                    : `Connection to AI failed: ${error.message}`);
-            }
-            
-            const delay = (error.message.includes("rate limit") && apiKeys.length > 1) 
-                ? 500 
-                : 1000 * Math.pow(2, attempts - 1);
-            await new Promise(resolve => setTimeout(resolve, delay));
+            return result;
+        } catch {
+            console.warn('[AI SERVICE] Provider request failed or timed out.');
+        } finally {
+            clearTimeout(timeout);
         }
     }
+    throw unavailable(retryAfter);
 }
 
-module.exports = {
-    callGroqAPI
-};
+async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = {}) {
+    const opts = typeof options === 'string' ? { model: options } : (options || {});
+    const key = generateCacheKey(JSON.stringify([systemPrompt, temperature, opts.model || '', opts.responseFormat || '']), userText);
+    const cached = cache.get(key);
+    if (cached?.expires > Date.now()) return { text: cached.text, source: 'cache' };
+    cache.delete(key);
+    if (pending.has(key)) return pending.get(key);
+    // Bound concurrent work, including optional cache reads, during bursts or provider outages.
+    if (pending.size >= 4) throw unavailable(10);
+    const request = generate(systemPrompt, userText, temperature, opts, key);
+    pending.set(key, request);
+    try { return await request; }
+    finally { pending.delete(key); }
+}
+
+module.exports = { callGroqAPI };

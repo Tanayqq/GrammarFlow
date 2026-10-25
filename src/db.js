@@ -7,6 +7,9 @@ const databaseUrl = new URL(process.env.DATABASE_URL);
 for (const key of ['ssl', 'sslmode', 'sslcert', 'sslkey', 'sslrootcert', 'uselibpqcompat']) databaseUrl.searchParams.delete(key);
 const pool = new Pool({
     connectionString: databaseUrl.toString(),
+    connectionTimeoutMillis: 5000,
+    query_timeout: 10000,
+    max: 10,
     ssl: {
         rejectUnauthorized: true,
         ...(process.env.DATABASE_CA_CERT ? { ca: process.env.DATABASE_CA_CERT.replace(/\\n/g, '\n') } : {})

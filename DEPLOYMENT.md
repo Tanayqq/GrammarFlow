@@ -63,3 +63,11 @@ This revision changes source only. Configure secrets/CA and verify email and dat
 Production uses Render `grammarflow-brain` for the API and workers, and Vercel `grammarflowt` for static files from `public/`. Vercel forwards `/api/*` to the existing Render backend; it does not start duplicate queue workers or require database secrets. Both projects follow `main` in `Tanayqq/grammarflowt` on GitLab.
 
 Vercel skips dependency installation and backend builds because these frontend files need no build step. The Render build continues to install dependencies and generate the Prisma client. Configure backend-only secrets in Render. Clerk sign-in can operate without SMTP; the direct password-registration fallback requires SMTP and otherwise fails closed.
+
+## Reliability limits and background queues
+
+Background AI/history queues are off by default. Requests run directly and history is saved asynchronously to PostgreSQL, avoiding idle Redis queue polling. Set ENABLE_BACKGROUND_QUEUES=true only with sufficient Redis capacity and a running worker. Redis remains available for OTP verification and shared rate limits; OTP fails closed during an outage.
+
+AI calls have a 35-second provider budget, model cooldowns honoring Retry-After, at most four distinct calls in flight per process, and a bounded five-minute result cache. Duplicate in-flight work is shared. These are per-process bounds: coordinate them across instances before scaling beyond one. Provider errors return a sanitized 503 with Retry-After; abuse protection retains 429 responses. No key rotation is used to evade organization quotas.
+
+The existing Render service is Free. It can sleep after inactivity and cannot provide always-on production availability. Before a broad launch, configure an appropriate compute plan, production Clerk, verified email delivery and adequate Groq/Redis quotas. No code can guarantee unlimited provider capacity.

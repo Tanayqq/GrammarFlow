@@ -2,9 +2,23 @@
 
 /* ── API connector (uses same relative path as main app.js) ── */
 const API = {
+  async fetchJSON(url, options) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 55000);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.success) throw new Error(data.error?.message ||
+        (typeof data.error === 'string' ? data.error : 'The service is temporarily unavailable. Your draft has been kept. Please try again shortly.'));
+      return data;
+    } catch (error) {
+      if (error.name === 'AbortError' || error instanceof TypeError) throw new Error('The connection was interrupted. Your draft has been kept. Please try again.');
+      throw error;
+    } finally { clearTimeout(timeout); }
+  },
   async call(endpoint, body) {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const base = isLocal ? 'http://localhost:3000/api/v1' : '/api/v1';
+    const base = isLocal ? 'http://localhost:3000/api/v1' : 'https://grammarflow-brain.onrender.com/api/v1';
     let guestId = localStorage.getItem('guest_session_id');
     if (!guestId) {
       guestId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() :
@@ -17,19 +31,15 @@ const API = {
     const headers = { 'Content-Type': 'application/json', 'x-guest-session-id': guestId };
     const token = localStorage.getItem('gf_token');
     if (token) headers.Authorization = `Bearer ${token}`;
-    const r = await fetch(base + endpoint, {
+    const d = await this.fetchJSON(base + endpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(body)
     });
-    const d = await r.json();
-    if (!r.ok || !d.success) throw new Error(d.error?.message || 'Server error');
     if (d.data?.status === 'queued' && d.data.jobId) {
       for (let attempt = 0; attempt < 40; attempt++) {
         await new Promise(resolve => setTimeout(resolve, 1500));
-        const response = await fetch(`${base}/job/${encodeURIComponent(d.data.jobId)}`, { headers });
-        const job = await response.json();
-        if (!response.ok || !job.success) throw new Error(job.error?.message || 'Could not load result');
+        const job = await this.fetchJSON(`${base}/job/${encodeURIComponent(d.data.jobId)}`, { headers });
         if (job.data?.status === 'failed') throw new Error(job.error?.message || 'Processing failed');
         if (job.data?.status === 'completed') return { ...job, data: [job.data.result] };
       }

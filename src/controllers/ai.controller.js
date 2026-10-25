@@ -5,6 +5,7 @@ const { aiHistoryQueue } = require('../historyQueue');
 const { logHistoryRecord } = require('../historyWorker');
 const prisma = require('../db');
 const { detectLanguage } = require('../utils/language');
+const { sendAIError } = require('../utils/publicError');
 
 let isRedisQueueDisabled = false;
 
@@ -58,7 +59,7 @@ const rewrite = async (req, res, next) => {
                     source = response.source;
                     if (resultText.trim().length > 0 && !resultText.toLowerCase().includes("sorry")) break;
                 } catch (err) {
-                    if (attempts === 1) throw err;
+                    throw err; // The service already handles transient failures; don't multiply retries.
                 }
                 attempts++;
             }
@@ -116,7 +117,7 @@ const rewrite = async (req, res, next) => {
         }
     } catch (error) {
         console.error("[API v1] Rewrite error:", error.message);
-        res.status(500).json({ success: false, error: { message: error.message, code: "AI_PROCESSING_ERROR" } });
+        sendAIError(res, error);
     }
 };
 
@@ -134,7 +135,7 @@ const grammarFix = async (req, res, next) => {
         const prompt = _extensionPrompt || prompts.getGrammarFixPrompt(language, style, tone, humanize, sentenceCount);
         
         // Try background queue only if Redis is healthy and not limit-exceeded
-        if (!isRedisQueueDisabled && redisConnection && redisConnection.status === 'ready') {
+        if (aiQueue && !isRedisQueueDisabled && redisConnection && redisConnection.status === 'ready') {
             try {
                 console.log(`[API v1] Queueing grammarFix job...`);
                 const job = await aiQueue.add('grammar-fix', {
@@ -209,7 +210,7 @@ const grammarFix = async (req, res, next) => {
         return sendResponse(res, true, [finalOutputText], null, { language, humanize, source: response.source });
     } catch (error) {
         console.error("[API v1] grammarFix error:", error.message);
-        res.status(500).json({ success: false, error: { message: error.message } });
+        sendAIError(res, error);
     }
 };
 
@@ -235,7 +236,7 @@ const suggestions = async (req, res, next) => {
         } catch (e) { parsedSuggestions = [resultText]; }
         sendResponse(res, true, parsedSuggestions, null, { language, source });
     } catch (error) {
-        res.status(500).json({ success: false, error: { message: "Failed to get suggestions" } });
+        sendAIError(res, error);
     }
 };
 
@@ -256,7 +257,7 @@ const autocomplete = async (req, res, next) => {
         }
         sendResponse(res, true, resultText.replace(/^[\"']|[\"']$/g, '').trim(), null, { language, source });
     } catch (error) {
-        res.status(500).json({ success: false, error: { message: "Autocomplete failed" } });
+        sendAIError(res, error);
     }
 };
 
@@ -294,7 +295,7 @@ const analyzeRealtime = async (req, res, next) => {
         sendResponse(res, true, suggestionsList, null, { language, humanize, source });
     } catch (error) {
         console.error("[Realtime] Error:", error.message);
-        res.status(500).json({ success: false, error: { message: "Real-time analysis failed" } });
+        sendAIError(res, error);
     }
 };
 
@@ -364,7 +365,7 @@ const analyzeSmartSuggestions = async (req, res, next) => {
         sendResponse(res, true, ranked, null, { language, humanize, intent: writingContext.intent, mode: 'smart', source });
     } catch (error) {
         console.error("[Smart] Error:", error.message);
-        res.status(500).json({ success: false, error: { message: "Smart analysis failed" } });
+        sendAIError(res, error);
     }
 };
 
@@ -399,7 +400,7 @@ const processDocument = async (req, res, next) => {
         sendResponse(res, true, [resultText.trim()], null, { mode, language, humanize, source });
     } catch (error) {
         console.error("[\x1b[31mDOC ERROR\x1b[0m]", error.message);
-        sendResponse(res, false, null, error.message || "Failed to process document");
+        sendAIError(res, error);
     }
 };
 
@@ -420,6 +421,10 @@ const checkJobStatus = async (req, res, next) => {
         if (!job) {
             return res.status(404).json({ success: false, error: { message: "Job not found" } });
         }
+        const ownsJob = job.data?.user_id
+            ? req.userId && req.userId === job.data.user_id
+            : job.data?.guest_session_id && req.headers['x-guest-session-id'] === job.data.guest_session_id;
+        if (!ownsJob) return res.status(404).json({ success: false, error: { message: 'Job not found' } });
 
         let state = 'active';
         try {
@@ -440,14 +445,14 @@ const checkJobStatus = async (req, res, next) => {
             return res.json({
                 success: false,
                 data: { status: "failed" },
-                error: { message: job.failedReason || "Background job execution failed" }
+                error: { message: "Writing assistance is temporarily busy. Your text has not been changed. Please try again shortly." }
             });
         }
 
         return sendResponse(res, true, { status: state });
     } catch (error) {
         console.error("[API v1] Job status check error:", error.message);
-        res.status(500).json({ success: false, error: { message: error.message } });
+        sendAIError(res, error);
     }
 };
 

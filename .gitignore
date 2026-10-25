@@ -27,6 +27,10 @@ out/
 # Environment
 .env
 .env.local
+.env.*
+!.env.example
+*.pem
+*.key
 
 # Project specific ignores
 ARCHIVE_OLD_FILES/

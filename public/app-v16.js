@@ -89,10 +89,28 @@ const GrammarFlowAPI = {
             url += `${separator}_=${Date.now()}`;
         }
         
-        const response = await fetch(url, options);
-        const data = await response.json();
-        if (!response.ok || !data.success) throw new Error(data.error?.message || "Server error");
-        return data;
+        const controller = new AbortController();
+        options.signal = controller.signal;
+        const timeout = setTimeout(() => controller.abort(), 55000);
+        try {
+            const response = await fetch(url, options);
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                const error = new Error(data.error?.message || (typeof data.error === 'string' ? data.error :
+                    'The service is temporarily unavailable. Your text has not been changed. Please try again shortly.'));
+                error.status = response.status;
+                error.retryAfter = Number(data.retryAfter || response.headers?.get('Retry-After')) || 30;
+                throw error;
+            }
+            return data;
+        } catch (error) {
+            if (error.name === 'AbortError' || error instanceof TypeError) {
+                throw new Error('The connection took too long or was interrupted. Your text has not been changed. Please try again.');
+            }
+            throw error;
+        } finally {
+            clearTimeout(timeout);
+        }
     }
 };
 
@@ -1068,7 +1086,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let retries = 0;
             // Use explicitly passed humanize value, else read from UI
             const humanizeVal = (humanize !== null) ? humanize : UI.humanizeToggle.checked;
-            while (retries < 5) {
+            while (retries < 2) {
                 try {
                     const res = await GrammarFlowAPI.request("/process-document", {
                         text, mode, language: lang,
@@ -1079,9 +1097,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 } catch (err) {
                     retries++;
                     if (this.isCanceled) throw new Error("Canceled.");
-                    if (retries >= 5) throw err;
-                    console.warn(`Rate limit hit. Waiting ${10 * retries}s before retry...`);
-                    await new Promise(r => setTimeout(r, 10000 * retries)); // 10s, 20s, 30s... backoff
+                    if (retries >= 2 || ![429, 503].includes(err.status) || err.retryAfter > 60) throw err;
+                    // Retry once, respecting the server delay. Cancellation stays responsive while waiting.
+                    for (let seconds = 0; seconds < Math.max(1, err.retryAfter); seconds++) {
+                        if (this.isCanceled) throw new Error('Canceled.');
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
+                    if (this.isCanceled) throw new Error('Canceled.');
                 }
             }
         }

@@ -233,7 +233,7 @@ test('browser requests retain server sessions when Clerk is signed out', async (
     const context = {
         window: { location: { hostname: 'localhost' }, Clerk: { user: null } },
         localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) },
-        crypto: { randomUUID }, console,
+        crypto: { randomUUID }, console, AbortController, setTimeout, clearTimeout,
         fetch: async (url, options) => {
             authorization = options.headers.Authorization;
             return { ok: true, json: async () => ({ success: true }) };

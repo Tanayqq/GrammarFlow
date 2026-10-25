@@ -13,12 +13,15 @@ class SlidingWindowStore {
     constructor(windowMs) {
         this.windowMs = windowMs;
         this.memoryStore = new Map();
+        this.limit = 100;
+        this.nextCleanup = 0;
     }
 
     init(options) {
         if (options && options.windowMs) {
             this.windowMs = options.windowMs;
         }
+        if (typeof options?.limit === 'number') this.limit = options.limit;
     }
 
     async increment(key) {
@@ -86,6 +89,16 @@ class SlidingWindowStore {
     }
 
     incrementMemory(key, now, windowMs) {
+        if (now >= this.nextCleanup) {
+            for (const [id, values] of this.memoryStore) {
+                if (!values.length || values[values.length - 1] <= now - windowMs) this.memoryStore.delete(id);
+            }
+            this.nextCleanup = now + windowMs;
+        }
+        // Fail closed under a flood of new identifiers instead of growing memory without a bound.
+        if (!this.memoryStore.has(key) && this.memoryStore.size >= 10000) {
+            return { totalHits: this.limit + 1, resetTime: new Date(now + windowMs) };
+        }
         let timestamps = this.memoryStore.get(key) || [];
         const clearBefore = now - windowMs;
         
@@ -93,7 +106,7 @@ class SlidingWindowStore {
         timestamps = timestamps.filter(t => t > clearBefore);
         
         // Add current timestamp
-        timestamps.push(now);
+        if (timestamps.length <= this.limit) timestamps.push(now);
         this.memoryStore.set(key, timestamps);
 
         const oldestTime = timestamps[0] || now;
@@ -155,8 +168,10 @@ const limitReachedHandler = (req, res, next, options) => {
     
     console.warn(`[\x1b[31mRATE LIMIT EXCEEDED\x1b[0m] Path: ${req.originalUrl || req.url} | ID: ${req.rateLimitKey || 'unknown'} | Retry-After: ${retryAfter}s`);
     
+    res.setHeader('Retry-After', String(retryAfter));
     res.status(429).json({
-        error: "Too many requests. Please wait a minute.",
+        success: false,
+        error: { message: `Please wait ${retryAfter} seconds before trying again. Your text has not been changed.`, code: 'PLEASE_WAIT' },
         retryAfter: retryAfter
     });
 };

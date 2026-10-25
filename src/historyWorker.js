@@ -84,6 +84,7 @@ async function logHistoryRecord(data) {
 
 let historyWorker = null;
 try {
+    if (process.env.ENABLE_BACKGROUND_QUEUES === 'true') {
     historyWorker = new Worker('ai-history', async (job) => {
         return logHistoryRecord(job.data);
     }, { connection: redisConnection });
@@ -99,6 +100,7 @@ try {
     });
 
     console.log('[BULLMQ] History Worker initialized — listening for ai-history jobs...');
+    }
 } catch (workerErr) {
     console.warn('[BULLMQ] History worker initialization skipped:', workerErr.message);
 }

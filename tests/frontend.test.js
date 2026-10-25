@@ -111,7 +111,27 @@ test('network failures release controls and retain the input', async t => {
     assert.equal(app.get('inputText').value, 'Keep this draft.');
     assert.equal(app.get('fixGrammarBtn').disabled, false);
     assert.equal(app.get('loadingIndicator').classList.contains('hidden'), true);
-    assert.match(app.get('resultsList').textContent, /Synthetic network failure/);
+    assert.match(app.get('resultsList').textContent, /temporarily unavailable/);
+    assert.doesNotMatch(app.get('resultsList').textContent, /Synthetic network failure/);
+});
+
+test('document throttling stops after a long retry delay and keeps the source available', async t => {
+    const app = await editor(t);
+    let calls = 0;
+    app.w.fetch = async () => {
+        calls++;
+        return { ok: false, status: 503, json: async () => ({ success: false, retryAfter: 90,
+            error: { message: 'Writing assistance is temporarily busy. Your text has not been changed.' } }) };
+    };
+    const processor = app.w.documentProcessor;
+    processor.switchTab('document');
+    processor.handleFiles([new app.w.File(['sample'], 'sample.pdf', { type: 'application/pdf' })]);
+    processor.extractPdfText = async () => 'A synthetic source paragraph.';
+    await processor.processDocument();
+    assert.equal(calls, 1);
+    assert.equal(processor.files.length, 1);
+    assert.equal(app.get('docLoadingIndicator').classList.contains('hidden'), true);
+    assert.match(app.get('docResultsList').textContent, /temporarily busy/);
 });
 
 test('main editor restores and saves drafts, including an explicitly cleared draft', async t => {
