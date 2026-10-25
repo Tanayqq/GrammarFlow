@@ -5,7 +5,7 @@ const path = require('node:path');
 const { JSDOM, VirtualConsole } = require('jsdom');
 
 const read = file => readFileSync(path.join(__dirname, '..', file), 'utf8');
-async function editor(t, respond = () => ({ success: true, data: ['Corrected text.'] }), draft) {
+async function editor(t, respond = () => ({ success: true, data: ['Corrected text.'] }), draft, clerkUser) {
     const errors = [];
     const vc = new VirtualConsole();
     vc.on('jsdomError', error => errors.push(error));
@@ -20,7 +20,17 @@ async function editor(t, respond = () => ({ success: true, data: ['Corrected tex
     w.confirm = () => false;
     w.tailwind = {};
     w.fetch = async (url, options) => ({ ok: true, json: async () =>
-        url.endsWith('/auth/config') ? { success: true, data: {} } : respond(url, options) });
+        url.endsWith('/auth/config') ? { success: true, data: clerkUser ? { clerkPublishableKey: 'synthetic-key' } : {} } : respond(url, options) });
+    if (clerkUser) {
+        w.Clerk = { user: clerkUser, session: { getToken: async () => 'synthetic-token' },
+            load: async () => {}, addListener: listener => { w.clerkListener = listener; } };
+        const append = w.document.body.appendChild.bind(w.document.body);
+        w.document.body.appendChild = element => {
+            const result = append(element);
+            if (element.tagName === 'SCRIPT' && element.src.includes('clerk')) queueMicrotask(() => element.onload());
+            return result;
+        };
+    }
     if (draft !== undefined) w.localStorage.setItem('gf_editor_draft', draft);
     w.eval(read('public/vendor/purify.min.js'));
     const { marked } = await import('marked');
@@ -175,4 +185,13 @@ test('PDF extraction disables dynamic code evaluation and preserves page order',
     } };
     const text = await app.w.documentProcessor.extractPdfText({ arrayBuffer: async () => data });
     assert.ok(text.indexOf('Page 1 text.') < text.indexOf('Page 2 text.'));
+});
+
+test('routine Clerk session updates do not replace an open history detail', async t => {
+    const user = { id: 'synthetic-user', fullName: 'Test', primaryEmailAddress: { emailAddress: 'test@example.com' } };
+    const app = await editor(t, () => ({ success: true, data: { user } }), undefined, user);
+    app.get('historyModal').classList.remove('hidden');
+    app.get('historyContent').textContent = 'Current synthetic history detail';
+    await app.w.clerkListener({ user, session: app.w.Clerk.session });
+    assert.equal(app.get('historyContent').textContent, 'Current synthetic history detail');
 });

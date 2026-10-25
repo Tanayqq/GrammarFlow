@@ -1575,6 +1575,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             loadHistory();
                         }
                     } else if (user) {
+                        // Token refreshes are not account changes; keep the current history view intact.
+                        if (wasLoggedIn && lastClerkUserId === user.id) return;
                         if (lastClerkUserId && lastClerkUserId !== user.id) clearEditorDraft();
                         lastClerkUserId = user.id;
                         wasLoggedIn = true;
