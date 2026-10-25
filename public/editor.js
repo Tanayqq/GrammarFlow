@@ -5,13 +5,36 @@ const API = {
   async call(endpoint, body) {
     const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const base = isLocal ? 'http://localhost:3000/api/v1' : '/api/v1';
+    let guestId = localStorage.getItem('guest_session_id');
+    if (!guestId) {
+      guestId = typeof crypto.randomUUID === 'function' ? crypto.randomUUID() :
+        'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, char => {
+          const value = crypto.getRandomValues(new Uint8Array(1))[0] & 15;
+          return (char === 'x' ? value : (value & 3) | 8).toString(16);
+        });
+      localStorage.setItem('guest_session_id', guestId);
+    }
+    const headers = { 'Content-Type': 'application/json', 'x-guest-session-id': guestId };
+    const token = localStorage.getItem('gf_token');
+    if (token) headers.Authorization = `Bearer ${token}`;
     const r = await fetch(base + endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(body)
     });
     const d = await r.json();
     if (!r.ok || !d.success) throw new Error(d.error?.message || 'Server error');
+    if (d.data?.status === 'queued' && d.data.jobId) {
+      for (let attempt = 0; attempt < 40; attempt++) {
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const response = await fetch(`${base}/job/${encodeURIComponent(d.data.jobId)}`, { headers });
+        const job = await response.json();
+        if (!response.ok || !job.success) throw new Error(job.error?.message || 'Could not load result');
+        if (job.data?.status === 'failed') throw new Error(job.error?.message || 'Processing failed');
+        if (job.data?.status === 'completed') return { ...job, data: [job.data.result] };
+      }
+      throw new Error('Processing timed out. Your draft has been kept; please try again.');
+    }
     return d;
   }
 };
@@ -89,7 +112,7 @@ const StripMgr = {
 };
 
 function esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 /* ── Session Timer ── */
@@ -351,7 +374,7 @@ document.getElementById('gf-run-grammar').addEventListener('click', async () => 
     document.getElementById('gf-grammar-actions').classList.remove('hidden');
     document.getElementById('gf-apply-grammar').dataset.fixed = fixed;
   } catch (e) {
-    AIui.set('gf-grammar-out', `<span style="color:#f87171">Error: ${e.message}</span>`);
+    AIui.set('gf-grammar-out', `<span style="color:#f87171">Error: ${esc(e.message)}</span>`);
   } finally { AIui.hide(); btn.disabled = false; }
 });
 
@@ -396,7 +419,7 @@ document.getElementById('gf-run-suggest').addEventListener('click', async () => 
         </div>`).join(''));
     }
   } catch (e) {
-    AIui.set('gf-suggest-out', `<span style="color:#f87171">Error: ${e.message}</span>`);
+    AIui.set('gf-suggest-out', `<span style="color:#f87171">Error: ${esc(e.message)}</span>`);
   } finally { AIui.hide(); btn.disabled = false; }
 });
 
@@ -426,7 +449,7 @@ document.getElementById('gf-run-rewrite').addEventListener('click', async () => 
       });
     });
   } catch (e) {
-    AIui.set('gf-rewrite-out', `<span style="color:#f87171">Error: ${e.message}</span>`);
+    AIui.set('gf-rewrite-out', `<span style="color:#f87171">Error: ${esc(e.message)}</span>`);
   } finally { AIui.hide(); btn.disabled = false; }
 });
 

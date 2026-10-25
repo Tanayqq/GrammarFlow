@@ -3,6 +3,15 @@
  * Phase 4: Smart Suggestions Engine + Context-Aware Intelligence
  */
 
+const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g,
+    char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+const renderMarkdown = text => {
+    if (!window.marked || !window.DOMPurify) return escapeHTML(text).replace(/\n/g, '<br>');
+    return DOMPurify.sanitize(marked.parse(String(text)), {
+        USE_PROFILES: { html: true }, FORBID_TAGS: ['img', 'style', 'form', 'input', 'button', 'textarea']
+    });
+};
+
 const CONFIG = {
     PRODUCTION_API_URL: "https://grammarflow-brain.onrender.com",
     API_VERSION: "/api/v1",
@@ -148,7 +157,8 @@ class ShadowHighlighter {
             .filter(h => h.original && html.includes(h.original))
             .sort((a, b) => html.lastIndexOf(b.original) - html.lastIndexOf(a.original));
         sorted.forEach(h => {
-            const type = (h.category || 'grammar').toLowerCase();
+            const category = String(h.category || 'grammar').toLowerCase();
+            const type = ['grammar', 'clarity', 'flow', 'transition', 'tone', 'authenticity'].includes(category) ? category : 'grammar';
             const esc = h.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             html = html.replace(new RegExp(esc, 'g'), `<mark class="highlight-${type}">$&</mark>`);
         });
@@ -294,6 +304,22 @@ document.addEventListener("DOMContentLoaded", () => {
         processDocumentBtn: document.getElementById("processDocumentBtn")
     };
 
+    const saveEditorDraft = () => {
+        try { localStorage.setItem('gf_editor_draft', UI.inputText.value); } catch (_) {}
+    };
+    const clearEditorDraft = () => {
+        UI.inputText.value = '';
+        for (const key of Object.keys(localStorage)) {
+            if (['gf_editor_draft', 'gf_flow_v1', 'gf_flow_v2', 'gf_last_doc_result', 'gf_last_doc_mode'].includes(key) ||
+                key.startsWith('gf_doc_') || key.startsWith('gf_history_detail_')) localStorage.removeItem(key);
+        }
+        UI.resultsList.textContent = '';
+        hideAssistant();
+    };
+    try { UI.inputText.value = localStorage.getItem('gf_editor_draft') ?? UI.inputText.value; } catch (_) {}
+    UI.inputText.addEventListener('input', saveEditorDraft);
+    window.addEventListener('pagehide', saveEditorDraft);
+
     const momentum        = new MomentumEngine();
     const highlighter     = new ShadowHighlighter(UI.inputText, UI.highlighterOverlay);
     const contextAnalyzer = new ContextAnalyzer();
@@ -311,7 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const sug = allSuggestions[currentSugIdx];
 
         UI.suggestionLabel.innerText = (sug.category || 'SUGGESTION').toUpperCase();
-        UI.suggestionText.innerHTML  = `Consider: "<b>${sug.suggestion}</b>" <span style="opacity:0.55;font-size:0.8rem">(${sug.reason || ''})</span>`;
+        UI.suggestionText.innerHTML  = `Consider: "<b>${escapeHTML(sug.suggestion)}</b>" <span style="opacity:0.55;font-size:0.8rem">(${escapeHTML(sug.reason)})</span>`;
 
         if (allSuggestions.length > 1) {
             UI.suggestionCounter.textContent    = `${currentSugIdx + 1} of ${allSuggestions.length}`;
@@ -346,6 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const sug = allSuggestions[currentSugIdx];
         if (!sug) return;
         UI.inputText.value = UI.inputText.value.replace(sug.original, sug.suggestion);
+        saveEditorDraft();
         allSuggestions.splice(currentSugIdx, 1);
         if (!allSuggestions.length) {
             hideAssistant();
@@ -390,7 +417,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const correctedText = parts[0].trim();
                 const detailedMarkdown = parts[1].trim();
 
-                const formattedDetailed = window.marked ? marked.parse(detailedMarkdown) : detailedMarkdown.replace(/\n/g, '<br>');
+                const formattedDetailed = renderMarkdown(detailedMarkdown);
 
                 // Unique ID for this tab instance to avoid ID collisions in multiple cards
                 const tabId = "tab_" + Math.random().toString(36).substring(2, 9);
@@ -404,7 +431,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     <!-- Tab Contents -->
                     <div class="tab-content-${tabId}" id="${tabId}_corrected">
-                        <div class="result-text text-gray-200 text-sm md:text-base leading-relaxed select-all" style="white-space: pre-wrap;">${correctedText}</div>
+                        <div class="result-text text-gray-200 text-sm md:text-base leading-relaxed select-all" style="white-space: pre-wrap;">${escapeHTML(correctedText)}</div>
                         <button class="copy-btn-mini" onclick="navigator.clipboard.writeText(document.getElementById('${tabId}_corrected').querySelector('.result-text').innerText || document.getElementById('${tabId}_corrected').querySelector('.result-text').textContent)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -450,9 +477,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 let formattedHtml = text;
                 if (window.marked) {
                     marked.setOptions({ breaks: true, gfm: true });
-                    formattedHtml = marked.parse(text);
+                    formattedHtml = renderMarkdown(text);
                 } else {
-                    formattedHtml = text.replace(/\n/g, '<br>');
+                    formattedHtml = escapeHTML(text).replace(/\n/g, '<br>');
                 }
 
                 card.innerHTML = `
@@ -725,6 +752,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Upload Zone
             UI.documentUploadZone.onclick = () => UI.fileInput.click();
+            UI.documentUploadZone.onkeydown = event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    UI.fileInput.click();
+                }
+            };
             UI.documentUploadZone.ondragover = (e) => { e.preventDefault(); UI.documentUploadZone.classList.add('dragover'); };
             UI.documentUploadZone.ondragleave = () => UI.documentUploadZone.classList.remove('dragover');
             UI.documentUploadZone.ondrop = (e) => {
@@ -797,14 +830,20 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         handleFiles(fileList) {
+            const rejected = [];
             for (let i = 0; i < fileList.length; i++) {
                 const file = fileList[i];
-                if (file.type === "application/pdf" || file.type.startsWith("image/")) {
-                    this.files.push(file);
-                }
+                if (file.type !== "application/pdf" && !file.type.startsWith("image/")) {
+                    rejected.push(`${file.name}: choose a PDF or image.`);
+                } else if (file.size > 10 * 1024 * 1024) {
+                    rejected.push(`${file.name}: exceeds 10 MB.`);
+                } else if (this.files.length >= 5) {
+                    rejected.push(`${file.name}: only five files can be processed at once.`);
+                } else this.files.push(file);
             }
             this.renderFilePreviews();
             UI.processDocumentBtn.disabled = this.files.length === 0;
+            if (rejected.length) alert(rejected.join('\n'));
         }
 
         removeFile(index) {
@@ -822,7 +861,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     chip.className = 'flex items-center gap-2 bg-[#252545]/80 border border-white/10 rounded-full px-4 py-2 text-sm text-gray-200 hover:border-purple-500/40 hover:bg-[#2d2d55] transition-all shadow-[0_0_10px_rgba(168,85,247,0.05)] cursor-default';
                     chip.innerHTML = `
                         <svg class="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"></path></svg>
-                        <span class="truncate max-w-[180px] font-medium">${file.name}</span> 
+                        <span class="truncate max-w-[180px] font-medium">${escapeHTML(file.name)}</span>
                         <span class="remove-file text-gray-400 hover:text-red-400 font-bold text-lg ml-2 cursor-pointer transition-colors leading-none" onclick="window.documentProcessor.removeFile(${idx})">×</span>
                     `;
                     UI.filePreviewContainer.appendChild(chip);
@@ -904,7 +943,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     breakIdx += 1;
                 }
                 
-                chunks.push(text.substring(currentIdx, breakIdx).trim());
+                chunks.push(text.substring(currentIdx, breakIdx));
                 currentIdx = breakIdx;
             }
             return chunks;
@@ -945,19 +984,16 @@ document.addEventListener("DOMContentLoaded", () => {
             let intermediateResults = [];
             let startIndex = 0;
 
-            const savedProgress = localStorage.getItem(cacheKey);
-            if (savedProgress) {
-                const parsed = JSON.parse(savedProgress);
-                const resume = await this.promptResume();
-                if (resume) {
+            try {
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(localStorage.getItem(cacheKey));
+                    if (parsed && (!Array.isArray(parsed.results) || !Number.isInteger(parsed.nextChunk) || parsed.nextChunk < 0)) parsed = null;
+                } catch (_) { /* Ignore a damaged local resume record and start again. */ }
+                if (parsed && await this.promptResume()) {
                     intermediateResults = parsed.results;
                     startIndex = parsed.nextChunk;
-                } else {
-                    localStorage.removeItem(cacheKey);
                 }
-            }
-
-            try {
                 renderResults([...intermediateResults, "Extracting text from files..."]);
                 const text = await this.extractAll();
                 
@@ -1153,8 +1189,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (rawText.includes("===GF_SEPARATOR===")) {
                     const sections = rawText.split("===GF_SEPARATOR===");
                     if (sections.length === 2) {
-                        const correctedHtml = window.marked ? marked.parse(sections[0].trim()) : sections[0].replace(/\n/g, '<br>');
-                        const analysisHtml = window.marked ? marked.parse(sections[1].trim()) : sections[1].replace(/\n/g, '<br>');
+                        const correctedHtml = renderMarkdown(sections[0].trim());
+                        const analysisHtml = renderMarkdown(sections[1].trim());
                         contentHtml = `
                             <div style="margin-bottom: 24px;">
                                 <h2 style="color: #6d28d9; font-size: 16px; font-weight: 700; margin-top: 10px; margin-bottom: 8px; border-bottom: 1.5px solid #e5e7eb; padding-bottom: 4px;">Corrected Text</h2>
@@ -1172,8 +1208,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (s % 2 === 0) allCorrected.push(sections[s].trim());
                             else allAnalysis.push(sections[s].trim());
                         }
-                        const correctedHtml = window.marked ? marked.parse(allCorrected.join("\n\n")) : allCorrected.join('<br><br>');
-                        const analysisHtml = window.marked ? marked.parse(allAnalysis.join("\n\n---\n\n")) : allAnalysis.join('<br><br>');
+                        const correctedHtml = renderMarkdown(allCorrected.join("\n\n"));
+                        const analysisHtml = renderMarkdown(allAnalysis.join("\n\n---\n\n"));
                         contentHtml = `
                             <div style="margin-bottom: 24px;">
                                 <h2 style="color: #6d28d9; font-size: 16px; font-weight: 700; margin-top: 10px; margin-bottom: 8px; border-bottom: 1.5px solid #e5e7eb; padding-bottom: 4px;">Corrected Text</h2>
@@ -1186,7 +1222,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         `;
                     }
                 } else {
-                    contentHtml = window.marked ? marked.parse(rawText) : rawText.replace(/\n/g, '<br>');
+                    contentHtml = renderMarkdown(rawText);
                 }
 
                 const timestamp = new Date().toLocaleString(undefined, {
@@ -1385,7 +1421,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeSettingsBtn = document.getElementById("closeSettingsBtn");
 
     // Helper: Esc text helper
-    const escHtml = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const escHtml = escapeHTML;
 
     // Modal Control: Open History
     if (btnHistory && historyModal) {
@@ -1512,10 +1548,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // Add state listener to update UI when session changes
                 let wasLoggedIn = !!(window.Clerk && window.Clerk.user);
+                let lastClerkUserId = window.Clerk.user?.id;
                 window.Clerk.addListener(async ({ session, user }) => {
                     console.log("[AUTH] Clerk auth state changed:", user ? user.primaryEmailAddress?.emailAddress : "No user");
 
                     if (!user && wasLoggedIn) {
+                        clearEditorDraft();
+                        lastClerkUserId = null;
                         // User just signed out — IMMEDIATELY clear all auth data BEFORE any async work
                         // This prevents race conditions where checkAuthState still sees the old user
                         console.log("[AUTH] Sign-out detected. Clearing all auth state immediately.");
@@ -1535,6 +1574,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             loadHistory();
                         }
                     } else if (user) {
+                        if (lastClerkUserId && lastClerkUserId !== user.id) clearEditorDraft();
+                        lastClerkUserId = user.id;
                         wasLoggedIn = true;
                         // Clear history cache on login to refresh with new user's data
                         localStorage.removeItem("gf_history_cache");
@@ -2017,6 +2058,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     const performSignOut = () => {
+        clearEditorDraft();
         localStorage.removeItem("gf_token");
         localStorage.removeItem("gf_history_cache");
         localStorage.removeItem("guest_session_id");
@@ -2138,13 +2180,13 @@ document.addEventListener("DOMContentLoaded", () => {
                         ${iconSvg}
                     </div>
                     <div class="flex flex-col min-w-0">
-                        <span class="text-xs font-bold text-gray-200 capitalize tracking-wide">${op.operation_type.replace(/_/g, ' ').replace(/-/g, ' ')}</span>
-                        <span class="text-[10px] text-gray-500 font-medium mt-0.5">${date} · ${op.language || 'English'} (${op.style || 'Casual'})</span>
+                        <span class="text-xs font-bold text-gray-200 capitalize tracking-wide">${escapeHTML(op.operation_type.replace(/_/g, ' ').replace(/-/g, ' '))}</span>
+                        <span class="text-[10px] text-gray-500 font-medium mt-0.5">${date} · ${escapeHTML(op.language || 'English')} (${escapeHTML(op.style || 'Casual')})</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
                     ${op.cached ? `<span class="text-[9px] font-bold text-green-400 uppercase tracking-widest bg-green-500/10 px-2 py-0.5 rounded border border-green-500/25">Cached</span>` : ''}
-                    <button class="delete-history-btn opacity-70 hover:opacity-100 transition-all w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400" data-id="${op.id}" title="Delete this entry">
+                    <button class="delete-history-btn opacity-70 hover:opacity-100 transition-all w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400" data-id="${escapeHTML(op.id)}" title="Delete this entry">
                         <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                     <svg class="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
@@ -2262,7 +2304,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="flex flex-wrap gap-4 text-xs bg-white/5 border border-white/10 rounded-2xl p-4">
                     <div class="flex flex-col gap-0.5">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Operation</span>
-                        <span class="text-gray-200 capitalize font-medium">${op.operation_type}</span>
+                        <span class="text-gray-200 capitalize font-medium">${escapeHTML(op.operation_type)}</span>
                     </div>
                     <div class="flex flex-col gap-0.5">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Date</span>
@@ -2270,11 +2312,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                     <div class="flex flex-col gap-0.5">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Language</span>
-                        <span class="text-gray-200 font-medium">${op.language || 'English'}</span>
+                        <span class="text-gray-200 font-medium">${escapeHTML(op.language || 'English')}</span>
                     </div>
                     <div class="flex flex-col gap-0.5">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Style / Tone</span>
-                        <span class="text-gray-200 font-medium">${op.style || 'Casual'} / ${op.tone || 'Friendly'}</span>
+                        <span class="text-gray-200 font-medium">${escapeHTML(op.style || 'Casual')} / ${escapeHTML(op.tone || 'Friendly')}</span>
                     </div>
                 </div>
                 
