@@ -11,6 +11,6 @@ module.exports = {
         callback(null, !origin || productionOrigins.includes(origin) || configured.includes(origin) || localDevelopment);
     },
     methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'x-guest-session-id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-guest-session-id', 'Cache-Control', 'Pragma'],
     credentials: false
 };

@@ -13,6 +13,8 @@ test('browser origins are explicit in production and custom domains require conf
         assert.equal(allowed('https://untrusted.example'), false);
         assert.equal(allowed('http://localhost:3000'), false);
         assert.equal(allowed('null'), false);
+        assert.ok(cors.allowedHeaders.includes('Cache-Control'));
+        assert.ok(cors.allowedHeaders.includes('Pragma'));
         assert.equal(allowed(undefined), true);
         process.env.NODE_ENV = 'development';
         assert.equal(allowed('http://localhost:3000'), true);
