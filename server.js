@@ -15,14 +15,13 @@ const PORT = process.env.PORT || 3000;
 const startTime = Date.now();
 
 // 1. Production-ready CORS (Stabilized for Phase 3)
-app.use(cors({
-    origin: (origin, callback) => {
-        // Allow all origins (compatible with credentials: true)
-        callback(null, true);
-    },
-    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-    credentials: true
-}));
+app.use(cors(require('./src/config/cors')));
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Frame-Options', 'DENY');
+    next();
+});
 
 app.use(express.json());
 
