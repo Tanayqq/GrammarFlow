@@ -72,6 +72,23 @@ body.editorial{background:var(--paper);color:var(--ink);font-family:Inter,system
 .editorial #settingsModal input{background:white;color:var(--ink);border:1px solid var(--line)}
 .theme-label{padding:8px 12px;background:var(--wash);border-radius:6px;font-size:12px}
 @media(max-width:760px){.page-shell{padding:20px 16px 30px}.workspace-layout{gap:22px}.brand{font-size:20px}.early-access{display:none}.site-header{gap:8px}.site-header button{font-size:11px;padding:9px}.site-header button svg{display:none}.intro{padding:4px 0}.intro h1{font-size:31px}.intro>p:not(.eyebrow){font-size:13px}#textModeContainer{grid-template-columns:1fr}.suggestions-pane{border-left:0;border-top:1px solid var(--line);padding:22px}.results-empty{padding:12px 0;max-width:none}.results-empty h2{font-size:21px}.draft-pane{padding:20px}#inputText{height:250px}.draft-canvas{min-height:250px}.workspace-tabs{padding:14px 18px}.workspace-tabs>div{width:100%}.workspace-tab{flex:1;padding:9px 12px}[data-purpose="editor-controls"]{padding:18px!important}#globalControls{gap:12px}#textActionContainer,#documentActionContainer{width:100%;margin:0}#textActionButtons{display:flex}#textActionButtons button{flex:1;padding:12px 10px}.document-feature{padding:22px;align-items:flex-start;flex-direction:column;gap:16px}.workspace-footer{flex-direction:column;gap:8px}#documentModeContainer{padding:20px}#documentModeSelect{max-width:100%}}
+/* Suggestions stay legible without competing with the writing canvas. */
+.editorial #assistantBar{background:#fffef9;border:1px solid var(--line);border-radius:14px;box-shadow:0 12px 40px #263c3326;backdrop-filter:none;padding:20px;gap:18px;max-height:calc(100dvh - 32px);overflow-y:auto;flex-direction:column;align-items:stretch;bottom:24px}
+.editorial #assistantBar>div:first-of-type{padding-right:22px;min-width:0}
+.editorial #assistantBar>div:first-of-type>div:first-child{background:var(--wash);color:var(--accent);box-shadow:none;border:1px solid var(--line);border-radius:10px}
+.editorial #assistantBar>div:first-of-type>div:first-child svg{color:var(--accent)}
+.editorial #suggestionLabel{color:var(--accent);font-size:10px;letter-spacing:1.2px;font-weight:600}
+.editorial #suggestionCounter{background:var(--wash);border-color:var(--line);color:var(--muted);font-size:10px}
+.editorial #suggestionText{color:var(--ink);overflow-wrap:anywhere;font-size:14px;line-height:1.7}
+.editorial .suggestion-replacement{font-weight:500;margin:4px 0 8px}
+.editorial .suggestion-reason{color:var(--muted);font-size:12px;margin:0;line-height:1.6}
+.editorial #assistantBar>div:last-child{width:100%;padding-top:14px;border-top:1px solid var(--line)}
+.editorial #assistantBar>div:last-child>div{background:var(--wash);border-color:var(--line);border-radius:8px}
+.editorial :is(#prevSuggestionBtn,#nextSuggestionBtn,#closeAssistantBtn){color:var(--muted)}
+.editorial :is(#prevSuggestionBtn,#nextSuggestionBtn,#closeAssistantBtn):hover{background:var(--wash);color:var(--ink)}
+.editorial #applySuggestionBtn{background:var(--accent);color:white;border:1px solid var(--accent);border-radius:8px;box-shadow:none;transform:none;padding:11px 24px;font-size:12px;flex:1}
+.editorial #applySuggestionBtn:hover{background:#244b36;box-shadow:none;transform:none}
+@media(max-width:600px){.editorial #assistantBar{bottom:12px;padding:16px;width:calc(100% - 24px);gap:14px}.editorial #assistantBar>div:first-of-type{gap:12px}.editorial #assistantBar>div:first-of-type>div:first-child{width:32px;height:32px}.editorial #suggestionText{font-size:13px}}
 /* Focus mode uses the same paper and ink as the main workspace. */
 .editorial .fov-overlay{background:var(--paper);color:var(--ink);backdrop-filter:none}
 .editorial .fov-header{max-width:1000px;padding:24px 32px;border-bottom:1px solid var(--line)}

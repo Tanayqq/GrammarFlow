@@ -355,7 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const sug = allSuggestions[currentSugIdx];
 
         UI.suggestionLabel.innerText = (sug.category || 'SUGGESTION').toUpperCase();
-        UI.suggestionText.innerHTML  = `Consider: "<b>${escapeHTML(sug.suggestion)}</b>" <span style="opacity:0.55;font-size:0.8rem">(${escapeHTML(sug.reason)})</span>`;
+        UI.suggestionText.innerHTML = `<p class="suggestion-replacement">${escapeHTML(sug.suggestion)}</p><p class="suggestion-reason">${escapeHTML(sug.reason)}</p>`;
 
         if (allSuggestions.length > 1) {
             UI.suggestionCounter.textContent    = `${currentSugIdx + 1} of ${allSuggestions.length}`;
