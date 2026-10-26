@@ -799,6 +799,7 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="vendor/purify.min.js"></script>
 <script src="app-v16.js?v=22"></script>
+<script src="analytics.js?v=1" defer></script>
 
 
 
@@ -926,4 +927,9 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
 </div>
 
 
+<div id="analyticsConsent" class="analytics-consent" role="region" aria-label="Optional analytics" hidden>
+    <div><strong>Help improve GrammarFlow?</strong><p>Allow Google Analytics to measure visits, device information and feature clicks. We do not send your writing, documents or account details. Optional analytics cookies stay off unless you allow them. <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google privacy</a></p></div>
+    <div class="analytics-actions"><button id="declineAnalyticsBtn" type="button">No thanks</button><button id="acceptAnalyticsBtn" type="button">Allow analytics</button></div>
+</div>
+<button id="analyticsPreferencesBtn" class="analytics-preferences" type="button">Analytics preferences</button>
 </body></html>
