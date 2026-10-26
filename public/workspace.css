@@ -72,4 +72,23 @@ body.editorial{background:var(--paper);color:var(--ink);font-family:Inter,system
 .editorial #settingsModal input{background:white;color:var(--ink);border:1px solid var(--line)}
 .theme-label{padding:8px 12px;background:var(--wash);border-radius:6px;font-size:12px}
 @media(max-width:760px){.page-shell{padding:20px 16px 30px}.workspace-layout{gap:22px}.brand{font-size:20px}.early-access{display:none}.site-header{gap:8px}.site-header button{font-size:11px;padding:9px}.site-header button svg{display:none}.intro{padding:4px 0}.intro h1{font-size:31px}.intro>p:not(.eyebrow){font-size:13px}#textModeContainer{grid-template-columns:1fr}.suggestions-pane{border-left:0;border-top:1px solid var(--line);padding:22px}.results-empty{padding:12px 0;max-width:none}.results-empty h2{font-size:21px}.draft-pane{padding:20px}#inputText{height:250px}.draft-canvas{min-height:250px}.workspace-tabs{padding:14px 18px}.workspace-tabs>div{width:100%}.workspace-tab{flex:1;padding:9px 12px}[data-purpose="editor-controls"]{padding:18px!important}#globalControls{gap:12px}#textActionContainer,#documentActionContainer{width:100%;margin:0}#textActionButtons{display:flex}#textActionButtons button{flex:1;padding:12px 10px}.document-feature{padding:22px;align-items:flex-start;flex-direction:column;gap:16px}.workspace-footer{flex-direction:column;gap:8px}#documentModeContainer{padding:20px}#documentModeSelect{max-width:100%}}
+/* Focus mode uses the same paper and ink as the main workspace. */
+.editorial .fov-overlay{background:var(--paper);color:var(--ink);backdrop-filter:none}
+.editorial .fov-header{max-width:1000px;padding:24px 32px;border-bottom:1px solid var(--line)}
+.editorial .fov-brand{background:none;-webkit-text-fill-color:var(--ink);color:var(--ink);text-transform:none;letter-spacing:-.3px;font-size:18px;font-weight:500}
+.editorial .fov-close-btn{background:white;color:var(--muted);border:1px solid var(--line);border-radius:8px}
+.editorial .fov-close-btn:hover{background:var(--wash);color:var(--ink);box-shadow:none}
+.editorial .fov-main{max-width:760px}
+.editorial .fov-camera-track{top:24vh;left:32px;right:32px}
+.editorial .fov-para textarea{color:var(--ink)!important;caret-color:var(--accent)!important;font-size:19px!important;line-height:1.9!important}
+.editorial .fov-para textarea::placeholder{color:var(--muted)}
+.editorial .fov-para.fov-active::before{background:#89a181;animation:none;opacity:.65;width:2px;left:-16px}
+.editorial .fov-para.fov-active::after,.editorial .fov-timeline-pulse{display:none}
+.editorial .fov-strip{animation:none;opacity:.75;border-color:var(--line)}
+.editorial .fov-strip:is(.open,.fov-strip-focused){background:var(--wash);border-left-color:var(--accent);opacity:1}
+.editorial :is(.fov-strip-num,.fov-strip-prev,.fov-strip-icon,.fov-strip-body){color:var(--muted)}
+.editorial .fov-hud{background:#fff;color:var(--muted);border:1px solid var(--line);box-shadow:none;backdrop-filter:none;padding:9px 18px;font-size:11px}
+.editorial .fov-save-dot{color:var(--accent)}.editorial .fov-save-dot.unsaved{color:#9c783b}
+.editorial .fov-overlay.momentum-high .fov-hud,.editorial .fov-hud.fade{opacity:.75;transform:translateX(-50%)}
+@media(max-width:600px){.editorial .fov-header{padding:18px 20px;gap:12px}.editorial .fov-brand{font-size:16px}.editorial .fov-close-btn{font-size:11px;padding:8px 12px}.editorial .fov-camera-track{top:20vh;left:24px;right:24px}.editorial .fov-para textarea{font-size:17px!important}.editorial .fov-hud{bottom:18px}}
 @media(prefers-reduced-motion:reduce){.editorial *, .editorial *:before,.editorial *:after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}

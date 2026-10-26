@@ -61,6 +61,24 @@ test('editorial navigation keeps draft and restores controls after document extr
     assert.equal(app.errors.length, 0);
 });
 
+test('focus mode carries edits back to the draft on Escape and reopens them', async t => {
+    const app = await editor(t, undefined, 'My original draft.');
+    app.get('expandFlowBtn').click();
+    await new Promise(resolve => app.w.requestAnimationFrame(resolve));
+    assert.equal(app.get('flowOverlay').classList.contains('hidden'), false);
+    const paragraph = app.get('fovCameraTrack').querySelector('textarea');
+    assert.equal(paragraph.value, 'My original draft.');
+    paragraph.value = 'My refined draft.';
+    paragraph.dispatchEvent(new app.w.Event('input', { bubbles: true }));
+    paragraph.dispatchEvent(new app.w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    assert.equal(app.get('inputText').value, 'My refined draft.');
+    assert.equal(app.w.localStorage.getItem('gf_editor_draft'), 'My refined draft.');
+    await new Promise(resolve => setTimeout(resolve, 370));
+    assert.equal(app.get('flowOverlay').classList.contains('hidden'), true);
+    app.get('expandFlowBtn').click();
+    assert.equal(app.get('fovCameraTrack').querySelector('textarea').value, 'My refined draft.');
+});
+
 test('AI output is displayed without executable HTML; detailed analysis stays safe', async t => {
     const payload = '<img src=x onerror="alert(1)"><script>alert(2)</script>[unsafe](javascript:alert%281%29)';
     const app = await editor(t, () => ({ success: true, data: [payload] }));
