@@ -1,13 +1,11 @@
-<!DOCTYPE html>
-
-<html lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>GrammarFlow Focused Editor</title>
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>GrammarFlow — Clearer writing. Still your voice.</title>
 <!-- Tailwind CSS CDN -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <!-- Google Fonts for Inter -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Libre+Baskerville&amp;display=swap" rel="stylesheet">
 <style data-purpose="custom-theme">
     body {
       font-family: 'Inter', sans-serif;
@@ -491,95 +489,91 @@
       }
     }
   </script>
-</head>
-<body class="min-h-screen bg-[#080312] text-[#e2e8f0] relative">
+<link rel="stylesheet" href="workspace.css?v=1"></head>
+<body class="min-h-screen bg-[#080312] text-[#e2e8f0] relative editorial">
 
-<div class="cosmic-bg"></div>
-<div class="nebula-glow" style="top: -100px; right: -100px;"></div>
-<div class="nebula-glow" style="bottom: -150px; left: -100px; background: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);"></div>
+
+
+
 
 <!-- Flex Wrapper to center main editor -->
-<div class="min-h-screen w-full flex items-center justify-center p-4 md:p-8">
-    <main class="w-full max-w-5xl mx-auto" data-purpose="editor-main-container">
-    <div class="glass-panel rounded-3xl overflow-hidden p-6 md:p-8 flex flex-col gap-6 relative">
+<div class="page-shell">
+    <main class="workspace-shell" data-purpose="editor-main-container">
+    <div class="workspace-layout">
         
         <!-- Header / Logo & Top Navigation -->
-        <header class="flex justify-between items-center pb-4 border-b border-white/5" data-purpose="editor-header">
+        <header class="site-header" data-purpose="editor-header">
             <!-- Left: Title / Logo -->
             <div class="flex items-center gap-3">
-                <span class="text-xl font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">GrammarFlow</span>
-                <span class="text-[10px] uppercase font-bold tracking-widest bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded border border-purple-500/30">Focused</span>
+                <span class="brand">GrammarFlow</span>
+                <span class="early-access">Early access</span>
             </div>
             
             <!-- Right: Navigation Action Buttons -->
             <div class="flex items-center gap-3">
                 <button id="btnHistory" class="text-xs font-semibold px-4 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/20 transition-all flex items-center gap-2 cursor-pointer">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     History
                 </button>
                 <button id="btnSettings" class="text-xs font-semibold px-4 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-white hover:bg-white/5 hover:border-white/20 transition-all flex items-center gap-2 cursor-pointer">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     Settings
                 </button>
             </div>
         </header>
 
-        <section aria-labelledby="editor-intro-title" class="text-center">
+        <section aria-labelledby="editor-intro-title" class="intro"><p class="eyebrow">A little clarity goes a long way</p>
             <h1 id="editor-intro-title" class="text-2xl md:text-3xl font-bold text-white">Clearer writing. Still your voice.</h1>
             <p class="mt-3 text-sm md:text-base text-gray-400 leading-relaxed">Catch grammar mistakes and explore alternative phrasing with GrammarFlow. You choose what to change.</p>
         </section>
 
         <!-- Tabs Navigation -->
-        <nav class="flex justify-center items-center mb-2" data-purpose="editor-tabs">
-            <div class="bg-[#1a1a2e] rounded-xl p-1.5 flex gap-2 border border-white/5">
-                <button id="tabText" class="px-8 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 bg-[#252545] text-white glow-border-purple shadow-lg">Text Editor</button>
-                <button id="tabDocument" class="px-8 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 text-gray-400 hover:text-white hover:bg-white/5">Document AI</button>
+        <section class="editor-card" aria-label="Writing workspace"><nav class="workspace-tabs" data-purpose="editor-tabs" aria-label="Workspace">
+            <div class="bg-[#1a1a2e] rounded-xl p-1.5 flex gap-2 border border-white/5" role="tablist">
+                <button id="tabText" class="workspace-tab" role="tab" aria-controls="textModeContainer">Text Editor</button>
+                <button id="tabDocument" class="workspace-tab" role="tab" aria-controls="documentModeContainer">Document AI</button>
             </div>
-        </nav>
-
-        <!-- TEXT MODE CONTAINER -->
-        <div id="textModeContainer">
-            <div class="relative w-full bg-[#0f0b1e]/50 border border-white/5 rounded-2xl transition-all focus-within:ring-1 focus-within:ring-purple-500/50" data-purpose="editor-canvas">
+        </nav><div id="textModeContainer" role="tabpanel" aria-labelledby="tabText"><div class="draft-pane"><div class="draft-heading"><label for="inputText">Your draft</label><span>Make it yours.</span></div><div class="draft-canvas" data-purpose="editor-canvas">
                 <!-- Shadow Highlighter Overlay for wavy underlining -->
                 <div id="highlighterOverlay" class="absolute inset-0 pointer-events-none text-transparent whitespace-pre-wrap break-words overflow-y-auto w-full h-full p-6 text-lg rounded-2xl border border-transparent custom-scrollbar leading-relaxed"></div>
                 
                 <!-- Active Textarea -->
-                <textarea class="w-full h-80 md:h-96 bg-transparent text-lg text-white/90 p-6 placeholder:text-gray-600 focus:outline-none resize-none custom-scrollbar transition-all relative z-10 leading-relaxed" id="inputText" placeholder="Start typing naturally..."></textarea>
+                <textarea class="w-full h-80 md:h-96 bg-transparent text-lg text-white/90 p-6 placeholder:text-gray-600 focus:outline-none resize-none custom-scrollbar transition-all relative z-10 leading-relaxed" id="inputText" placeholder="Make room for your next good idea.
+
+Paste an email, an essay or a paragraph here." aria-label="Your draft"></textarea>
 
                 <!-- Immersive Flow Expand Button -->
                 <button id="expandFlowBtn" class="expand-flow-btn" title="Expand to Immersive Flow-State Editor">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg>
                     Flow Focus
                 </button>
-            </div>
+            </div></div>
+            
 
 
             <!-- TEXT EDITOR LOADING INDICATOR & OUTPUT CONTAINER -->
-            <div id="loadingIndicator" class="hidden mt-6 flex flex-col items-center justify-center p-8 gap-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl">
+            
+
+            
+        <div class="suggestions-pane"><div class="results-empty"><span class="eyebrow">A fresh perspective</span><h2>Your words, refined.</h2><p>Choose Fix Grammar or Rewrite Paragraph. Review the suggestions, keep what works, and make it yours.</p></div><div id="loadingIndicator" class="hidden mt-6 flex flex-col items-center justify-center p-8 gap-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl" role="status">
                 <div class="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin shadow-[0_0_15px_rgba(168,85,247,0.5)]"></div>
-                <span class="text-purple-400 font-medium tracking-wider text-sm uppercase">Analyzing Text & Processing AI...</span>
+                <span class="text-purple-400 font-medium tracking-wider text-sm uppercase">Working on your writing…</span>
                 <button id="cancelProcessBtn" class="hidden px-5 py-2.5 rounded-xl text-xs font-bold text-red-400 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" stroke-width="2"></rect></svg>
                     Stop Process
                 </button>
-            </div>
-
-            <div id="outputSection" class="hidden mt-6">
+            </div><div id="outputSection" class="hidden mt-6">
                 <div class="bg-black/30 border border-white/10 rounded-2xl p-6 relative group overflow-y-auto max-h-[350px] custom-scrollbar">
                     <div class="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div id="resultsList" class="relative z-10 text-white/90 text-lg leading-relaxed flex flex-col gap-4"></div>
                 </div>
-            </div>
-        </div>
-
-        <!-- DOCUMENT AI MODE CONTAINER -->
-        <div id="documentModeContainer" class="hidden">
+            </div></div></div><div id="documentModeContainer" class="hidden" role="tabpanel" aria-labelledby="tabDocument"><div class="document-intro"><p class="eyebrow">Document AI</p><h2>A clearer picture, page by page.</h2><p>Summarize a PDF, extract and fix its text, or explain complex ideas in simpler words.</p></div>
             
 <section class="mb-6" data-purpose="upload-section">
 <div class="relative group cursor-pointer border-2 border-dashed border-white/20 rounded-3xl py-16 px-6 flex flex-col items-center justify-center transition-all hover:border-white/40 hover:bg-white/5" id="documentUploadZone" role="button" tabindex="0" aria-label="Upload PDF or image files">
 <!-- Cloud Icon -->
 <div class="mb-4 bg-white/5 p-4 rounded-full border border-white/10">
-<svg class="text-gray-400 group-hover:text-white transition-colors" fill="none" height="48" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="48" xmlns="http://www.w3.org/2000/svg">
+<svg class="text-gray-400 group-hover:text-white transition-colors" fill="none" height="48" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="48" xmlns="http://www.w3.org/2000/svg">
 <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
 <path d="M12 12v9"></path>
 <path d="m16 16-4-4-4 4"></path>
@@ -601,10 +595,10 @@
     <div class="flex items-center gap-3">
         <span class="text-sm font-medium text-gray-400 whitespace-nowrap">Document Mode:</span>
         <div class="relative w-full md:w-auto">
-            <select id="documentModeSelect" class="w-full md:w-auto appearance-none bg-[#252545] border border-white/10 rounded-full py-3 pl-5 pr-12 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]">
-                <option value="Summarize" selected>Summarize Document</option>
-                <option value="Grammar">Extract & Fix Grammar (OCR)</option>
-                <option value="Explain">Explain Like a 10 Year Old</option>
+            <select id="documentModeSelect" class="w-full md:w-auto appearance-none bg-[#252545] border border-white/10 rounded-full py-3 pl-5 pr-12 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]" aria-label="Document task">
+                <option value="Summarize" selected="">Summarize Document</option>
+                <option value="Grammar">Extract &amp; Fix Grammar (OCR)</option>
+                <option value="Explain">Explain in simple words</option>
             </select>
             <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-400">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
@@ -613,9 +607,9 @@
     </div>
 </div>
             <!-- DOCUMENT AI LOADING INDICATOR & OUTPUT CONTAINER -->
-            <div id="docLoadingIndicator" class="hidden mt-6 flex flex-col items-center justify-center p-8 gap-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl">
+            <div id="docLoadingIndicator" class="hidden mt-6 flex flex-col items-center justify-center p-8 gap-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl" role="status">
                 <div class="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin shadow-[0_0_15px_rgba(168,85,247,0.5)]"></div>
-                <span class="text-purple-400 font-medium tracking-wider text-sm uppercase">Analyzing Document & Processing AI...</span>
+                <span class="text-purple-400 font-medium tracking-wider text-sm uppercase">Reading your document…</span>
                 <button id="docCancelProcessBtn" class="hidden px-5 py-2.5 rounded-xl text-xs font-bold text-red-400 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" stroke-width="2"></rect></svg>
                     Stop Process
@@ -642,10 +636,7 @@
                     <div id="docResultsList" class="relative z-10 text-white/90 text-lg leading-relaxed flex flex-col gap-4"></div>
                 </div>
             </div>
-        </div>
-
-        <!-- SHARED FOOTER CONTROLS -->
-        <div class="flex flex-wrap items-center justify-between gap-6 pt-2" data-purpose="editor-controls">
+        </section><p class="document-note">Up to 5 files · 10 MB each. Use non-sensitive documents; extracted text is sent to our AI provider for processing.</p></div><div class="flex flex-wrap items-center justify-between gap-6 pt-2" data-purpose="editor-controls">
             
 
 <div class="flex flex-wrap items-center gap-6" id="globalControls">
@@ -653,7 +644,7 @@
     <div class="flex items-center gap-3">
         <span class="text-sm font-medium text-gray-400">Language:</span>
         <div class="relative">
-            <select id="languageSelect" class="appearance-none bg-[#252545] border border-white/10 rounded-full py-2 pl-4 pr-10 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]">
+            <select id="languageSelect" class="appearance-none bg-[#252545] border border-white/10 rounded-full py-2 pl-4 pr-10 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]" aria-label="language">
                 <option value="English">English</option>
                 <option value="Hinglish">Hinglish</option>
                 <option value="Hindi">Hindi</option>
@@ -671,10 +662,10 @@
     <div class="flex items-center gap-3">
         <span class="text-sm font-medium text-gray-400">Style:</span>
         <div class="relative">
-            <select id="styleSelect" class="appearance-none bg-[#252545] border border-white/10 rounded-full py-2 pl-4 pr-10 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]">
+            <select id="styleSelect" class="appearance-none bg-[#252545] border border-white/10 rounded-full py-2 pl-4 pr-10 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]" aria-label="style">
                 <option value="Professional">Professional</option>
                 <option value="Academic">Academic</option>
-                <option value="Casual" selected>Casual</option>
+                <option value="Casual" selected="">Casual</option>
                 <option value="Creative">Creative</option>
                 <option value="Direct">Direct</option>
             </select>
@@ -688,10 +679,10 @@
     <div class="flex items-center gap-3">
         <span class="text-sm font-medium text-gray-400">Tone:</span>
         <div class="relative">
-            <select id="toneSelect" class="appearance-none bg-[#252545] border border-white/10 rounded-full py-2 pl-4 pr-10 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]">
+            <select id="toneSelect" class="appearance-none bg-[#252545] border border-white/10 rounded-full py-2 pl-4 pr-10 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]" aria-label="tone">
                 <option value="Neutral">Neutral</option>
                 <option value="Confident">Confident</option>
-                <option value="Friendly" selected>Friendly</option>
+                <option value="Friendly" selected="">Friendly</option>
                 <option value="Persuasive">Persuasive</option>
                 <option value="Empathetic">Empathetic</option>
             </select>
@@ -702,9 +693,9 @@
     </div>
 
     <div class="flex items-center gap-3">
-        <span class="text-sm font-medium text-gray-400">Human Mode</span>
+        <span class="text-sm font-medium text-gray-400">Natural phrasing</span>
         <label class="relative inline-flex items-center cursor-pointer">
-            <input id="humanizeToggle" type="checkbox" class="sr-only peer" checked>
+            <input id="humanizeToggle" type="checkbox" class="sr-only peer" checked="" aria-label="Natural phrasing">
             <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
         </label>
     </div>
@@ -724,18 +715,27 @@
             <!-- Document Actions -->
             <div id="documentActionContainer" class="hidden">
                 <div class="flex justify-center" data-purpose="action-section">
-                    <button disabled class="w-full px-10 py-5 rounded-2xl font-bold text-white text-lg bg-gradient-to-r from-purple-500 to-blue-500 shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:shadow-[0_0_30px_rgba(168,85,247,0.6)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 cursor-pointer" id="processDocumentBtn">
+                    <button disabled="" class="w-full px-10 py-5 rounded-2xl font-bold text-white text-lg bg-gradient-to-r from-purple-500 to-blue-500 shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:shadow-[0_0_30px_rgba(168,85,247,0.6)] hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-3 cursor-pointer" id="processDocumentBtn">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
                         Process Document
                     </button>
                 </div>
             </div>
-        </div>
+        </div></section><section class="document-feature"><div><p class="eyebrow">Meet Document AI</p><h2>More than a paragraph.</h2><p>Turn PDFs and images into summaries, clearer text and simpler explanations.</p></div><button id="exploreDocumentBtn" type="button">Explore Document AI <span aria-hidden="true">↗</span></button></section><footer class="workspace-footer"><span>Thoughtful writing starts with you.</span><span>AI can make mistakes. Review suggestions before using them.</span></footer>
+
+        <!-- TEXT MODE CONTAINER -->
+        
+
+        <!-- DOCUMENT AI MODE CONTAINER -->
+        
+
+        <!-- SHARED FOOTER CONTROLS -->
+        
 
         <!-- HIDDEN APP.JS BINDINGS -->
         <div class="hidden" style="display:none;">
-            <input type="file" id="fileInput" accept="image/*,application/pdf" multiple>
-            <div id="highlighterOverlay"></div>
+            <input type="file" id="fileInput" accept="image/*,application/pdf" multiple="">
+            
             <div id="appLogo"></div>
             <button id="processDocBtn"></button>
             <div id="resumePrompt"></div>
@@ -790,7 +790,7 @@
         </button>
     </div>
     </div>
-</main>
+
 </div>
 <!-- External Document Processing Libraries -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
@@ -798,37 +798,8 @@
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="vendor/purify.min.js"></script>
-<script src="app-v16.js?v=21"></script>
-<script>
-    // Tab Switching Logic for Tailwind UI
-    document.getElementById('tabText').addEventListener('click', function() {
-        this.classList.add('bg-[#252545]', 'text-white', 'glow-border-purple', 'shadow-lg');
-        this.classList.remove('text-gray-400');
-        
-        const docTab = document.getElementById('tabDocument');
-        docTab.classList.remove('bg-[#252545]', 'text-white', 'glow-border-purple', 'shadow-lg');
-        docTab.classList.add('text-gray-400');
-        
-        document.getElementById('textModeContainer').classList.remove('hidden');
-        document.getElementById('textActionContainer').classList.remove('hidden');
-        document.getElementById('documentModeContainer').classList.add('hidden');
-        document.getElementById('documentActionContainer').classList.add('hidden');
-    });
+<script src="app-v16.js?v=22"></script>
 
-    document.getElementById('tabDocument').addEventListener('click', function() {
-        this.classList.add('bg-[#252545]', 'text-white', 'glow-border-purple', 'shadow-lg');
-        this.classList.remove('text-gray-400');
-        
-        const txtTab = document.getElementById('tabText');
-        txtTab.classList.remove('bg-[#252545]', 'text-white', 'glow-border-purple', 'shadow-lg');
-        txtTab.classList.add('text-gray-400');
-        
-        document.getElementById('documentModeContainer').classList.remove('hidden');
-        document.getElementById('documentActionContainer').classList.remove('hidden');
-        document.getElementById('textModeContainer').classList.add('hidden');
-        document.getElementById('textActionContainer').classList.add('hidden');
-    });
-</script>
 
 
 <script>
@@ -897,10 +868,10 @@
     <div class="glass-panel w-full max-w-2xl rounded-3xl p-6 md:p-8 flex flex-col gap-6 relative">
         <div class="flex justify-between items-center border-b border-white/10 pb-4">
             <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" class="text-purple-400" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" class="text-purple-400" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                 Writing History
             </h3>
-            <button id="closeHistoryBtn" class="text-gray-400 hover:text-white text-xl focus:outline-none cursor-pointer">✕</button>
+            <button id="closeHistoryBtn" class="text-gray-400 hover:text-white text-xl focus:outline-none cursor-pointer" aria-label="Close history">✕</button>
         </div>
         
         <div id="historyContent" class="overflow-y-auto max-h-[400px] custom-scrollbar flex flex-col gap-4 pr-2">
@@ -914,10 +885,10 @@
     <div class="glass-panel w-full max-w-md rounded-3xl p-6 md:p-8 flex flex-col gap-6 relative">
         <div class="flex justify-between items-center border-b border-white/10 pb-4">
             <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" class="text-purple-400" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" class="text-purple-400" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                 Editor Settings
             </h3>
-            <button id="closeSettingsBtn" class="text-gray-400 hover:text-white text-xl focus:outline-none cursor-pointer">✕</button>
+            <button id="closeSettingsBtn" class="text-gray-400 hover:text-white text-xl focus:outline-none cursor-pointer" aria-label="Close settings">✕</button>
         </div>
         
         <div class="flex flex-col gap-6">
@@ -947,11 +918,12 @@
             <div class="flex flex-col gap-2">
                 <label class="text-xs font-bold text-gray-400 uppercase tracking-widest">Interface Theme</label>
                 <div class="flex">
-                    <button class="py-2.5 px-4 rounded-xl bg-[#1e1d2b] border border-purple-500/30 text-white text-xs font-semibold glow-border-purple text-center cursor-pointer">Cosmic Dark</button>
+                    <span class="theme-label">Editorial light</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 
 </body></html>

@@ -43,6 +43,24 @@ async function editor(t, respond = () => ({ success: true, data: ['Corrected tex
     return { w, errors, get: id => w.document.getElementById(id) };
 }
 
+test('editorial navigation keeps draft and restores controls after document extraction', async t => {
+    const app = await editor(t, undefined, 'Keep my draft.');
+    app.get('exploreDocumentBtn').click();
+    assert.equal(app.get('tabDocument').getAttribute('aria-selected'), 'true');
+    assert.equal(app.get('documentActionContainer').classList.contains('hidden'), false);
+    app.get('documentModeSelect').value = 'Grammar';
+    app.w.documentProcessor.updateOCRMode();
+    assert.equal(app.get('globalControls').style.display, 'none');
+    app.get('tabDocument').dispatchEvent(new app.w.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    assert.equal(app.get('tabText').getAttribute('aria-selected'), 'true');
+    assert.equal(app.get('globalControls').style.display, '');
+    assert.equal(app.get('inputText').value, 'Keep my draft.');
+    assert.equal(app.get('textActionContainer').classList.contains('hidden'), false);
+    const ids = [...app.w.document.querySelectorAll('[id]')].map(n => n.id);
+    assert.equal(new Set(ids).size, ids.length);
+    assert.equal(app.errors.length, 0);
+});
+
 test('AI output is displayed without executable HTML; detailed analysis stays safe', async t => {
     const payload = '<img src=x onerror="alert(1)"><script>alert(2)</script>[unsafe](javascript:alert%281%29)';
     const app = await editor(t, () => ({ success: true, data: [payload] }));
