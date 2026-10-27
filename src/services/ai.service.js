@@ -24,12 +24,12 @@ async function generate(systemPrompt, userText, temperature, opts, key) {
     if (redisConnection?.status === 'ready' && Date.now() >= cacheDisabledUntil) {
         try {
             const value = await redisConnection.get(key);
-            if (typeof value === 'string' && value) return { text: value, source: 'cache' };
+            if (typeof value === 'string' && value && (!opts.validate || opts.validate(value))) return { text: value, source: 'cache' };
         } catch {
             cacheDisabledUntil = Date.now() + 60000;
         }
     }
-    const deadline = Date.now() + 35000;
+    const deadline = Date.now() + (Number.isFinite(opts.timeoutMs) ? Math.max(1000, Math.min(35000, opts.timeoutMs)) : 35000);
     const models = [...new Set([opts.model, ...MODELS].filter(Boolean))];
     let retryAfter = 30;
     for (const model of models) {
@@ -79,7 +79,7 @@ async function generate(systemPrompt, userText, temperature, opts, key) {
             const text = data.choices?.[0]?.message?.content;
             if (typeof text !== 'string' || !text.trim() || data.choices[0].finish_reason === 'length') continue;
             const result = { text: text.trim(), source: 'groq' };
-            if (result.text.length <= 100000) {
+            if (result.text.length <= 100000 && (!opts.validate || opts.validate(result.text))) {
                 // ponytail: process-local cache/concurrency; use shared coordination before adding replicas.
                 for (const [oldKey, entry] of cache) if (entry.expires <= Date.now()) cache.delete(oldKey);
                 if (cache.size >= 100) cache.delete(cache.keys().next().value);
@@ -102,7 +102,7 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = 
     const opts = typeof options === 'string' ? { model: options } : (options || {});
     const key = generateCacheKey(JSON.stringify([systemPrompt, temperature, opts.model || '', opts.responseFormat || '']), userText);
     const cached = cache.get(key);
-    if (cached?.expires > Date.now()) return { text: cached.text, source: 'cache' };
+    if (cached?.expires > Date.now() && (!opts.validate || opts.validate(cached.text))) return { text: cached.text, source: 'cache' };
     cache.delete(key);
     if (pending.has(key)) return pending.get(key);
     // Bound concurrent work, including optional cache reads, during bursts or provider outages.

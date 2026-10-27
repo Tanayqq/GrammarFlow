@@ -404,7 +404,7 @@ document.addEventListener("DOMContentLoaded", () => {
         UI.rewriteBtn.disabled  = busy;
         UI.fixGrammarBtn.disabled = busy;
         UI.processDocumentBtn.disabled = busy || !window.documentProcessor?.files.length;
-        [UI.tabText, UI.tabDocument, UI.documentModeSelect, UI.fileInput,
+        [UI.tabText, UI.tabDocument, UI.documentModeSelect, UI.fileInput, UI.languageSelect, UI.styleSelect, UI.toneSelect, UI.humanizeToggle,
             document.getElementById('ocrLanguageSelect')].forEach(control => { if (control) control.disabled = busy; });
         
         const tab = (window.documentProcessor && window.documentProcessor.currentTab) || 'text';
@@ -1024,10 +1024,10 @@ document.addEventListener("DOMContentLoaded", () => {
             return weights[lang] || 1.5;
         }
 
-        chunkText(text, language = 'English') {
+        chunkText(text, language = 'English', mode = '') {
             const weight = this.getLanguageWeight(language);
             const baseMaxChars = 6000; // Increased to speed up processing
-            const maxChars = Math.floor(baseMaxChars / weight);
+            const maxChars = mode === 'Explain' ? 3000 : Math.floor(baseMaxChars / weight);
             
             if (text.length <= maxChars) return [text];
             const chunks = [];
@@ -1092,29 +1092,33 @@ document.addEventListener("DOMContentLoaded", () => {
             const lang = isOCR ? 'Auto' : UI.languageSelect.value;
             const humanizeActive = isOCR ? false : UI.humanizeToggle.checked;
 
-            const cacheKey = this.getCacheKey(mainFile, mode, lang) + '_' + document.getElementById('ocrLanguageSelect').value;
+            let cacheKey;
+            let totalParts = 0;
             let intermediateResults = [];
             let startIndex = 0;
 
             try {
+                this.finalOutput = '';
+                renderResults(['Extracting text from files…']);
+                const text = await this.extractAll();
+                if (!text || !text.trim()) throw new Error('No readable text could be extracted from the document.');
+                const chunks = this.chunkText(text, lang, mode);
+                totalParts = chunks.length;
+                const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([
+                    'document-v4', text, mode, lang, UI.styleSelect.value, UI.toneSelect.value, humanizeActive
+                ])));
+                cacheKey = 'gf_doc_v4_' + Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
                 let parsed = null;
                 try {
                     parsed = JSON.parse(localStorage.getItem(cacheKey));
-                    if (parsed && (!Array.isArray(parsed.results) || !Number.isInteger(parsed.nextChunk) || parsed.nextChunk < 0)) parsed = null;
-                } catch (_) { /* Ignore a damaged local resume record and start again. */ }
+                    if (!parsed || !Array.isArray(parsed.results) || !parsed.results.every(r => typeof r === 'string') ||
+                        !Number.isInteger(parsed.nextChunk) || parsed.nextChunk !== parsed.results.length ||
+                        parsed.nextChunk > chunks.length || parsed.total !== chunks.length) parsed = null;
+                } catch (_) { /* Resume is optional when browser storage is unavailable. */ }
                 if (parsed && await this.promptResume()) {
                     intermediateResults = parsed.results;
                     startIndex = parsed.nextChunk;
                 }
-                renderResults([...intermediateResults, "Extracting text from files..."]);
-                const text = await this.extractAll();
-                
-                if (!text || text.trim().length === 0) {
-                    throw new Error("No readable text could be extracted from the document.");
-                }
-
-                const chunks = this.chunkText(text, lang);
-                
                 for (let i = startIndex; i < chunks.length; i++) {
                     if (this.isCanceled) throw new Error("Canceled by user.");
                     
@@ -1124,14 +1128,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     intermediateResults.push(chunkResult);
                     
                     // Save to Cache
-                    localStorage.setItem(cacheKey, JSON.stringify({ results: intermediateResults, nextChunk: i + 1 }));
+                    try { localStorage.setItem(cacheKey, JSON.stringify({ results: intermediateResults, nextChunk: i + 1, total: chunks.length })); } catch (_) { /* Processing still works without local resume storage. */ }
                     
                     // Progressive Display
-                    renderResults(intermediateResults);
+                    renderResults([...intermediateResults, 'In progress: ' + intermediateResults.length + ' of ' + chunks.length + ' parts completed.']);
                     
                     if (i < chunks.length - 1) {
-                        renderResults([...intermediateResults, `Waiting 5s to maintain AI stability...`]);
-                        await new Promise(r => setTimeout(r, 5000));
+                        renderResults([...intermediateResults, `In progress: ${i + 1} of ${chunks.length} parts completed. Preparing the next part…`]);
+                        // Stay below the existing five-document-requests/minute allowance.
+                        for (let second = 0; second < 13; second++) {
+                            if (this.isCanceled) throw new Error('Canceled.');
+                            await new Promise(r => setTimeout(r, 1000));
+                        }
                     }
                 }
 
@@ -1157,15 +1165,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 const modeLabelEl = document.getElementById("docResultModeLabel");
                 if (modeLabelEl) {
                     if (mode === "Summarize") modeLabelEl.textContent = "Summary Document Ready";
-                    else if (mode === "Explain") modeLabelEl.textContent = "10-Year-Old Explanation Ready";
+                    else if (mode === "Explain") modeLabelEl.textContent = "Simple Explanation Ready";
                     else if (mode === "Grammar") modeLabelEl.textContent = "Extracted & Corrected Text Ready";
                     else modeLabelEl.textContent = "Document Processed";
                 }
                 if (exportControls) exportControls.classList.remove("hidden");
-                localStorage.removeItem(cacheKey); // Clear cache on success
+                try { localStorage.removeItem(cacheKey); } catch (_) {} // Clear cache on success
 
             } catch (e) {
-                renderResults([...intermediateResults, `Error: ${e.message}`]);
+                renderResults([...(intermediateResults.length ? ['INCOMPLETE: ' + intermediateResults.length + ' of ' + totalParts + ' parts completed. The text below is only a partial result. Process the same document again and choose Resume to continue.'] : []), ...intermediateResults, `Error: ${e.message}`]);
             } finally {
                 this.processing = false;
                 setBusy(false);
@@ -1286,7 +1294,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     modeTitle = "Document Summary";
                     filenamePrefix = "GrammarFlow_Summary";
                 } else if (mode === "Explain") {
-                    modeTitle = "Explain Like a 10-Year-Old";
+                    modeTitle = "Explain in simple words";
                     filenamePrefix = "GrammarFlow_Explanation";
                 } else if (mode === "Grammar") {
                     modeTitle = "Extracted & Corrected Text (OCR)";

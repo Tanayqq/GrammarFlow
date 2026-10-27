@@ -6,6 +6,7 @@ const { logHistoryRecord } = require('../historyWorker');
 const prisma = require('../db');
 const { detectLanguage } = require('../utils/language');
 const { sendAIError } = require('../utils/publicError');
+const { isRomanHinglish } = require('../utils/documentLanguage');
 
 let isRedisQueueDisabled = false;
 
@@ -392,9 +393,18 @@ const processDocument = async (req, res, next) => {
             source = "cache";
         } else {
             const model = "openai/gpt-oss-120b";
-            const response = await aiService.callGroqAPI(prompt, text, 0.4, model);
+            const response = await aiService.callGroqAPI(prompt, text, mode === 'Explain' ? 0.2 : 0.4,
+                mode === 'Explain' ? { model, timeoutMs: 20000, ...(language === 'Hinglish' && { validate: isRomanHinglish }) } : model);
             resultText = response.text;
             source = response.source;
+        }
+        if (mode === 'Explain' && language === 'Hinglish' && !isRomanHinglish(resultText)) {
+            // One bounded repair; invalid cached output must pass the same check.
+            const repaired = await aiService.callGroqAPI(prompt + '\nFINAL CHECK: Every explanatory paragraph must be Roman Hinglish, not English. Regenerate concisely in Hindi-English mixed sentences.', text, 0.2, { model: 'openai/gpt-oss-120b', timeoutMs: 20000, validate: isRomanHinglish });
+            resultText = repaired.text;
+            source = repaired.source;
+            if (!isRomanHinglish(resultText)) return res.status(422).json({ success: false,
+                error: { code: 'DOCUMENT_LANGUAGE_MISMATCH', message: 'The explanation did not match Hinglish. This part was not accepted. Please retry this document to continue.' } });
         }
         // The result is just raw markdown text, we wrap it in an array to match the frontend expectations
         sendResponse(res, true, [resultText.trim()], null, { mode, language, humanize, source });

@@ -129,3 +129,16 @@ test('trusted Render proxy chains keep visitors distinct and ignore forged leftm
     assert.notEqual(client('192.0.2.10, 172.64.0.2'), client('192.0.2.11, 172.64.0.2'));
     assert.equal(proxyaddr({ socket: { remoteAddress: '192.0.2.99' }, headers: { 'x-forwarded-for': '198.51.100.9' } }, trust), '192.0.2.99');
 });
+
+test('rejected language output is not cached and an immediate retry can generate a valid result', async () => {
+    let calls = 0, writes = 0;
+    const ai = service(async () => success(++calls === 1 ? 'English output.' : 'Yeh Hinglish mein hai.'), {}, {
+        status: 'ready', get: async () => 'English output.', set: async () => writes++
+    });
+    const options = { validate: text => text.includes('Hinglish') };
+    assert.equal((await ai.callGroqAPI('explain', 'source', .2, options)).text, 'English output.');
+    assert.equal(writes, 0);
+    assert.equal((await ai.callGroqAPI('explain', 'source', .2, options)).text, 'Yeh Hinglish mein hai.');
+    assert.equal(calls, 2); assert.equal(writes, 1);
+    assert.equal((await ai.callGroqAPI('explain', 'source', .2, options)).source, 'cache');
+});

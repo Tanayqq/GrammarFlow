@@ -15,6 +15,8 @@ async function editor(t, respond = () => ({ success: true, data: ['Corrected tex
     });
     t.after(() => dom.window.close());
     const w = dom.window;
+    Object.defineProperty(w.crypto, 'subtle', { value: require('node:crypto').webcrypto.subtle });
+    w.TextEncoder = TextEncoder;
     await new Promise(resolve => setImmediate(resolve));
     w.alert = () => {};
     w.confirm = () => false;
@@ -325,4 +327,33 @@ test('PDF page limits and password failures release the PDF reader', async t => 
     app.w.pdfjsLib.getDocument = () => ({ destroy: async () => destroyed++, promise: Promise.reject(Object.assign(new Error(), { name: 'PasswordException' })) });
     await assert.rejects(app.w.documentProcessor.extractPdfText(file), /password protected/);
     assert.equal(destroyed, 2);
+});
+
+test('long explanations label partial output, resume only identical source and settings, and never export incomplete work', async t => {
+    const app = await editor(t), p = app.w.documentProcessor;
+    p.switchTab('document'); app.get('documentModeSelect').value = 'Explain'; app.get('languageSelect').value = 'Hinglish';
+    p.files = [{ name: 'benchmark.pdf', size: 10, type: 'application/pdf' }];
+    p.extractPdfText = async () => 'Source part one. Source part two.';
+    p.chunkText = () => ['one', 'two'];
+    // Avoid pacing delays in the simulated provider test.
+    app.w.setTimeout = callback => setTimeout(callback, 0);
+    let calls = 0;
+    p.requestWithRetry = async () => { if (++calls === 2) throw new Error('Service busy.'); return 'Pehla hissa yahan samjhaya gaya hai.'; };
+    await p.processDocument();
+    assert.match(app.get('docResultsList').textContent, /INCOMPLETE: 1 of 2/);
+    assert.equal(app.get('exportControls').classList.contains('hidden'), true);
+    assert.equal(p.finalOutput, '');
+    let resumes = 0;
+    p.promptResume = async () => { resumes++; return true; };
+    p.requestWithRetry = async text => { assert.equal(text, 'two'); return 'Doosra hissa ab samjhaya gaya hai.'; };
+    await p.processDocument();
+    assert.equal(resumes, 1); assert.match(p.finalOutput, /Pehla[\s\S]*Doosra/);
+    assert.equal(app.get('exportControls').classList.contains('hidden'), false);
+    // Same filename and size, different source: do not reuse the prior partial result.
+    app.get('exportControls').classList.add('hidden');
+    p.extractPdfText = async () => 'A completely different source.';
+    p.chunkText = () => ['different'];
+    p.requestWithRetry = async text => { assert.equal(text, 'different'); return 'Naya source alag hai.'; };
+    await p.processDocument();
+    assert.equal(resumes, 1); assert.equal(p.finalOutput, 'Naya source alag hai.');
 });
