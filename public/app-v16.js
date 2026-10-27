@@ -806,6 +806,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         switchTab(tab) {
+            if (this.processing) return;
             this.currentTab = tab;
             const isText = tab === 'text';
             document.getElementById('textActionContainer').classList.toggle('hidden', !isText);
