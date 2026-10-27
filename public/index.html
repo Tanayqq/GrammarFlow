@@ -1,7 +1,8 @@
 <!DOCTYPE html><html lang="en"><head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
-<title>GrammarFlow — Clearer writing. Still your voice.</title>
+<title>GrammarFlow — Write naturally. Stay yourself.</title>
+<meta name="description" content="GrammarFlow helps you fix grammar, improve sentences, and express your thoughts more clearly—without losing your voice.">
 <!-- Tailwind CSS CDN -->
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <!-- Google Fonts for Inter -->
@@ -523,8 +524,8 @@
         </header>
 
         <section aria-labelledby="editor-intro-title" class="intro"><p class="eyebrow">A little clarity goes a long way</p>
-            <h1 id="editor-intro-title" class="text-2xl md:text-3xl font-bold text-white">Clearer writing. Still your voice.</h1>
-            <p class="mt-3 text-sm md:text-base text-gray-400 leading-relaxed">Catch grammar mistakes and explore alternative phrasing with GrammarFlow. You choose what to change.</p>
+            <h1 id="editor-intro-title" class="text-2xl md:text-3xl font-bold text-white">Write naturally. Stay yourself.</h1>
+            <p class="mt-3 text-sm md:text-base text-gray-400 leading-relaxed">GrammarFlow helps you fix grammar, improve sentences, and express your thoughts more clearly—without losing your voice.</p>
         </section>
 
         <!-- Tabs Navigation -->
@@ -533,7 +534,7 @@
                 <button id="tabText" class="workspace-tab" role="tab" aria-controls="textModeContainer">Text Editor</button>
                 <button id="tabDocument" class="workspace-tab" role="tab" aria-controls="documentModeContainer">Document AI</button>
             </div>
-        </nav><div id="textModeContainer" role="tabpanel" aria-labelledby="tabText"><div class="draft-pane"><div class="draft-heading"><label for="inputText">Your draft</label><span>Make it yours.</span></div><div class="draft-canvas" data-purpose="editor-canvas">
+        </nav><div id="textModeContainer" role="tabpanel" aria-labelledby="tabText"><div class="draft-pane"><div class="draft-heading"><label for="inputText">Your draft</label><span>Write, then refine.</span></div><p class="workspace-help">Fix grammar or explore a rewrite. Choose your language, style and tone—including Hinglish.</p><div class="draft-canvas" data-purpose="editor-canvas">
                 <!-- Shadow Highlighter Overlay for wavy underlining -->
                 <div id="highlighterOverlay" class="absolute inset-0 pointer-events-none text-transparent whitespace-pre-wrap break-words overflow-y-auto w-full h-full p-6 text-lg rounded-2xl border border-transparent custom-scrollbar leading-relaxed"></div>
                 
@@ -543,7 +544,7 @@
 Paste an email, an essay or a paragraph here." aria-label="Your draft"></textarea>
 
                 <!-- Immersive Flow Expand Button -->
-                <button id="expandFlowBtn" class="expand-flow-btn" title="Expand to Immersive Flow-State Editor">
+                <button id="expandFlowBtn" class="expand-flow-btn" title="Write without distractions. Your draft stays with you.">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path></svg>
                     Flow Focus
                 </button>
@@ -555,7 +556,7 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
             
 
             
-        <div class="suggestions-pane"><div class="results-empty"><span class="eyebrow">A fresh perspective</span><h2>Your words, refined.</h2><p>Choose Fix Grammar or Rewrite Paragraph. Review the suggestions, keep what works, and make it yours.</p></div><div id="loadingIndicator" class="hidden mt-6 flex flex-col items-center justify-center p-8 gap-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl" role="status">
+        <div class="suggestions-pane"><div class="results-empty"><span class="eyebrow">A fresh perspective</span><h2>Your words, refined.</h2><p>Fix Grammar corrects mistakes; Rewrite Paragraph explores different phrasing. Check that the meaning and tone still feel like you, and keep only the changes you want.</p></div><div id="loadingIndicator" class="hidden mt-6 flex flex-col items-center justify-center p-8 gap-4 bg-purple-950/20 border border-purple-500/10 rounded-2xl" role="status">
                 <div class="w-10 h-10 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin shadow-[0_0_15px_rgba(168,85,247,0.5)]"></div>
                 <span class="text-purple-400 font-medium tracking-wider text-sm uppercase">Working on your writing…</span>
                 <button id="cancelProcessBtn" class="hidden px-5 py-2.5 rounded-xl text-xs font-bold text-red-400 border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 hover:text-white transition-all cursor-pointer flex items-center justify-center gap-2">
@@ -567,7 +568,7 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
                     <div class="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div id="resultsList" class="relative z-10 text-white/90 text-lg leading-relaxed flex flex-col gap-4"></div>
                 </div>
-            </div></div></div><div id="documentModeContainer" class="hidden" role="tabpanel" aria-labelledby="tabDocument"><div class="document-intro"><p class="eyebrow">Document AI</p><h2>A clearer picture, page by page.</h2><p>Summarize a PDF, extract and fix its text, or explain complex ideas in simpler words.</p></div>
+            </div></div></div><div id="documentModeContainer" class="hidden" role="tabpanel" aria-labelledby="tabDocument"><div class="document-intro"><p class="eyebrow">Document AI</p><h2>A clearer picture, page by page.</h2><p>Upload a PDF or image to summarize it, extract and fix its text, or choose Explain in simple words to make complex ideas easier to understand.</p></div>
             
 <section class="mb-6" data-purpose="upload-section">
 <div class="relative group cursor-pointer border-2 border-dashed border-white/20 rounded-3xl py-16 px-6 flex flex-col items-center justify-center transition-all hover:border-white/40 hover:bg-white/5" id="documentUploadZone" role="button" tabindex="0" aria-label="Upload PDF or image files">
@@ -721,7 +722,7 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
                     </button>
                 </div>
             </div>
-        </div></section><section class="document-feature"><div><p class="eyebrow">Meet Document AI</p><h2>More than a paragraph.</h2><p>Turn PDFs and images into summaries, clearer text and simpler explanations.</p></div><button id="exploreDocumentBtn" type="button">Explore Document AI <span aria-hidden="true">↗</span></button></section><footer class="workspace-footer"><span>Thoughtful writing starts with you.</span><span>AI can make mistakes. Review suggestions before using them.</span></footer>
+        </div></section><section class="document-feature"><div><p class="eyebrow">Meet Document AI</p><h2>More than a paragraph.</h2><p>Keep writing in one place: refine your draft in Text Editor, use Flow Focus to write without distractions, and explore documents with Document AI.</p></div><button id="exploreDocumentBtn" type="button">Explore Document AI <span aria-hidden="true">↗</span></button></section><footer class="workspace-footer"><span>Thoughtful writing starts with you.</span><span>AI can make mistakes. Review suggestions before using them.</span></footer><details class="beta-feedback"><summary>What felt confusing or didn’t work?</summary><p>Help shape GrammarFlow. Tell us what you tried, what you expected and what happened. Please leave out private writing, documents, passwords and account details.</p><a href="mailto:ktanay1704@gmail.com?subject=GrammarFlow%20beta%20feedback&amp;body=What%20I%20tried%3A%0A%0AWhat%20I%20expected%3A%0A%0AWhat%20happened%3A%0A%0ADid%20the%20suggestions%20keep%20my%20meaning%20and%20tone%3F%0A">Email feedback ↗</a><p class="feedback-note">Opens your email app. Nothing is sent until you choose to send it.</p></details>
 
         <!-- TEXT MODE CONTAINER -->
         

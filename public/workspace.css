@@ -114,3 +114,5 @@ body.editorial{background:var(--paper);color:var(--ink);font-family:Inter,system
 .editorial .fov-overlay.momentum-high .fov-hud,.editorial .fov-hud.fade{opacity:.75;transform:translateX(-50%)}
 @media(max-width:600px){.editorial .fov-header{padding:18px 20px;gap:12px}.editorial .fov-brand{font-size:16px}.editorial .fov-close-btn{font-size:11px;padding:8px 12px}.editorial .fov-camera-track{top:20vh;left:24px;right:24px}.editorial .fov-para textarea{font-size:17px!important}.editorial .fov-hud{bottom:18px}}
 @media(prefers-reduced-motion:reduce){.editorial *, .editorial *:before,.editorial *:after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+.workspace-help{font-size:12px;line-height:1.7;color:var(--muted);margin:0 0 16px}.beta-feedback{border-top:1px solid var(--line);padding-top:18px;color:var(--muted);font-size:13px;line-height:1.7}.beta-feedback summary{cursor:pointer;color:var(--ink);font-weight:600}.beta-feedback p{max-width:700px;margin:12px 0}.beta-feedback a{color:var(--accent,#315c45);text-decoration:underline;text-underline-offset:3px}.beta-feedback .feedback-note{font-size:12px}
