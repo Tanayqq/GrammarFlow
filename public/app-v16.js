@@ -403,6 +403,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const setBusy = (busy) => {
         UI.rewriteBtn.disabled  = busy;
         UI.fixGrammarBtn.disabled = busy;
+        UI.processDocumentBtn.disabled = busy || !window.documentProcessor?.files.length;
+        [UI.tabText, UI.tabDocument, UI.documentModeSelect, UI.fileInput,
+            document.getElementById('ocrLanguageSelect')].forEach(control => { if (control) control.disabled = busy; });
         
         const tab = (window.documentProcessor && window.documentProcessor.currentTab) || 'text';
         const loadingIndicator = tab === 'text' ? document.getElementById("loadingIndicator") : document.getElementById("docLoadingIndicator");
@@ -869,6 +872,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         handleFiles(fileList) {
+            if (this.processing) return;
             const rejected = [];
             for (let i = 0; i < fileList.length; i++) {
                 const file = fileList[i];
@@ -886,6 +890,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         removeFile(index) {
+            if (this.processing) return;
             this.files.splice(index, 1);
             this.renderFilePreviews();
             UI.processDocumentBtn.disabled = this.files.length === 0;
@@ -910,36 +915,99 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        async extractPdfText(file) {
-            const arrayBuffer = await file.arrayBuffer();
-            // Mozilla's mitigation for GHSA-wgrm-67xf-hhpq on the legacy PDF.js build.
-            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer, isEvalSupported: false }).promise;
-            let fullText = "";
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-                let pageText = "";
-                for (const item of textContent.items) {
-                    pageText += item.str + (item.hasEOL ? "\n" : " ");
-                }
-                fullText += `\n--- Page ${i} ---\n` + pageText.trim() + "\n\n";
-            }
-            return fullText.trim();
+        checkExtractionCanceled() {
+            if (this.isCanceled) throw new Error('Canceled. Your files have not been changed.');
         }
 
-        async extractImageText(file) {
-            const result = await Tesseract.recognize(file, 'eng');
-            return result.data.text;
+        async extractPdfText(file) {
+            if (!window.pdfjsLib) throw new Error('PDF reader could not load. Please reload and try again.');
+            const arrayBuffer = await file.arrayBuffer();
+            this.checkExtractionCanceled();
+            const task = pdfjsLib.getDocument({ data: arrayBuffer, isEvalSupported: false });
+            this.pdfTask = task;
+            let pdf;
+            try {
+                pdf = await task.promise;
+                if (pdf.numPages > 30) throw new Error('Please split PDFs into files of 30 pages or fewer.');
+                const pages = [];
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    this.checkExtractionCanceled();
+                    renderResults(['Reading PDF page ' + i + ' of ' + pdf.numPages + '…']);
+                    const page = await pdf.getPage(i);
+                    let canvas;
+                    try {
+                        const content = await page.getTextContent();
+                        let text = content.items.map(item => item.str + (item.hasEOL ? '\n' : ' ')).join('').trim();
+                        if (!text) {
+                            const base = page.getViewport({ scale: 1 });
+                            const scale = Math.min(2, Math.sqrt(4000000 / (base.width * base.height)));
+                            const viewport = page.getViewport({ scale });
+                            canvas = document.createElement('canvas');
+                            canvas.width = Math.ceil(viewport.width);
+                            canvas.height = Math.ceil(viewport.height);
+                            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                            text = await this.extractImageText(canvas);
+                        }
+                        // Blank pages are omitted; page labels alone must never reach the AI.
+                        if (text.trim()) pages.push('--- Page ' + i + ' ---\n' + text.trim());
+                    } finally {
+                        if (canvas) { canvas.width = 0; canvas.height = 0; }
+                        if (page.cleanup) page.cleanup();
+                    }
+                }
+                return pages.join('\n\n');
+            } catch (error) {
+                this.checkExtractionCanceled();
+                if (error.name === 'PasswordException') throw new Error('This PDF is password protected. Upload an unlocked copy.');
+                if (error.name === 'InvalidPDFException') throw new Error('This PDF cannot be read. Please export a new copy and try again.');
+                throw error;
+            } finally {
+                this.pdfTask = null;
+                if (task.destroy) await task.destroy();
+            }
+        }
+
+        async extractImageText(source) {
+            if (!window.Tesseract) throw new Error('The text reader could not load. Please reload and try again.');
+            this.checkExtractionCanceled();
+            const language = document.getElementById('ocrLanguageSelect').value;
+            let worker;
+            let timer;
+            let stopped = false;
+            let failOCR;
+            try {
+                const canceled = new Promise((_, reject) => {
+                    failOCR = reject;
+                    this.cancelOCR = () => reject(new Error('Canceled. Your files have not been changed.'));
+                    timer = setTimeout(() => reject(new Error('The text reader could not finish loading. Check your connection and try again.')), 120000);
+                });
+                const recognition = (async () => {
+                    worker = await Tesseract.createWorker(language);
+                    if (this.isCanceled || stopped) { await worker.terminate(); return ''; }
+                    clearTimeout(timer);
+                    timer = setTimeout(() => failOCR(new Error('Text recognition took too long. Try a smaller, clearer image.')), 120000);
+                    const result = await worker.recognize(source);
+                    this.checkExtractionCanceled();
+                    return result.data.text || '';
+                })();
+                return await Promise.race([recognition, canceled]);
+            } finally {
+                stopped = true;
+                clearTimeout(timer);
+                this.cancelOCR = null;
+                if (worker) await worker.terminate();
+            }
         }
 
         async extractAll() {
-            let combinedText = "";
-            for (const file of this.files) {
-                if (file.type === "application/pdf") {
-                    combinedText += await this.extractPdfText(file) + "\n\n";
-                } else if (file.type.startsWith("image/")) {
-                    combinedText += await this.extractImageText(file) + "\n\n";
-                }
+            let combinedText = '';
+            for (const file of [...this.files]) {
+                this.checkExtractionCanceled();
+                const text = file.type === 'application/pdf'
+                    ? await this.extractPdfText(file) : await this.extractImageText(file);
+                this.checkExtractionCanceled();
+                if (!text.trim()) throw new Error(file.name + ': no readable text found. Try a sharper scan and check the scan language.');
+                combinedText += text + '\n\n';
             }
             return combinedText.trim();
         }
@@ -995,7 +1063,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         async processDocument() {
-            if (this.files.length === 0) return;
+            if (this.files.length === 0 || this.processing) return;
+            this.processing = true;
             
             setBusy(true);
             this.isCanceled = false;
@@ -1008,6 +1077,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 cancelBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" stroke-width="2"></rect></svg> Stop Process`;
                 cancelBtn.onclick = () => { 
                     this.isCanceled = true; 
+                    if (this.cancelOCR) this.cancelOCR();
+                    if (this.pdfTask) this.pdfTask.destroy().catch(() => {});
                     cancelBtn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2" stroke-dasharray="25"></circle></svg> Stopping...`; 
                 };
             }
@@ -1020,7 +1091,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const lang = isOCR ? 'Auto' : UI.languageSelect.value;
             const humanizeActive = isOCR ? false : UI.humanizeToggle.checked;
 
-            const cacheKey = this.getCacheKey(mainFile, mode, lang);
+            const cacheKey = this.getCacheKey(mainFile, mode, lang) + '_' + document.getElementById('ocrLanguageSelect').value;
             let intermediateResults = [];
             let startIndex = 0;
 
@@ -1095,6 +1166,7 @@ document.addEventListener("DOMContentLoaded", () => {
             } catch (e) {
                 renderResults([...intermediateResults, `Error: ${e.message}`]);
             } finally {
+                this.processing = false;
                 setBusy(false);
                 if (cancelBtn) { 
                     cancelBtn.classList.add("hidden"); 

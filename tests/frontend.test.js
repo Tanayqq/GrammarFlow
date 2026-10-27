@@ -251,3 +251,78 @@ test('routine Clerk session updates do not replace an open history detail', asyn
     await app.w.clerkListener({ user, session: app.w.Clerk.session });
     assert.equal(app.get('historyContent').textContent, 'Current synthetic history detail');
 });
+
+test('scanned PDF pages use bounded OCR, omit blank pages, and release PDF resources', async t => {
+    const app = await editor(t);
+    let destroyed = 0, scans = 0;
+    app.w.HTMLCanvasElement.prototype.getContext = () => ({});
+    app.w.pdfjsLib = { getDocument: () => ({ destroy: async () => destroyed++, promise: Promise.resolve({
+        numPages: 3, getPage: async number => ({
+            getTextContent: async () => ({ items: number === 1 ? [{ str: 'Digital page.' }] : [] }),
+            getViewport: ({ scale }) => ({ width: 4000 * scale, height: 6000 * scale }),
+            render: ({ viewport }) => { assert.ok(viewport.width * viewport.height <= 4000001); return { promise: Promise.resolve() }; },
+            cleanup: () => {}
+        })
+    }) }) };
+    app.w.documentProcessor.extractImageText = async () => ++scans === 1 ? 'Scanned page.' : '';
+    const text = await app.w.documentProcessor.extractPdfText({ arrayBuffer: async () => new ArrayBuffer(1) });
+    assert.match(text, /Page 1 ---\nDigital page\.[\s\S]*Page 2 ---\nScanned page\./);
+    assert.doesNotMatch(text, /Page 3/); assert.equal(destroyed, 1); assert.equal(scans, 2);
+});
+
+test('blank scans never reach AI and controls recover', async t => {
+    const app = await editor(t), p = app.w.documentProcessor;
+    p.switchTab('document'); app.get('documentModeSelect').value = 'Grammar';
+    p.files = [{ name: 'blank.png', type: 'image/png', size: 10 }];
+    p.extractImageText = async () => '  ';
+    let requests = 0; p.requestWithRetry = async () => { requests++; };
+    await p.processDocument();
+    assert.equal(requests, 0); assert.match(app.get('docResultsList').textContent, /no readable text found/);
+    assert.equal(app.get('processDocumentBtn').disabled, false);
+});
+
+test('OCR uses selected language and passes recognized text to grammar correction', async t => {
+    const app = await editor(t), p = app.w.documentProcessor;
+    p.switchTab('document'); app.get('documentModeSelect').value = 'Grammar';
+    app.get('ocrLanguageSelect').value = 'eng+hin';
+    p.files = [{ name: 'scan.png', type: 'image/png', size: 10 }];
+    let terminated = 0;
+    app.w.Tesseract = { createWorker: async language => {
+        assert.equal(language, 'eng+hin');
+        return { recognize: async () => ({ data: { text: 'She go to school.' } }), terminate: async () => terminated++ };
+    } };
+    p.requestWithRetry = async (text, mode, language, consolidate, humanize) => {
+        assert.equal(text, 'She go to school.'); assert.equal(mode, 'Grammar'); assert.equal(language, 'Auto'); assert.equal(humanize, false);
+        return 'She goes to school.';
+    };
+    await p.processDocument();
+    assert.equal(p.finalOutput, 'She goes to school.'); assert.equal(terminated, 1);
+    assert.equal(app.get('exportControls').classList.contains('hidden'), false);
+});
+
+test('cancel during OCR releases controls, terminates worker, and skips AI', async t => {
+    const app = await editor(t), p = app.w.documentProcessor;
+    p.switchTab('document'); app.get('documentModeSelect').value = 'Grammar';
+    p.files = [{ name: 'scan.png', type: 'image/png', size: 10 }];
+    let terminated = 0, ready;
+    const started = new Promise(resolve => ready = resolve);
+    app.w.Tesseract = { createWorker: async () => ({
+        recognize: () => { ready(); return new Promise(() => {}); }, terminate: async () => terminated++
+    }) };
+    let requests = 0; p.requestWithRetry = async () => { requests++; };
+    const processing = p.processDocument();
+    await started; app.get('docCancelProcessBtn').click(); await processing;
+    assert.equal(requests, 0); assert.equal(terminated, 1);
+    assert.match(app.get('docResultsList').textContent, /Canceled/);
+    assert.equal(app.get('processDocumentBtn').disabled, false);
+});
+
+test('PDF page limits and password failures release the PDF reader', async t => {
+    const app = await editor(t); let destroyed = 0;
+    app.w.pdfjsLib = { getDocument: () => ({ destroy: async () => destroyed++, promise: Promise.resolve({ numPages: 31 }) }) };
+    const file = { arrayBuffer: async () => new ArrayBuffer(1) };
+    await assert.rejects(app.w.documentProcessor.extractPdfText(file), /30 pages/);
+    app.w.pdfjsLib.getDocument = () => ({ destroy: async () => destroyed++, promise: Promise.reject(Object.assign(new Error(), { name: 'PasswordException' })) });
+    await assert.rejects(app.w.documentProcessor.extractPdfText(file), /password protected/);
+    assert.equal(destroyed, 2);
+});
