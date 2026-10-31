@@ -7,6 +7,18 @@ const service = (fetch, globals = {}, redis = { status: 'end' }) => load('src/se
     '../queue': { redisConnection: redis }
 }, { fetch, AbortController, console: quiet, process: { env: { GROQ_API_KEY: 'synthetic-key' } }, ...globals });
 
+test('optional output budgets reach the provider and have separate cache entries', async () => {
+    const bodies=[];
+    const ai=service(async(url,request)=>{bodies.push(JSON.parse(request.body));return success('Explanation.');});
+    await ai.callGroqAPI('p','t',.2,{maxTokens:700});
+    await ai.callGroqAPI('p','t',.2,{maxTokens:900});
+    await ai.callGroqAPI('p','t',.2,{maxTokens:700});
+    assert.equal(bodies.length,2);
+    assert.deepEqual(bodies.map(body=>body.max_completion_tokens),[700,900]);
+    await ai.callGroqAPI('p','t',.2);
+    assert.equal(bodies[2].max_completion_tokens,undefined);
+});
+
 test('provider throttling falls back, deduplicates identical work and caches successful results', async () => {
     let calls = 0;
     const ai = service(async () => ++calls === 1 ? new Response('private provider details', {

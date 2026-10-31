@@ -8,6 +8,18 @@ const validateAIInput = require('../middlewares/validateAIInput');
 
 router.use('/auth', authRoutes);
 
+router.post('/dev-editor/assist', passiveAuth, aiLimiter, async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const assistant = require('../../dev-editor-demo/assistant.cjs');
+    try {
+        assistant.requestFor(req.body);
+    } catch {
+        return res.status(400).json({success:false,error:{message:'Use a valid Python explanation request with at most 12,000 characters.'}});
+    }
+    const result = await assistant.assist(req.body, {localAdmission:false});
+    return res.status(result.status).json(result.body);
+});
+
 // All AI operation routes include passiveAuth so req.userId is set when user is logged in.
 // This ensures history is saved under the user's account, not just guest_session_id.
 router.post('/rewrite',          passiveAuth, validateAIInput, aiLimiter, aiController.rewrite);

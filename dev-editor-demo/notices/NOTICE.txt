@@ -1,0 +1,9 @@
+This static host distributes unmodified Pyodide 314.0.7 runtime files.
+Pyodide source and build instructions are available at:
+https://github.com/pyodide/pyodide/tree/314.0.7
+Pyodide is distributed under the Mozilla Public License 2.0; see
+PYODIDE-LICENSE.txt. Python's license is reproduced in PYTHON-LICENSE.txt.
+Embedded upstream copyright notices remain in the supplied runtime files.
+
+Pinned runtime file hashes are recorded in GrammarFlow's
+dev-editor-demo/runtime-manifest.json.

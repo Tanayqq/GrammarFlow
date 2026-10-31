@@ -243,7 +243,7 @@ const globalSafetyLimiter = rateLimit({
         const coveredRoutes = [
             '/rewrite', '/grammar-fix', '/suggestions', '/autocomplete',
             '/analyze-realtime', '/analyze-smart', '/process-document',
-            '/history', '/job'
+            '/history', '/job', '/dev-editor/assist'
         ];
         
         if (coveredRoutes.some(route => url.includes(route))) {

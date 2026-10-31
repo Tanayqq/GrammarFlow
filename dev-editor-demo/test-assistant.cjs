@@ -1,0 +1,36 @@
+const assert=require('node:assert/strict');
+const {requestFor,assist,parseAnswer}=require('./assistant.cjs');
+const base={code:'print(42)',language:'Hinglish',mode:'explain',steps:[],error:null};
+assert.match(requestFor(base).system,/Roman-script Hinglish/);
+assert.throws(()=>requestFor({...base,mode:'error'}));
+assert.throws(()=>requestFor({...base,code:'x'.repeat(12001)}));
+const context=requestFor({...base,steps:Array.from({length:500},()=>({line:1,event:'line',changed:['x'],vars:{x:'42',secret:'not sent'}}))});
+assert.equal(JSON.parse(context.text).observations.length,12);
+assert.ok(!context.text.includes('not sent'));
+assert.equal(JSON.parse(context.text).observations[0].aboutToRun,'print(42)');
+const selected=requestFor({...base,mode:'why',selectedLine:1});
+assert.deepEqual(JSON.parse(selected.text).selectedSourceLine,{number:1,code:'print(42)'});
+assert.throws(()=>requestFor({...base,mode:'why',selectedLine:2}));
+assert.throws(()=>requestFor({...base,mode:'why',selectedLine:1.5}));
+assert.throws(()=>requestFor({...base,code:'\nprint(42)',mode:'why',selectedLine:1}));
+assert.equal(parseAnswer(JSON.stringify({explanation:'| invented | trace |',proposed_fix:'',caveat:''}),'English'),null);
+assert.equal(parseAnswer(JSON.stringify({explanation:'The loop calculates the total and prints the result.',proposed_fix:'',caveat:''}),'Hinglish'),null);
+assert.ok(parseAnswer(JSON.stringify({explanation:'Yeh loop total ko calculate karta hai aur result dikhata hai.',proposed_fix:'',caveat:'Yeh code ko dekhkar samjhaya gaya hai.'}),'Hinglish'));
+assert.match(requestFor({...base,mode:'error',error:{type:'IndexError',message:'index out of range',frames:[]}}).system,/Never claim unchanged behavior/);
+assert.equal(parseAnswer(JSON.stringify({explanation:'This does not change functionality.',proposed_fix:'print(1)',caveat:''}),'English','error'),null);
+if(!process.env.GROQ_API_KEY)assist(base).then(result=>{assert.equal(result.status,503);console.log('AI context bounds, changed-value filtering, input validation and unconfigured-provider fallback passed.');});
+const load=require('../tests/load-module');
+(async()=>{
+    const models=[];
+    const accepted=JSON.stringify({explanation:'Yeh code result ko print karta hai aur value dikhata hai.',proposed_fix:'',caveat:'Yeh code ko dekhkar samjhaya gaya hai.'});
+    const local=load('dev-editor-demo/assistant.cjs',{'../src/services/ai.service':{callGroqAPI:async(p,t,temp,options)=>{
+        models.push(options.model);return {text:models.length===1?'not valid JSON':accepted};
+    }}},{process:{env:{GROQ_API_KEY:'synthetic'}}});
+    assert.equal((await local.assist(base)).status,200);
+    assert.deepEqual(models,['openai/gpt-oss-20b','openai/gpt-oss-120b']);
+    const whyModels=[];
+    const why=load('dev-editor-demo/assistant.cjs',{'../src/services/ai.service':{callGroqAPI:async(p,t,temp,options)=>{whyModels.push(options.model);return {text:accepted};}}},{process:{env:{GROQ_API_KEY:'synthetic'}}});
+    assert.equal((await why.assist({...base,mode:'why',selectedLine:1})).status,200);
+    assert.deepEqual(whyModels,['openai/gpt-oss-120b']);
+    console.log('Model routing and single bounded format/language repair passed.');
+})().catch(error=>{console.error(error);process.exitCode=1;});

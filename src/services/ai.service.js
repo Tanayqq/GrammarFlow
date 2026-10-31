@@ -1,4 +1,5 @@
-const { redisConnection } = require('../queue');
+// The standalone local Dev Editor has no background queues or shared Redis.
+const redisConnection = process.env.GRAMMARFLOW_LOCAL_DEMO === 'true' ? null : require('../queue').redisConnection;
 const { generateCacheKey } = require('../utils/cacheKey');
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -49,6 +50,7 @@ async function generate(systemPrompt, userText, temperature, opts, key) {
                     model,
                     messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }],
                     temperature,
+                    ...(Number.isInteger(opts.maxTokens) && opts.maxTokens >= 128 && opts.maxTokens <= 4096 && { max_completion_tokens: opts.maxTokens }),
                     ...(opts.responseFormat === 'json' && { response_format: { type: 'json_object' } })
                 }),
                 signal: controller.signal
@@ -100,7 +102,7 @@ async function generate(systemPrompt, userText, temperature, opts, key) {
 
 async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = {}) {
     const opts = typeof options === 'string' ? { model: options } : (options || {});
-    const key = generateCacheKey(JSON.stringify([systemPrompt, temperature, opts.model || '', opts.responseFormat || '']), userText);
+    const key = generateCacheKey(JSON.stringify([systemPrompt, temperature, opts.model || '', opts.responseFormat || '', opts.maxTokens || '']), userText);
     const cached = cache.get(key);
     if (cached?.expires > Date.now() && (!opts.validate || opts.validate(cached.text))) return { text: cached.text, source: 'cache' };
     cache.delete(key);

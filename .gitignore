@@ -38,3 +38,7 @@ GrammarFlow-Windows/
 GrammarFlow-macOS/
 GrammarHost/
 GRAMMARFLOW_LIVE/
+dev-editor-demo/vendor/
+dev-editor-demo/release/
+public/dev-editor/
+experiments/unlimited-ocr/outputs/

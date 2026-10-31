@@ -18,7 +18,7 @@ body.editorial{background:var(--paper);color:var(--ink);font-family:Inter,system
 .intro h1{font-family:'Libre Baskerville',Georgia,serif;font-weight:400;font-size:clamp(29px,3.5vw,43px);line-height:1.35;color:var(--ink);letter-spacing:-1.4px}
 .intro>p:not(.eyebrow){font-size:14px;color:var(--muted);max-width:720px;line-height:1.8;margin-top:16px}
 .editor-card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 8px 32px #263c3305}
-.workspace-tabs{padding:18px 24px;border-bottom:1px solid var(--line)}
+.workspace-tabs{padding:18px 24px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .workspace-tabs>div{display:flex;gap:6px;background:var(--wash);padding:4px;border:0;border-radius:9px;width:fit-content}
 .workspace-tab{background:transparent;border:0;color:var(--muted);padding:10px 22px;font-size:13px;border-radius:6px;font-weight:500}
 .workspace-tab.active{background:white;color:var(--ink);box-shadow:0 1px 5px #263c3312}
