@@ -1,4 +1,5 @@
-const { rateLimit } = require('express-rate-limit');
+const { randomUUID } = require('node:crypto');
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { redisConnection } = require('../queue');
 
 let isRedisRateLimiterDisabled = false;
@@ -12,12 +13,15 @@ class SlidingWindowStore {
     constructor(windowMs) {
         this.windowMs = windowMs;
         this.memoryStore = new Map();
+        this.limit = 100;
+        this.nextCleanup = 0;
     }
 
     init(options) {
         if (options && options.windowMs) {
             this.windowMs = options.windowMs;
         }
+        if (typeof options?.limit === 'number') this.limit = options.limit;
     }
 
     async increment(key) {
@@ -37,7 +41,7 @@ class SlidingWindowStore {
                     redis.call('ZREMRANGEBYSCORE', key, '-inf', clearBefore)
                     
                     -- Add current request timestamp
-                    redis.call('ZADD', key, now, now)
+                    redis.call('ZADD', key, now, ARGV[3])
                     
                     -- Count total hits in the current sliding window
                     local totalHits = redis.call('ZCARD', key)
@@ -46,10 +50,10 @@ class SlidingWindowStore {
                     redis.call('PEXPIRE', key, windowMs * 2)
 
                     -- Find oldest entry in the window to calculate resetTime
-                    local oldest = redis.call('ZRANGE', key, 0, 0)
+                    local oldest = redis.call('ZRANGE', key, 0, 0, 'WITHSCORES')
                     local oldestTime = now
                     if oldest and oldest[1] then
-                        oldestTime = tonumber(oldest[1])
+                        oldestTime = tonumber(oldest[2])
                     end
                     local resetTime = oldestTime + windowMs
 
@@ -61,7 +65,8 @@ class SlidingWindowStore {
                     1,
                     key,
                     now,
-                    windowMs
+                    windowMs,
+                    randomUUID()
                 );
                 
                 return {
@@ -84,6 +89,16 @@ class SlidingWindowStore {
     }
 
     incrementMemory(key, now, windowMs) {
+        if (now >= this.nextCleanup) {
+            for (const [id, values] of this.memoryStore) {
+                if (!values.length || values[values.length - 1] <= now - windowMs) this.memoryStore.delete(id);
+            }
+            this.nextCleanup = now + windowMs;
+        }
+        // Fail closed under a flood of new identifiers instead of growing memory without a bound.
+        if (!this.memoryStore.has(key) && this.memoryStore.size >= 10000) {
+            return { totalHits: this.limit + 1, resetTime: new Date(now + windowMs) };
+        }
         let timestamps = this.memoryStore.get(key) || [];
         const clearBefore = now - windowMs;
         
@@ -91,7 +106,7 @@ class SlidingWindowStore {
         timestamps = timestamps.filter(t => t > clearBefore);
         
         // Add current timestamp
-        timestamps.push(now);
+        if (timestamps.length <= this.limit) timestamps.push(now);
         this.memoryStore.set(key, timestamps);
 
         const oldestTime = timestamps[0] || now;
@@ -134,12 +149,11 @@ class SlidingWindowStore {
 
 /**
  * Resolves user identifier in order:
- * 1. Authenticated User ID (future support)
- * 2. guest_session_id header (current strategy)
- * 3. IP address (fallback)
+ * Verified user ID, otherwise normalized IP. A caller-controlled guest header
+ * must not allow an attacker to reset their rate-limit quota.
  */
 function getRateLimitKey(req, prefix) {
-    const identifier = req.user?.id || req.headers['x-guest-session-id'] || req.ip || 'unknown';
+    const identifier = req.user?.id || ipKeyGenerator(req.ip || '127.0.0.1');
     // Store rateLimitKey on request for logging purposes
     req.rateLimitKey = identifier;
     return `gf:limiter:${prefix}:${identifier}`;
@@ -154,8 +168,10 @@ const limitReachedHandler = (req, res, next, options) => {
     
     console.warn(`[\x1b[31mRATE LIMIT EXCEEDED\x1b[0m] Path: ${req.originalUrl || req.url} | ID: ${req.rateLimitKey || 'unknown'} | Retry-After: ${retryAfter}s`);
     
+    res.setHeader('Retry-After', String(retryAfter));
     res.status(429).json({
-        error: "Too many requests. Please wait a minute.",
+        success: false,
+        error: { message: `Please wait ${retryAfter} seconds before trying again. Your text has not been changed.`, code: 'PLEASE_WAIT' },
         retryAfter: retryAfter
     });
 };
@@ -227,7 +243,7 @@ const globalSafetyLimiter = rateLimit({
         const coveredRoutes = [
             '/rewrite', '/grammar-fix', '/suggestions', '/autocomplete',
             '/analyze-realtime', '/analyze-smart', '/process-document',
-            '/history', '/job'
+            '/history', '/job', '/dev-editor/assist', '/dev-editor/execute'
         ];
         
         if (coveredRoutes.some(route => url.includes(route))) {
@@ -240,6 +256,19 @@ const globalSafetyLimiter = rateLimit({
 });
 
 module.exports = {
+    executionLimiter: rateLimit({
+        windowMs:60000,limit:10,standardHeaders:true,legacyHeaders:false,
+        store:new SlidingWindowStore(60000),keyGenerator:req=>getRateLimitKey(req,'execution'),handler:limitReachedHandler
+    }),
+    authLimiter: rateLimit({
+        windowMs: 15 * 60 * 1000,
+        limit: 20,
+        standardHeaders: true,
+        legacyHeaders: false,
+        store: new SlidingWindowStore(15 * 60 * 1000),
+        keyGenerator: req => `gf:limiter:auth:${ipKeyGenerator(req.ip || '127.0.0.1')}`,
+        handler: limitReachedHandler
+    }),
     aiLimiter,
     docLimiter,
     readLimiter,

@@ -3,6 +3,15 @@
  * Phase 4: Smart Suggestions Engine + Context-Aware Intelligence
  */
 
+const escapeHTML = value => String(value ?? '').replace(/[&<>"']/g,
+    char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+const renderMarkdown = text => {
+    if (!window.marked || !window.DOMPurify) return escapeHTML(text).replace(/\n/g, '<br>');
+    return DOMPurify.sanitize(marked.parse(String(text)), {
+        USE_PROFILES: { html: true }, FORBID_TAGS: ['img', 'style', 'form', 'input', 'button', 'textarea']
+    });
+};
+
 const CONFIG = {
     PRODUCTION_API_URL: "https://grammarflow-brain.onrender.com",
     API_VERSION: "/api/v1",
@@ -44,7 +53,7 @@ const GrammarFlowAPI = {
         // Check window.Clerk exists AND user is falsy (null or undefined = signed out).
         const clerkIsReady = !!(window.Clerk);
         const clerkUserSignedIn = !!(window.Clerk && window.Clerk.user);
-        if (clerkIsReady && !clerkUserSignedIn) {
+        if (clerkIsReady && !clerkUserSignedIn && !token?.startsWith("gf_session_")) {
             // Clerk is active but user is signed out — forcefully clear any stale token
             if (token) {
                 localStorage.removeItem("gf_token");
@@ -80,10 +89,28 @@ const GrammarFlowAPI = {
             url += `${separator}_=${Date.now()}`;
         }
         
-        const response = await fetch(url, options);
-        const data = await response.json();
-        if (!response.ok || !data.success) throw new Error(data.error?.message || "Server error");
-        return data;
+        const controller = new AbortController();
+        options.signal = controller.signal;
+        const timeout = setTimeout(() => controller.abort(), 55000);
+        try {
+            const response = await fetch(url, options);
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok || !data.success) {
+                const error = new Error(data.error?.message || (typeof data.error === 'string' ? data.error :
+                    'The service is temporarily unavailable. Your text has not been changed. Please try again shortly.'));
+                error.status = response.status;
+                error.retryAfter = Number(data.retryAfter || response.headers?.get('Retry-After')) || 30;
+                throw error;
+            }
+            return data;
+        } catch (error) {
+            if (error.name === 'AbortError' || error instanceof TypeError) {
+                throw new Error('The connection took too long or was interrupted. Your text has not been changed. Please try again.');
+            }
+            throw error;
+        } finally {
+            clearTimeout(timeout);
+        }
     }
 };
 
@@ -148,7 +175,8 @@ class ShadowHighlighter {
             .filter(h => h.original && html.includes(h.original))
             .sort((a, b) => html.lastIndexOf(b.original) - html.lastIndexOf(a.original));
         sorted.forEach(h => {
-            const type = (h.category || 'grammar').toLowerCase();
+            const category = String(h.category || 'grammar').toLowerCase();
+            const type = ['grammar', 'clarity', 'flow', 'transition', 'tone', 'authenticity'].includes(category) ? category : 'grammar';
             const esc = h.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             html = html.replace(new RegExp(esc, 'g'), `<mark class="highlight-${type}">$&</mark>`);
         });
@@ -294,6 +322,22 @@ document.addEventListener("DOMContentLoaded", () => {
         processDocumentBtn: document.getElementById("processDocumentBtn")
     };
 
+    const saveEditorDraft = () => {
+        try { localStorage.setItem('gf_editor_draft', UI.inputText.value); } catch (_) {}
+    };
+    const clearEditorDraft = () => {
+        UI.inputText.value = '';
+        for (const key of Object.keys(localStorage)) {
+            if (['gf_editor_draft', 'gf_flow_v1', 'gf_flow_v2', 'gf_last_doc_result', 'gf_last_doc_mode'].includes(key) ||
+                key.startsWith('gf_doc_') || key.startsWith('gf_history_detail_')) localStorage.removeItem(key);
+        }
+        UI.resultsList.textContent = '';
+        hideAssistant();
+    };
+    try { UI.inputText.value = localStorage.getItem('gf_editor_draft') ?? UI.inputText.value; } catch (_) {}
+    UI.inputText.addEventListener('input', saveEditorDraft);
+    window.addEventListener('pagehide', saveEditorDraft);
+
     const momentum        = new MomentumEngine();
     const highlighter     = new ShadowHighlighter(UI.inputText, UI.highlighterOverlay);
     const contextAnalyzer = new ContextAnalyzer();
@@ -311,7 +355,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const sug = allSuggestions[currentSugIdx];
 
         UI.suggestionLabel.innerText = (sug.category || 'SUGGESTION').toUpperCase();
-        UI.suggestionText.innerHTML  = `Consider: "<b>${sug.suggestion}</b>" <span style="opacity:0.55;font-size:0.8rem">(${sug.reason || ''})</span>`;
+        UI.suggestionText.innerHTML = `<p class="suggestion-replacement">${escapeHTML(sug.suggestion)}</p><p class="suggestion-reason">${escapeHTML(sug.reason)}</p>`;
 
         if (allSuggestions.length > 1) {
             UI.suggestionCounter.textContent    = `${currentSugIdx + 1} of ${allSuggestions.length}`;
@@ -346,6 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const sug = allSuggestions[currentSugIdx];
         if (!sug) return;
         UI.inputText.value = UI.inputText.value.replace(sug.original, sug.suggestion);
+        saveEditorDraft();
         allSuggestions.splice(currentSugIdx, 1);
         if (!allSuggestions.length) {
             hideAssistant();
@@ -358,6 +403,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const setBusy = (busy) => {
         UI.rewriteBtn.disabled  = busy;
         UI.fixGrammarBtn.disabled = busy;
+        UI.processDocumentBtn.disabled = busy || !window.documentProcessor?.files.length;
+        [UI.tabText, UI.tabDocument, UI.documentModeSelect, UI.fileInput, UI.languageSelect, UI.styleSelect, UI.toneSelect, UI.humanizeToggle,
+            document.getElementById('ocrLanguageSelect')].forEach(control => { if (control) control.disabled = busy; });
         
         const tab = (window.documentProcessor && window.documentProcessor.currentTab) || 'text';
         const loadingIndicator = tab === 'text' ? document.getElementById("loadingIndicator") : document.getElementById("docLoadingIndicator");
@@ -390,7 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const correctedText = parts[0].trim();
                 const detailedMarkdown = parts[1].trim();
 
-                const formattedDetailed = window.marked ? marked.parse(detailedMarkdown) : detailedMarkdown.replace(/\n/g, '<br>');
+                const formattedDetailed = renderMarkdown(detailedMarkdown);
 
                 // Unique ID for this tab instance to avoid ID collisions in multiple cards
                 const tabId = "tab_" + Math.random().toString(36).substring(2, 9);
@@ -404,8 +452,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     <!-- Tab Contents -->
                     <div class="tab-content-${tabId}" id="${tabId}_corrected">
-                        <div class="result-text text-gray-200 text-sm md:text-base leading-relaxed select-all" style="white-space: pre-wrap;">${correctedText}</div>
-                        <button class="copy-btn-mini" onclick="navigator.clipboard.writeText(document.getElementById('${tabId}_corrected').querySelector('.result-text').innerText || document.getElementById('${tabId}_corrected').querySelector('.result-text').textContent)">
+                        <div class="result-text text-gray-200 text-sm md:text-base leading-relaxed select-all" style="white-space: pre-wrap;">${escapeHTML(correctedText)}</div>
+                        <button class="copy-btn-mini" aria-label="Copy result" onclick="navigator.clipboard.writeText(document.getElementById('${tabId}_corrected').querySelector('.result-text').innerText || document.getElementById('${tabId}_corrected').querySelector('.result-text').textContent)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -415,7 +463,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     <div class="tab-content-${tabId} hidden" id="${tabId}_detailed">
                         <div class="result-text prose prose-invert max-w-none text-gray-300 text-sm space-y-3">${formattedDetailed}</div>
-                        <button class="copy-btn-mini" onclick="navigator.clipboard.writeText(document.getElementById('${tabId}_detailed').querySelector('.result-text').innerText || document.getElementById('${tabId}_detailed').querySelector('.result-text').textContent)">
+                        <button class="copy-btn-mini" aria-label="Copy result" onclick="navigator.clipboard.writeText(document.getElementById('${tabId}_detailed').querySelector('.result-text').innerText || document.getElementById('${tabId}_detailed').querySelector('.result-text').textContent)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -450,16 +498,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 let formattedHtml = text;
                 if (window.marked) {
                     marked.setOptions({ breaks: true, gfm: true });
-                    formattedHtml = marked.parse(text);
+                    formattedHtml = renderMarkdown(text);
                 } else {
-                    formattedHtml = text.replace(/\n/g, '<br>');
+                    formattedHtml = escapeHTML(text).replace(/\n/g, '<br>');
                 }
 
                 card.innerHTML = `
                     <div class="result-text prose prose-invert max-w-none text-gray-200 text-sm md:text-base space-y-4">
                         ${formattedHtml}
                     </div>
-                    <button class="copy-btn-mini" onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText || this.previousElementSibling.textContent)">
+                    <button class="copy-btn-mini" aria-label="Copy result" onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText || this.previousElementSibling.textContent)">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -721,10 +769,29 @@ document.addEventListener("DOMContentLoaded", () => {
         bindEvents() {
             // Tabs
             UI.tabText.onclick = () => this.switchTab('text');
+            document.getElementById('exploreDocumentBtn').onclick = () => {
+                this.switchTab('document');
+                UI.tabDocument.focus();
+            };
+            [UI.tabText, UI.tabDocument].forEach(tab => {
+                tab.addEventListener('keydown', event => {
+                    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                    event.preventDefault();
+                    const target = event.key === 'Home' ? 'text' : event.key === 'End' ? 'document' : this.currentTab === 'text' ? 'document' : 'text';
+                    this.switchTab(target);
+                    (target === 'text' ? UI.tabText : UI.tabDocument).focus();
+                });
+            });
             UI.tabDocument.onclick = () => this.switchTab('document');
 
             // Upload Zone
             UI.documentUploadZone.onclick = () => UI.fileInput.click();
+            UI.documentUploadZone.onkeydown = event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    UI.fileInput.click();
+                }
+            };
             UI.documentUploadZone.ondragover = (e) => { e.preventDefault(); UI.documentUploadZone.classList.add('dragover'); };
             UI.documentUploadZone.ondragleave = () => UI.documentUploadZone.classList.remove('dragover');
             UI.documentUploadZone.ondrop = (e) => {
@@ -739,8 +806,17 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         switchTab(tab) {
+            if (this.processing) return;
             this.currentTab = tab;
+            const isText = tab === 'text';
+            document.getElementById('textActionContainer').classList.toggle('hidden', !isText);
+            document.getElementById('documentActionContainer').classList.toggle('hidden', isText);
+            UI.tabText.setAttribute('aria-selected', String(isText));
+            UI.tabDocument.setAttribute('aria-selected', String(!isText));
+            UI.tabText.tabIndex = isText ? 0 : -1;
+            UI.tabDocument.tabIndex = isText ? -1 : 0;
             if (tab === 'text') {
+                UI.globalControls.style.display = '';
                 UI.tabText.classList.add('active');
                 UI.tabDocument.classList.remove('active');
                 UI.textModeContainer.classList.remove('hidden');
@@ -797,17 +873,25 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         handleFiles(fileList) {
+            if (this.processing) return;
+            const rejected = [];
             for (let i = 0; i < fileList.length; i++) {
                 const file = fileList[i];
-                if (file.type === "application/pdf" || file.type.startsWith("image/")) {
-                    this.files.push(file);
-                }
+                if (file.type !== "application/pdf" && !file.type.startsWith("image/")) {
+                    rejected.push(`${file.name}: choose a PDF or image.`);
+                } else if (file.size > 10 * 1024 * 1024) {
+                    rejected.push(`${file.name}: exceeds 10 MB.`);
+                } else if (this.files.length >= 5) {
+                    rejected.push(`${file.name}: only five files can be processed at once.`);
+                } else this.files.push(file);
             }
             this.renderFilePreviews();
             UI.processDocumentBtn.disabled = this.files.length === 0;
+            if (rejected.length) alert(rejected.join('\n'));
         }
 
         removeFile(index) {
+            if (this.processing) return;
             this.files.splice(index, 1);
             this.renderFilePreviews();
             UI.processDocumentBtn.disabled = this.files.length === 0;
@@ -822,7 +906,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     chip.className = 'flex items-center gap-2 bg-[#252545]/80 border border-white/10 rounded-full px-4 py-2 text-sm text-gray-200 hover:border-purple-500/40 hover:bg-[#2d2d55] transition-all shadow-[0_0_10px_rgba(168,85,247,0.05)] cursor-default';
                     chip.innerHTML = `
                         <svg class="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"></path></svg>
-                        <span class="truncate max-w-[180px] font-medium">${file.name}</span> 
+                        <span class="truncate max-w-[180px] font-medium">${escapeHTML(file.name)}</span>
                         <span class="remove-file text-gray-400 hover:text-red-400 font-bold text-lg ml-2 cursor-pointer transition-colors leading-none" onclick="window.documentProcessor.removeFile(${idx})">×</span>
                     `;
                     UI.filePreviewContainer.appendChild(chip);
@@ -832,35 +916,99 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
-        async extractPdfText(file) {
-            const arrayBuffer = await file.arrayBuffer();
-            const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
-            let fullText = "";
-            for (let i = 1; i <= pdf.numPages; i++) {
-                const page = await pdf.getPage(i);
-                const textContent = await page.getTextContent();
-                let pageText = "";
-                for (const item of textContent.items) {
-                    pageText += item.str + (item.hasEOL ? "\n" : " ");
-                }
-                fullText += `\n--- Page ${i} ---\n` + pageText.trim() + "\n\n";
-            }
-            return fullText.trim();
+        checkExtractionCanceled() {
+            if (this.isCanceled) throw new Error('Canceled. Your files have not been changed.');
         }
 
-        async extractImageText(file) {
-            const result = await Tesseract.recognize(file, 'eng');
-            return result.data.text;
+        async extractPdfText(file) {
+            if (!window.pdfjsLib) throw new Error('PDF reader could not load. Please reload and try again.');
+            const arrayBuffer = await file.arrayBuffer();
+            this.checkExtractionCanceled();
+            const task = pdfjsLib.getDocument({ data: arrayBuffer, isEvalSupported: false });
+            this.pdfTask = task;
+            let pdf;
+            try {
+                pdf = await task.promise;
+                if (pdf.numPages > 30) throw new Error('Please split PDFs into files of 30 pages or fewer.');
+                const pages = [];
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    this.checkExtractionCanceled();
+                    renderResults(['Reading PDF page ' + i + ' of ' + pdf.numPages + '…']);
+                    const page = await pdf.getPage(i);
+                    let canvas;
+                    try {
+                        const content = await page.getTextContent();
+                        let text = content.items.map(item => item.str + (item.hasEOL ? '\n' : ' ')).join('').trim();
+                        if (!text) {
+                            const base = page.getViewport({ scale: 1 });
+                            const scale = Math.min(2, Math.sqrt(4000000 / (base.width * base.height)));
+                            const viewport = page.getViewport({ scale });
+                            canvas = document.createElement('canvas');
+                            canvas.width = Math.ceil(viewport.width);
+                            canvas.height = Math.ceil(viewport.height);
+                            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                            text = await this.extractImageText(canvas);
+                        }
+                        // Blank pages are omitted; page labels alone must never reach the AI.
+                        if (text.trim()) pages.push('--- Page ' + i + ' ---\n' + text.trim());
+                    } finally {
+                        if (canvas) { canvas.width = 0; canvas.height = 0; }
+                        if (page.cleanup) page.cleanup();
+                    }
+                }
+                return pages.join('\n\n');
+            } catch (error) {
+                this.checkExtractionCanceled();
+                if (error.name === 'PasswordException') throw new Error('This PDF is password protected. Upload an unlocked copy.');
+                if (error.name === 'InvalidPDFException') throw new Error('This PDF cannot be read. Please export a new copy and try again.');
+                throw error;
+            } finally {
+                this.pdfTask = null;
+                if (task.destroy) await task.destroy();
+            }
+        }
+
+        async extractImageText(source) {
+            if (!window.Tesseract) throw new Error('The text reader could not load. Please reload and try again.');
+            this.checkExtractionCanceled();
+            const language = document.getElementById('ocrLanguageSelect').value;
+            let worker;
+            let timer;
+            let stopped = false;
+            let failOCR;
+            try {
+                const canceled = new Promise((_, reject) => {
+                    failOCR = reject;
+                    this.cancelOCR = () => reject(new Error('Canceled. Your files have not been changed.'));
+                    timer = setTimeout(() => reject(new Error('The text reader could not finish loading. Check your connection and try again.')), 120000);
+                });
+                const recognition = (async () => {
+                    worker = await Tesseract.createWorker(language);
+                    if (this.isCanceled || stopped) { await worker.terminate(); return ''; }
+                    clearTimeout(timer);
+                    timer = setTimeout(() => failOCR(new Error('Text recognition took too long. Try a smaller, clearer image.')), 120000);
+                    const result = await worker.recognize(source);
+                    this.checkExtractionCanceled();
+                    return result.data.text || '';
+                })();
+                return await Promise.race([recognition, canceled]);
+            } finally {
+                stopped = true;
+                clearTimeout(timer);
+                this.cancelOCR = null;
+                if (worker) await worker.terminate();
+            }
         }
 
         async extractAll() {
-            let combinedText = "";
-            for (const file of this.files) {
-                if (file.type === "application/pdf") {
-                    combinedText += await this.extractPdfText(file) + "\n\n";
-                } else if (file.type.startsWith("image/")) {
-                    combinedText += await this.extractImageText(file) + "\n\n";
-                }
+            let combinedText = '';
+            for (const file of [...this.files]) {
+                this.checkExtractionCanceled();
+                const text = file.type === 'application/pdf'
+                    ? await this.extractPdfText(file) : await this.extractImageText(file);
+                this.checkExtractionCanceled();
+                if (!text.trim()) throw new Error(file.name + ': no readable text found. Try a sharper scan and check the scan language.');
+                combinedText += text + '\n\n';
             }
             return combinedText.trim();
         }
@@ -876,10 +1024,10 @@ document.addEventListener("DOMContentLoaded", () => {
             return weights[lang] || 1.5;
         }
 
-        chunkText(text, language = 'English') {
+        chunkText(text, language = 'English', mode = '') {
             const weight = this.getLanguageWeight(language);
             const baseMaxChars = 6000; // Increased to speed up processing
-            const maxChars = Math.floor(baseMaxChars / weight);
+            const maxChars = mode === 'Explain' ? 3000 : Math.floor(baseMaxChars / weight);
             
             if (text.length <= maxChars) return [text];
             const chunks = [];
@@ -904,7 +1052,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     breakIdx += 1;
                 }
                 
-                chunks.push(text.substring(currentIdx, breakIdx).trim());
+                chunks.push(text.substring(currentIdx, breakIdx));
                 currentIdx = breakIdx;
             }
             return chunks;
@@ -916,7 +1064,8 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         async processDocument() {
-            if (this.files.length === 0) return;
+            if (this.files.length === 0 || this.processing) return;
+            this.processing = true;
             
             setBusy(true);
             this.isCanceled = false;
@@ -929,6 +1078,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 cancelBtn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" ry="2" stroke-width="2"></rect></svg> Stop Process`;
                 cancelBtn.onclick = () => { 
                     this.isCanceled = true; 
+                    if (this.cancelOCR) this.cancelOCR();
+                    if (this.pdfTask) this.pdfTask.destroy().catch(() => {});
                     cancelBtn.innerHTML = `<svg class="w-4 h-4 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke-width="2" stroke-dasharray="25"></circle></svg> Stopping...`; 
                 };
             }
@@ -941,32 +1092,33 @@ document.addEventListener("DOMContentLoaded", () => {
             const lang = isOCR ? 'Auto' : UI.languageSelect.value;
             const humanizeActive = isOCR ? false : UI.humanizeToggle.checked;
 
-            const cacheKey = this.getCacheKey(mainFile, mode, lang);
+            let cacheKey;
+            let totalParts = 0;
             let intermediateResults = [];
             let startIndex = 0;
 
-            const savedProgress = localStorage.getItem(cacheKey);
-            if (savedProgress) {
-                const parsed = JSON.parse(savedProgress);
-                const resume = await this.promptResume();
-                if (resume) {
+            try {
+                this.finalOutput = '';
+                renderResults(['Extracting text from files…']);
+                const text = await this.extractAll();
+                if (!text || !text.trim()) throw new Error('No readable text could be extracted from the document.');
+                const chunks = this.chunkText(text, lang, mode);
+                totalParts = chunks.length;
+                const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify([
+                    'document-v4', text, mode, lang, UI.styleSelect.value, UI.toneSelect.value, humanizeActive
+                ])));
+                cacheKey = 'gf_doc_v4_' + Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, '0')).join('');
+                let parsed = null;
+                try {
+                    parsed = JSON.parse(localStorage.getItem(cacheKey));
+                    if (!parsed || !Array.isArray(parsed.results) || !parsed.results.every(r => typeof r === 'string') ||
+                        !Number.isInteger(parsed.nextChunk) || parsed.nextChunk !== parsed.results.length ||
+                        parsed.nextChunk > chunks.length || parsed.total !== chunks.length) parsed = null;
+                } catch (_) { /* Resume is optional when browser storage is unavailable. */ }
+                if (parsed && await this.promptResume()) {
                     intermediateResults = parsed.results;
                     startIndex = parsed.nextChunk;
-                } else {
-                    localStorage.removeItem(cacheKey);
                 }
-            }
-
-            try {
-                renderResults([...intermediateResults, "Extracting text from files..."]);
-                const text = await this.extractAll();
-                
-                if (!text || text.trim().length === 0) {
-                    throw new Error("No readable text could be extracted from the document.");
-                }
-
-                const chunks = this.chunkText(text, lang);
-                
                 for (let i = startIndex; i < chunks.length; i++) {
                     if (this.isCanceled) throw new Error("Canceled by user.");
                     
@@ -976,14 +1128,18 @@ document.addEventListener("DOMContentLoaded", () => {
                     intermediateResults.push(chunkResult);
                     
                     // Save to Cache
-                    localStorage.setItem(cacheKey, JSON.stringify({ results: intermediateResults, nextChunk: i + 1 }));
+                    try { localStorage.setItem(cacheKey, JSON.stringify({ results: intermediateResults, nextChunk: i + 1, total: chunks.length })); } catch (_) { /* Processing still works without local resume storage. */ }
                     
                     // Progressive Display
-                    renderResults(intermediateResults);
+                    renderResults([...intermediateResults, 'In progress: ' + intermediateResults.length + ' of ' + chunks.length + ' parts completed.']);
                     
                     if (i < chunks.length - 1) {
-                        renderResults([...intermediateResults, `Waiting 5s to maintain AI stability...`]);
-                        await new Promise(r => setTimeout(r, 5000));
+                        renderResults([...intermediateResults, `In progress: ${i + 1} of ${chunks.length} parts completed. Preparing the next part…`]);
+                        // Stay below the existing five-document-requests/minute allowance.
+                        for (let second = 0; second < 13; second++) {
+                            if (this.isCanceled) throw new Error('Canceled.');
+                            await new Promise(r => setTimeout(r, 1000));
+                        }
                     }
                 }
 
@@ -1009,16 +1165,17 @@ document.addEventListener("DOMContentLoaded", () => {
                 const modeLabelEl = document.getElementById("docResultModeLabel");
                 if (modeLabelEl) {
                     if (mode === "Summarize") modeLabelEl.textContent = "Summary Document Ready";
-                    else if (mode === "Explain") modeLabelEl.textContent = "10-Year-Old Explanation Ready";
+                    else if (mode === "Explain") modeLabelEl.textContent = "Simple Explanation Ready";
                     else if (mode === "Grammar") modeLabelEl.textContent = "Extracted & Corrected Text Ready";
                     else modeLabelEl.textContent = "Document Processed";
                 }
                 if (exportControls) exportControls.classList.remove("hidden");
-                localStorage.removeItem(cacheKey); // Clear cache on success
+                try { localStorage.removeItem(cacheKey); } catch (_) {} // Clear cache on success
 
             } catch (e) {
-                renderResults([...intermediateResults, `Error: ${e.message}`]);
+                renderResults([...(intermediateResults.length ? ['INCOMPLETE: ' + intermediateResults.length + ' of ' + totalParts + ' parts completed. The text below is only a partial result. Process the same document again and choose Resume to continue.'] : []), ...intermediateResults, `Error: ${e.message}`]);
             } finally {
+                this.processing = false;
                 setBusy(false);
                 if (cancelBtn) { 
                     cancelBtn.classList.add("hidden"); 
@@ -1031,7 +1188,7 @@ document.addEventListener("DOMContentLoaded", () => {
             let retries = 0;
             // Use explicitly passed humanize value, else read from UI
             const humanizeVal = (humanize !== null) ? humanize : UI.humanizeToggle.checked;
-            while (retries < 5) {
+            while (retries < 2) {
                 try {
                     const res = await GrammarFlowAPI.request("/process-document", {
                         text, mode, language: lang,
@@ -1042,9 +1199,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 } catch (err) {
                     retries++;
                     if (this.isCanceled) throw new Error("Canceled.");
-                    if (retries >= 5) throw err;
-                    console.warn(`Rate limit hit. Waiting ${10 * retries}s before retry...`);
-                    await new Promise(r => setTimeout(r, 10000 * retries)); // 10s, 20s, 30s... backoff
+                    if (retries >= 2 || ![429, 503].includes(err.status) || err.retryAfter > 60) throw err;
+                    // Retry once, respecting the server delay. Cancellation stays responsive while waiting.
+                    for (let seconds = 0; seconds < Math.max(1, err.retryAfter); seconds++) {
+                        if (this.isCanceled) throw new Error('Canceled.');
+                        await new Promise(r => setTimeout(r, 1000));
+                    }
+                    if (this.isCanceled) throw new Error('Canceled.');
                 }
             }
         }
@@ -1133,7 +1294,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     modeTitle = "Document Summary";
                     filenamePrefix = "GrammarFlow_Summary";
                 } else if (mode === "Explain") {
-                    modeTitle = "Explain Like a 10-Year-Old";
+                    modeTitle = "Explain in simple words";
                     filenamePrefix = "GrammarFlow_Explanation";
                 } else if (mode === "Grammar") {
                     modeTitle = "Extracted & Corrected Text (OCR)";
@@ -1153,8 +1314,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (rawText.includes("===GF_SEPARATOR===")) {
                     const sections = rawText.split("===GF_SEPARATOR===");
                     if (sections.length === 2) {
-                        const correctedHtml = window.marked ? marked.parse(sections[0].trim()) : sections[0].replace(/\n/g, '<br>');
-                        const analysisHtml = window.marked ? marked.parse(sections[1].trim()) : sections[1].replace(/\n/g, '<br>');
+                        const correctedHtml = renderMarkdown(sections[0].trim());
+                        const analysisHtml = renderMarkdown(sections[1].trim());
                         contentHtml = `
                             <div style="margin-bottom: 24px;">
                                 <h2 style="color: #6d28d9; font-size: 16px; font-weight: 700; margin-top: 10px; margin-bottom: 8px; border-bottom: 1.5px solid #e5e7eb; padding-bottom: 4px;">Corrected Text</h2>
@@ -1172,8 +1333,8 @@ document.addEventListener("DOMContentLoaded", () => {
                             if (s % 2 === 0) allCorrected.push(sections[s].trim());
                             else allAnalysis.push(sections[s].trim());
                         }
-                        const correctedHtml = window.marked ? marked.parse(allCorrected.join("\n\n")) : allCorrected.join('<br><br>');
-                        const analysisHtml = window.marked ? marked.parse(allAnalysis.join("\n\n---\n\n")) : allAnalysis.join('<br><br>');
+                        const correctedHtml = renderMarkdown(allCorrected.join("\n\n"));
+                        const analysisHtml = renderMarkdown(allAnalysis.join("\n\n---\n\n"));
                         contentHtml = `
                             <div style="margin-bottom: 24px;">
                                 <h2 style="color: #6d28d9; font-size: 16px; font-weight: 700; margin-top: 10px; margin-bottom: 8px; border-bottom: 1.5px solid #e5e7eb; padding-bottom: 4px;">Corrected Text</h2>
@@ -1186,7 +1347,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         `;
                     }
                 } else {
-                    contentHtml = window.marked ? marked.parse(rawText) : rawText.replace(/\n/g, '<br>');
+                    contentHtml = renderMarkdown(rawText);
                 }
 
                 const timestamp = new Date().toLocaleString(undefined, {
@@ -1385,7 +1546,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const closeSettingsBtn = document.getElementById("closeSettingsBtn");
 
     // Helper: Esc text helper
-    const escHtml = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const escHtml = escapeHTML;
 
     // Modal Control: Open History
     if (btnHistory && historyModal) {
@@ -1512,10 +1673,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 // Add state listener to update UI when session changes
                 let wasLoggedIn = !!(window.Clerk && window.Clerk.user);
+                let lastClerkUserId = window.Clerk.user?.id;
                 window.Clerk.addListener(async ({ session, user }) => {
                     console.log("[AUTH] Clerk auth state changed:", user ? user.primaryEmailAddress?.emailAddress : "No user");
 
                     if (!user && wasLoggedIn) {
+                        clearEditorDraft();
+                        lastClerkUserId = null;
                         // User just signed out — IMMEDIATELY clear all auth data BEFORE any async work
                         // This prevents race conditions where checkAuthState still sees the old user
                         console.log("[AUTH] Sign-out detected. Clearing all auth state immediately.");
@@ -1535,6 +1699,10 @@ document.addEventListener("DOMContentLoaded", () => {
                             loadHistory();
                         }
                     } else if (user) {
+                        // Token refreshes are not account changes; keep the current history view intact.
+                        if (wasLoggedIn && lastClerkUserId === user.id) return;
+                        if (lastClerkUserId && lastClerkUserId !== user.id) clearEditorDraft();
+                        lastClerkUserId = user.id;
                         wasLoggedIn = true;
                         // Clear history cache on login to refresh with new user's data
                         localStorage.removeItem("gf_history_cache");
@@ -1636,7 +1804,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 signOutBtn.classList.remove("hidden");
                 return;
             }
-        } else if (clerkLoaded && window.Clerk && !window.Clerk.user) {
+        } else if (clerkLoaded && window.Clerk && !window.Clerk.user && !token?.startsWith("gf_session_")) {
             // Explicitly logged out from Clerk
             localStorage.removeItem("gf_token");
             localStorage.removeItem("gf_history_cache");
@@ -1665,26 +1833,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             } catch (err) {
                 console.warn("[AUTH] Passive sync check failed/offline:", err.message);
-                if (token.startsWith("mock_token_")) {
-                    try {
-                        const parts = token.split("_");
-                        const email = parts[2] || "guest@grammarflow.com";
-                        const name = parts[3] ? decodeURIComponent(parts[3]) : "Guest User";
-                        if (userName) userName.textContent = name;
-                        if (userEmail) userEmail.textContent = email;
-                        profileSection.classList.remove("hidden");
-                        
-                        // Offline yellow dot
-                        syncStatusDot.className = "inline-block w-2.5 h-2.5 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.6)] animate-pulse shrink-0";
-                        syncText.textContent = "Offline. Local changes will sync when connection is restored.";
-                        
-                        signInBtn.classList.add("hidden");
-                        signOutBtn.classList.remove("hidden");
-                        return;
-                    } catch (e) {
-                        console.error("[AUTH] Failed to decode offline mock token", e);
-                    }
-                }
+
             }
         }
         
@@ -1920,7 +2069,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     // Step 2: Register the user in the database with their password
                     verifyBtn.textContent = "Creating Account...";
-                    const registerRes = await GrammarFlowAPI.request("/auth/register", { email, name, password }, "POST");
+                    const registerRes = await GrammarFlowAPI.request("/auth/register", { email, name, password, verificationToken: verifyRes.data.verificationToken }, "POST");
                     if (!registerRes.success) {
                         alert("Registration Failed: " + (registerRes.error?.message || "Could not create account."));
                         verifyBtn.disabled = false;
@@ -1929,8 +2078,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
 
                     // Step 3: Store token and sync session
-                    const registeredUser = registerRes.data.user;
-                    const token = `mock_token_${email}_${encodeURIComponent(registeredUser.name || name)}`;
+                    const token = registerRes.data.token;
                     localStorage.setItem("gf_token", token);
                     
                     // Clear history cache to avoid leak
@@ -2012,8 +2160,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const res = await GrammarFlowAPI.request("/auth/login", { email, password }, "POST");
                     if (res.success && res.data && res.data.user) {
                         document.getElementById("confirmLoginBtn").textContent = "Syncing...";
-                        const nameToUse = res.data.user.name || 'Test User';
-                        const token = `mock_token_${email}_${encodeURIComponent(nameToUse)}`;
+                        const token = res.data.token;
                         localStorage.setItem("gf_token", token);
                         
                         // Clear history cache to avoid leak
@@ -2038,6 +2185,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
 
     const performSignOut = () => {
+        clearEditorDraft();
         localStorage.removeItem("gf_token");
         localStorage.removeItem("gf_history_cache");
         localStorage.removeItem("guest_session_id");
@@ -2159,13 +2307,13 @@ document.addEventListener("DOMContentLoaded", () => {
                         ${iconSvg}
                     </div>
                     <div class="flex flex-col min-w-0">
-                        <span class="text-xs font-bold text-gray-200 capitalize tracking-wide">${op.operation_type.replace(/_/g, ' ').replace(/-/g, ' ')}</span>
-                        <span class="text-[10px] text-gray-500 font-medium mt-0.5">${date} · ${op.language || 'English'} (${op.style || 'Casual'})</span>
+                        <span class="text-xs font-bold text-gray-200 capitalize tracking-wide">${escapeHTML(op.operation_type.replace(/_/g, ' ').replace(/-/g, ' '))}</span>
+                        <span class="text-[10px] text-gray-500 font-medium mt-0.5">${date} · ${escapeHTML(op.language || 'English')} (${escapeHTML(op.style || 'Casual')})</span>
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
                     ${op.cached ? `<span class="text-[9px] font-bold text-green-400 uppercase tracking-widest bg-green-500/10 px-2 py-0.5 rounded border border-green-500/25">Cached</span>` : ''}
-                    <button class="delete-history-btn opacity-70 hover:opacity-100 transition-all w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400" data-id="${op.id}" title="Delete this entry">
+                    <button class="delete-history-btn opacity-70 hover:opacity-100 transition-all w-6 h-6 flex items-center justify-center rounded-lg hover:bg-red-500/20 text-gray-400 hover:text-red-400" data-id="${escapeHTML(op.id)}" title="Delete this entry">
                         <svg class="w-3.5 h-3.5 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
                     </button>
                     <svg class="w-4 h-4 text-gray-500 group-hover:text-white transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
@@ -2283,7 +2431,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <div class="flex flex-wrap gap-4 text-xs bg-white/5 border border-white/10 rounded-2xl p-4">
                     <div class="flex flex-col gap-0.5">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Operation</span>
-                        <span class="text-gray-200 capitalize font-medium">${op.operation_type}</span>
+                        <span class="text-gray-200 capitalize font-medium">${escapeHTML(op.operation_type)}</span>
                     </div>
                     <div class="flex flex-col gap-0.5">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Date</span>
@@ -2291,11 +2439,11 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                     <div class="flex flex-col gap-0.5">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Language</span>
-                        <span class="text-gray-200 font-medium">${op.language || 'English'}</span>
+                        <span class="text-gray-200 font-medium">${escapeHTML(op.language || 'English')}</span>
                     </div>
                     <div class="flex flex-col gap-0.5">
                         <span class="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Style / Tone</span>
-                        <span class="text-gray-200 font-medium">${op.style || 'Casual'} / ${op.tone || 'Friendly'}</span>
+                        <span class="text-gray-200 font-medium">${escapeHTML(op.style || 'Casual')} / ${escapeHTML(op.tone || 'Friendly')}</span>
                     </div>
                 </div>
                 

@@ -27,6 +27,10 @@ out/
 # Environment
 .env
 .env.local
+.env.*
+!.env.example
+*.pem
+*.key
 
 # Project specific ignores
 ARCHIVE_OLD_FILES/
@@ -34,3 +38,7 @@ GrammarFlow-Windows/
 GrammarFlow-macOS/
 GrammarHost/
 GRAMMARFLOW_LIVE/
+dev-editor-demo/vendor/
+dev-editor-demo/release/
+public/dev-editor/
+experiments/unlimited-ocr/outputs/

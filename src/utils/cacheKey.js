@@ -9,7 +9,7 @@ const crypto = require('crypto');
  * @returns {string} The Redis cache key
  */
 function generateCacheKey(systemPrompt, userText) {
-    const combined = `${systemPrompt || ''}:${userText || ''}`;
+    const combined = JSON.stringify([systemPrompt || '', userText || '']);
     const hash = crypto.createHash('sha256').update(combined).digest('hex');
     return `gf:cache:${hash}`;
 }

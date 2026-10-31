@@ -3,7 +3,7 @@ const { redisConnection } = require('./queue');
 
 // Dedicated queue for asynchronous AI history logging
 // Reuses the same Redis connection derived in queue.js
-const aiHistoryQueue = new Queue('ai-history', {
+const aiHistoryQueue = process.env.ENABLE_BACKGROUND_QUEUES === 'true' ? new Queue('ai-history', {
     connection: redisConnection,
     defaultJobOptions: {
         attempts: 3,
@@ -14,9 +14,9 @@ const aiHistoryQueue = new Queue('ai-history', {
         removeOnComplete: 100, // Keep last 100 completed jobs
         removeOnFail: 50       // Keep last 50 failed jobs for debugging
     }
-});
+}) : { add: async () => { throw new Error('Use direct history persistence'); } };
 
-aiHistoryQueue.on('error', (err) => {
+aiHistoryQueue.on?.('error', (err) => {
     console.error('[BULLMQ HISTORY QUEUE ERROR]', err.message);
 });
 

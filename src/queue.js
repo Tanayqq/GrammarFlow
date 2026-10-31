@@ -1,5 +1,6 @@
 const { Queue } = require('bullmq');
 const IORedis = require('ioredis');
+const queuesEnabled = process.env.ENABLE_BACKGROUND_QUEUES === 'true';
 
 // Setup Redis connection options for BullMQ
 let connectionOptions;
@@ -32,8 +33,8 @@ if (!connectionOptions) {
 }
 
 const redisConnection = typeof connectionOptions === 'string'
-    ? new IORedis(connectionOptions, { maxRetriesPerRequest: null })
-    : new IORedis(connectionOptions);
+    ? new IORedis(connectionOptions, { maxRetriesPerRequest: queuesEnabled ? null : 1, commandTimeout: 1500, enableOfflineQueue: false })
+    : new IORedis({ ...connectionOptions, maxRetriesPerRequest: queuesEnabled ? null : 1, commandTimeout: 1500, enableOfflineQueue: false });
 
 redisConnection.on('connect', () => {
     console.log('[REDIS QUEUE] Connected to Redis successfully.');
@@ -46,15 +47,18 @@ redisConnection.on('error', (err) => {
 });
 
 // Initialize the Queue named 'ai-jobs'
-const aiQueue = new Queue('ai-jobs', { connection: redisConnection });
+const aiQueue = queuesEnabled ? new Queue('ai-jobs', {
+    connection: redisConnection,
+    defaultJobOptions: { removeOnComplete: 100, removeOnFail: 50 }
+}) : null;
 
-aiQueue.on('error', (err) => {
+aiQueue?.on('error', (err) => {
     if (!err.message?.includes('max requests limit exceeded')) {
         console.error('[BULLMQ QUEUE ERROR] Queue encountered connection issue:', err.message);
     }
 });
 
-console.log('[BULLMQ] Queue "ai-jobs" initialized successfully.');
+console.log(queuesEnabled ? '[BULLMQ] Background queues enabled.' : '[AI] Direct processing enabled; background queue polling disabled.');
 
 module.exports = {
     aiQueue,

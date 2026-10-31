@@ -1,4 +1,5 @@
 const ClerkAuthProvider = require('./ClerkAuthProvider');
+const localSession = require('./localSession');
 
 /**
  * AuthService wrapper.
@@ -20,24 +21,15 @@ class AuthService {
     async verifySessionToken(token) {
         if (!token) return null;
 
-        // Support mock tokens for local development & testing
-        if (token.startsWith('mock_token_')) {
-            try {
-                const parts = token.split('_');
-                // Format: mock_token_<email>_<name>
-                const email = parts[2] || 'test@example.com';
-                const name = parts[3] ? decodeURIComponent(parts[3]) : 'Test User';
-                // Use same stable ID formula as the register endpoint in auth.controller.js
-                const id = 'mock_user_' + Buffer.from(email.toLowerCase()).toString('hex').substring(0, 16);
-                console.log(`[AUTH SERVICE] Resolved mock token for User: ${name} (${email}) → ID: ${id}`);
-                return { id, email, name };
-            } catch (e) {
-                console.error("[AUTH SERVICE] Failed to parse mock token:", e.message);
-            }
+        if (token.startsWith('mock_token_')) return null;
+        if (token.startsWith(localSession.prefix)) {
+            try { return localSession.verifySession(token); }
+            catch { return null; }
         }
 
+        let timeoutId;
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Auth provider request timed out")), 5000)
+            timeoutId = setTimeout(() => reject(new Error("Auth provider request timed out")), 5000)
         );
 
         try {
@@ -49,6 +41,8 @@ class AuthService {
         } catch (err) {
             console.error(`[AUTH SERVICE] Passive verification failed: ${err.message}`);
             return null;
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
 
@@ -58,17 +52,9 @@ class AuthService {
     async getUserDetails(userId) {
         if (!userId) return null;
 
-        // Support mock users for local development & testing
-        if (userId.startsWith('mock_user_')) {
-            return {
-                id: userId,
-                email: 'mock-user@example.com',
-                name: 'Mock User'
-            };
-        }
-
+        let timeoutId;
         const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error("Auth provider request timed out")), 5000)
+            timeoutId = setTimeout(() => reject(new Error("Auth provider request timed out")), 5000)
         );
 
         try {
@@ -79,6 +65,8 @@ class AuthService {
         } catch (err) {
             console.error(`[AUTH SERVICE] Failed to fetch user details: ${err.message}`);
             return null;
+        } finally {
+            clearTimeout(timeoutId);
         }
     }
 }

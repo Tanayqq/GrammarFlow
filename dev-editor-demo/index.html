@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><title>Dev Editor — foundation demo</title>
+<style>body{max-width:900px;margin:40px auto;padding:20px;background:#f6f5ef;color:#263c33;font:17px system-ui}textarea,pre{box-sizing:border-box;width:100%;padding:16px;background:white;border:1px solid #b9c6b7;border-radius:8px}textarea{height:180px}button{padding:12px;margin:10px 8px 10px 0}pre{white-space:pre-wrap;max-height:500px;overflow:auto}#inputs{height:70px}</style>
+<h1>Dev Editor: runner demo</h1><p>Local test only. Python runs after you click. No AI calls or credits. This is not yet part of the public app.</p>
+<label for="code">Python code</label><textarea id="code" spellcheck="false">total = 0
+for i in range(3):
+    total += i
+print(total)</textarea>
+<label for="inputs">Input values, one per line</label><textarea id="inputs"></textarea>
+<button id="run">Run trace</button><button id="stop" disabled>Stop</button><button id="test">Run all 26 checks</button>
+<p id="status" role="status">100-line regression suite · 26 checks · First runtime load may take longer.</p>
+<p>Verification cases are tracked below and saved only on this computer. Your custom Run trace code is not saved by the tracker.</p>
+<ol id="cases" aria-label="Verification cases"></ol><pre id="result">No code has run.</pre>
+<script type="module">
+import {run} from './runner.js';
+import {verify} from './tests.js?v=100-line-26';
+const $ = id => document.getElementById(id);
+let controller;
+function busy(value){$('run').disabled=$('test').disabled=value;$('stop').disabled=!value;}
+$('stop').onclick=()=>controller?.abort();
+$('run').onclick=async()=>{busy(true);controller=new AbortController();$('status').textContent='Loading and running…';try{const r=await run($('code').value,$('inputs').value?$('inputs').value.split('\n'):[],{signal:controller.signal});$('result').textContent=JSON.stringify(r,null,2);$('status').textContent='Stopped: '+(r.meta.stopReason||'completed')+' · '+r.meta.elapsedMs+' ms';}catch(e){$('status').textContent=e.message;}finally{busy(false);}};
+async function track(report){
+    $('cases').replaceChildren(...report.cases.map(item=>{const row=document.createElement('li');row.textContent=item.status.toUpperCase()+' — '+item.name+(item.elapsedMs!=null?' · '+item.elapsedMs+' ms':'')+(item.error?' · '+item.error.type:'');return row;}));
+    $('status').textContent=report.status+' · '+report.completed+'/'+report.total+' cases finished';
+    try {const response=await fetch('/test-results',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(report)});if(!response.ok)throw Error('save failed');}
+    catch {$('status').textContent+=' · Local report could not be saved; results remain visible below.';}
+}
+$('test').onclick=async()=>{busy(true);controller=new AbortController();try{await verify(run, text=>{$('result').textContent=text;},controller.signal,track);}catch(e){$('status').textContent=e.message;}finally{busy(false);}};
+</script></html>

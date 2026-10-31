@@ -1,0 +1,840 @@
+{
+  "results": [
+    {
+      "name": "loop and CSP probe",
+      "pass": true,
+      "stopReason": null,
+      "elapsedMs": 5263,
+      "error": null,
+      "trace": {
+        "meta": {
+          "language": "python",
+          "truncated": false,
+          "stopReason": null,
+          "lineSemantics": "State before the named line executes; causedBy is the previous observed line in this frame.",
+          "cspBlocksUIOrigin": true,
+          "elapsedMs": 5263,
+          "startupMs": 5179,
+          "executionMs": 84
+        },
+        "steps": [
+          {
+            "i": 0,
+            "line": 0,
+            "event": "call",
+            "vars": {
+              "input": "<function>"
+            },
+            "changed": [
+              "input"
+            ],
+            "deleted": [],
+            "causedBy": null,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 1,
+            "line": 1,
+            "event": "line",
+            "vars": {
+              "input": "<function>"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": null,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 2,
+            "line": 2,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "x": "0"
+            },
+            "changed": [
+              "x"
+            ],
+            "deleted": [],
+            "causedBy": 1,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 3,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "x": "0",
+              "i": "0"
+            },
+            "changed": [
+              "i"
+            ],
+            "deleted": [],
+            "causedBy": 2,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 4,
+            "line": 2,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "x": "0",
+              "i": "0"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 5,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "x": "0",
+              "i": "1"
+            },
+            "changed": [
+              "i"
+            ],
+            "deleted": [],
+            "causedBy": 2,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 6,
+            "line": 2,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "x": "1",
+              "i": "1"
+            },
+            "changed": [
+              "x"
+            ],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 7,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "x": "1",
+              "i": "2"
+            },
+            "changed": [
+              "i"
+            ],
+            "deleted": [],
+            "causedBy": 2,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 8,
+            "line": 2,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "x": "3",
+              "i": "2"
+            },
+            "changed": [
+              "x"
+            ],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 9,
+            "line": 4,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "x": "3",
+              "i": "2"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 2,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 10,
+            "line": 4,
+            "event": "return",
+            "vars": {
+              "input": "<function>",
+              "x": "3",
+              "i": "2"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 4,
+            "stdout": "3\n",
+            "stack": [
+              "<module>"
+            ],
+            "returnValue": "None"
+          }
+        ],
+        "stdout": "3\n",
+        "error": null
+      }
+    },
+    {
+      "name": "bubble sort",
+      "pass": true,
+      "stopReason": null,
+      "elapsedMs": 5541,
+      "error": null,
+      "trace": {
+        "meta": {
+          "language": "python",
+          "truncated": false,
+          "stopReason": null,
+          "lineSemantics": "State before the named line executes; causedBy is the previous observed line in this frame.",
+          "cspBlocksUIOrigin": true,
+          "elapsedMs": 5541,
+          "startupMs": 5451,
+          "executionMs": 91
+        },
+        "steps": [
+          {
+            "i": 0,
+            "line": 0,
+            "event": "call",
+            "vars": {
+              "input": "<function>"
+            },
+            "changed": [
+              "input"
+            ],
+            "deleted": [],
+            "causedBy": null,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 1,
+            "line": 1,
+            "event": "line",
+            "vars": {
+              "input": "<function>"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": null,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 2,
+            "line": 2,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[3, 1, 2]"
+            },
+            "changed": [
+              "a"
+            ],
+            "deleted": [],
+            "causedBy": 1,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 3,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[3, 1, 2]",
+              "i": "0"
+            },
+            "changed": [
+              "i"
+            ],
+            "deleted": [],
+            "causedBy": 2,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 4,
+            "line": 4,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[3, 1, 2]",
+              "i": "0",
+              "j": "0"
+            },
+            "changed": [
+              "j"
+            ],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 5,
+            "line": 5,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[3, 1, 2]",
+              "i": "0",
+              "j": "0"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 4,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 6,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 3, 2]",
+              "i": "0",
+              "j": "0"
+            },
+            "changed": [
+              "a"
+            ],
+            "deleted": [],
+            "causedBy": 5,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 7,
+            "line": 4,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 3, 2]",
+              "i": "0",
+              "j": "1"
+            },
+            "changed": [
+              "j"
+            ],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 8,
+            "line": 5,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 3, 2]",
+              "i": "0",
+              "j": "1"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 4,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 9,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "0",
+              "j": "1"
+            },
+            "changed": [
+              "a"
+            ],
+            "deleted": [],
+            "causedBy": 5,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 10,
+            "line": 2,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "0",
+              "j": "1"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 11,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "1",
+              "j": "1"
+            },
+            "changed": [
+              "i"
+            ],
+            "deleted": [],
+            "causedBy": 2,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 12,
+            "line": 4,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "1",
+              "j": "0"
+            },
+            "changed": [
+              "j"
+            ],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 13,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "1",
+              "j": "0"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 4,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 14,
+            "line": 4,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "1",
+              "j": "1"
+            },
+            "changed": [
+              "j"
+            ],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 15,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "1",
+              "j": "1"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 4,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 16,
+            "line": 2,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "1",
+              "j": "1"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 17,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "2",
+              "j": "1"
+            },
+            "changed": [
+              "i"
+            ],
+            "deleted": [],
+            "causedBy": 2,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 18,
+            "line": 4,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "2",
+              "j": "0"
+            },
+            "changed": [
+              "j"
+            ],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 19,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "2",
+              "j": "0"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 4,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 20,
+            "line": 4,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "2",
+              "j": "1"
+            },
+            "changed": [
+              "j"
+            ],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 21,
+            "line": 3,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "2",
+              "j": "1"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 4,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 22,
+            "line": 2,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "2",
+              "j": "1"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 3,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 23,
+            "line": 6,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "2",
+              "j": "1"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 2,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 24,
+            "line": 6,
+            "event": "return",
+            "vars": {
+              "input": "<function>",
+              "a": "[1, 2, 3]",
+              "i": "2",
+              "j": "1"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 6,
+            "stdout": "[1, 2, 3]\n",
+            "stack": [
+              "<module>"
+            ],
+            "returnValue": "None"
+          }
+        ],
+        "stdout": "[1, 2, 3]\n",
+        "error": null
+      }
+    },
+    {
+      "name": "actual exception",
+      "pass": true,
+      "stopReason": "error",
+      "elapsedMs": 5801,
+      "error": {
+        "type": "ZeroDivisionError",
+        "message": "('division by zero')",
+        "frames": [
+          {
+            "line": 2,
+            "function": "<module>"
+          }
+        ]
+      },
+      "trace": {
+        "meta": {
+          "language": "python",
+          "truncated": false,
+          "stopReason": "error",
+          "lineSemantics": "State before the named line executes; causedBy is the previous observed line in this frame.",
+          "cspBlocksUIOrigin": true,
+          "elapsedMs": 5801,
+          "startupMs": 5696,
+          "executionMs": 105
+        },
+        "steps": [
+          {
+            "i": 0,
+            "line": 0,
+            "event": "call",
+            "vars": {
+              "input": "<function>"
+            },
+            "changed": [
+              "input"
+            ],
+            "deleted": [],
+            "causedBy": null,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 1,
+            "line": 1,
+            "event": "line",
+            "vars": {
+              "input": "<function>"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": null,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 2,
+            "line": 2,
+            "event": "line",
+            "vars": {
+              "input": "<function>",
+              "x": "1"
+            },
+            "changed": [
+              "x"
+            ],
+            "deleted": [],
+            "causedBy": 1,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ]
+          },
+          {
+            "i": 3,
+            "line": 2,
+            "event": "exception",
+            "vars": {
+              "input": "<function>",
+              "x": "1"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 2,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ],
+            "exception": "ZeroDivisionError"
+          },
+          {
+            "i": 4,
+            "line": 2,
+            "event": "return",
+            "vars": {
+              "input": "<function>",
+              "x": "1"
+            },
+            "changed": [],
+            "deleted": [],
+            "causedBy": 2,
+            "stdout": "",
+            "stack": [
+              "<module>"
+            ],
+            "returnValue": "None"
+          }
+        ],
+        "stdout": "",
+        "error": {
+          "type": "ZeroDivisionError",
+          "message": "('division by zero')",
+          "frames": [
+            {
+              "line": 2,
+              "function": "<module>"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

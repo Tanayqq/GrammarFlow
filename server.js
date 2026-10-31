@@ -1,30 +1,30 @@
 require('dotenv').config();
-// Required for Supabase's transaction pooler which uses a self-signed cert chain
-// not in Node's default CA store. Traffic is still TLS-encrypted.
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const aiRoutes = require('./src/routes/ai.routes');
 
 // Initialize background queue workers
-require('./src/worker');        // ai-jobs queue (grammar-fix, summarize, explain)
+if (process.env.ENABLE_BACKGROUND_QUEUES === 'true') require('./src/worker');
 require('./src/historyWorker'); // ai-history queue (async DB logging)
 
 const app = express();
+if (process.env.RENDER === 'true') app.set('trust proxy', require('./src/config/trustedProxies'));
+app.disable('x-powered-by');
 const PORT = process.env.PORT || 3000;
 const startTime = Date.now();
 
 // 1. Production-ready CORS (Stabilized for Phase 3)
-app.use(cors({
-    origin: (origin, callback) => {
-        // Allow all origins (compatible with credentials: true)
-        callback(null, true);
-    },
-    methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
-    credentials: true
-}));
+app.use(cors(require('./src/config/cors')));
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Frame-Options', 'DENY');
+    next();
+});
 
+app.use('/api/v1/dev-editor/assist', express.json({limit:'512kb'}));
+app.use('/api/v1/dev-editor/execute', express.json({limit:'512kb'}));
 app.use(express.json());
 
 // 2. Custom Lightweight Logger (Enhanced)
@@ -35,7 +35,7 @@ app.use((req, res, next) => {
         const duration = Date.now() - start;
         const status = res.statusCode;
         const method = req.method;
-        const url = req.originalUrl;
+        const url = req.path; // Query strings may contain tokens; never write them to access logs.
         const timestamp = new Date().toISOString();
         const statusColor = status >= 400 ? '\x1b[31m' : '\x1b[32m';
         console.log(`[\x1b[36m${timestamp}\x1b[0m] ${method} ${url} ${statusColor}${status}\x1b[0m - ${duration}ms - Origin: ${origin}`);
@@ -69,14 +69,14 @@ const getHealthStatus = () => {
 app.get('/api/v1/health', (req, res) => res.json(getHealthStatus()));
 app.get('/health', (req, res) => res.json(getHealthStatus()));
 
-// DB connectivity debug endpoint — exposes exact Prisma error for diagnosis
+// Public readiness reports only availability, never database errors or account counts.
 app.get('/api/v1/db-health', async (req, res) => {
     const prisma = require('./src/db');
     try {
-        const count = await prisma.user.count();
-        res.json({ success: true, data: { db: 'connected', userCount: count } });
+        await prisma.$queryRaw`SELECT 1`;
+        res.json({ success: true, data: { db: 'connected' } });
     } catch (err) {
-        res.json({ success: false, data: { db: 'error', error: err.message, code: err.code } });
+        res.status(503).json({ success: false, data: { db: 'unavailable' } });
     }
 });
 
@@ -114,8 +114,9 @@ app.use((err, req, res, next) => {
     res.status(err.status || 500).json({
         success: false,
         error: {
-            message: err.message || 'Internal Server Error',
-            code: err.code || 'SERVER_ERROR'
+            message: err.type === 'entity.parse.failed' ? 'Invalid JSON request.' :
+                err.type === 'entity.too.large' ? 'This request is too large. Please use a shorter passage.' : 'Something went wrong. Please try again shortly.',
+            code: 'REQUEST_FAILED'
         }
     });
 });

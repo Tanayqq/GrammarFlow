@@ -1,13 +1,10 @@
 {
-  "version": 2,
-  "name": "grammarflow-web",
-  "builds": [
-    { "src": "server.js", "use": "@vercel/node" },
-    { "src": "public/**", "use": "@vercel/static" }
-  ],
+  "framework": null,
+  "installCommand": "",
+  "buildCommand": "node dev-editor-demo/build-public.mjs",
+  "outputDirectory": "public",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/server.js" },
-    { "source": "/(.*)", "destination": "/public/$1" }
+    { "source": "/api/:path*", "destination": "https://grammarflow-brain.onrender.com/api/:path*" }
   ],
   "headers": [
     {
@@ -19,6 +16,9 @@
     {
       "source": "/(.*)",
       "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
     }

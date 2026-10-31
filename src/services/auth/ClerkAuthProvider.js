@@ -1,17 +1,27 @@
 const jwt = require('jsonwebtoken');
 const jwksClient = require('jwks-rsa');
-const AuthProvider = require('./AuthProvider');
 
 /**
- * Clerk concrete implementation of AuthProvider.
+ * Clerk authentication provider.
  * Verifies JWT session tokens against Clerk's JSON Web Key Set (JWKS)
  * and retrieves user profiles using Clerk's backend API.
  */
-class ClerkAuthProvider extends AuthProvider {
+class ClerkAuthProvider {
     constructor() {
-        super();
         this.jwksUri = process.env.CLERK_JWKS_URI || '';
         this.secretKey = process.env.CLERK_SECRET_KEY || '';
+        this.originPolicy = require('../../config/cors');
+        this.issuer = process.env.CLERK_ISSUER || '';
+        if (!this.issuer && process.env.CLERK_FRONTEND_API) {
+            this.issuer = new URL(process.env.CLERK_FRONTEND_API.startsWith('https://') ? process.env.CLERK_FRONTEND_API : `https://${process.env.CLERK_FRONTEND_API}`).origin;
+        }
+        if (!this.issuer) {
+            const key = process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+            if (key) {
+                try { this.issuer = new URL(`https://${Buffer.from(key.trim().split('_')[2], 'base64').toString('utf8').replace(/\$$/, '')}`).origin; }
+                catch (_) { /* An invalid publishable key must not establish an issuer. */ }
+            }
+        }
         
         // Derive JWKS URI from Clerk Publishable Key or Frontend API if direct URI not set
         if (!this.jwksUri) {
@@ -38,6 +48,8 @@ class ClerkAuthProvider extends AuthProvider {
 
         this.client = null;
         if (this.jwksUri) {
+            // Instance-hosted JWKS is a safe fallback; the shared API host is not an issuer.
+            if (!this.issuer && new URL(this.jwksUri).hostname !== 'api.clerk.com') this.issuer = new URL(this.jwksUri).origin;
             this.client = jwksClient({
                 jwksUri: this.jwksUri,
                 cache: true,
@@ -54,7 +66,7 @@ class ClerkAuthProvider extends AuthProvider {
      * Verifies the Clerk session token JWT.
      */
     async verifyToken(token) {
-        if (!this.client || !this.jwksUri) {
+        if (!this.client || !this.jwksUri || !this.issuer) {
             throw new Error("Clerk is not configured. Missing JWKS URI configuration.");
         }
 
@@ -69,9 +81,21 @@ class ClerkAuthProvider extends AuthProvider {
                 });
             };
 
-            jwt.verify(token, getKey, { algorithms: ['RS256'] }, async (err, decoded) => {
+            jwt.verify(token, getKey, { algorithms: ['RS256'], issuer: this.issuer }, async (err, decoded) => {
                 if (err) {
                     return reject(err);
+                }
+                if (!decoded || typeof decoded.sub !== 'string' || !decoded.sub || !Number.isFinite(decoded.exp)) {
+                    return reject(new Error('Invalid Clerk session claims'));
+                }
+                // Clerk may omit azp for privacy-related empty Origin requests.
+                // When present, require the same explicit application origins as CORS.
+                if (decoded.azp !== undefined) {
+                    let allowed = false;
+                    if (typeof decoded.azp === 'string' && decoded.azp) {
+                        this.originPolicy.origin(decoded.azp, (error, value) => { allowed = !error && value; });
+                    }
+                    if (!allowed) return reject(new Error('Unapproved Clerk authorized party'));
                 }
                 
                 let email = decoded.email || decoded.email_address || null;

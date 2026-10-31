@@ -1,18 +1,11 @@
 const prisma = require('../db');
-const { redisConnection } = require('../queue');
+const verification = require('../services/auth/verification');
+const localSession = require('../services/auth/localSession');
+const { randomUUID } = require('node:crypto');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 
-const memoryOtpStore = new Map();
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-/**
- * Generates a stable mock user ID from an email address.
- * This ensures the same user always gets the same ID across sessions.
- */
-const getMockUserId = (email) => {
-    return 'mock_user_' + Buffer.from(email.toLowerCase()).toString('hex').substring(0, 16);
-};
 
 /**
  * Controller to handle profile syncing and session migration.
@@ -61,7 +54,7 @@ const syncSession = async (req, res) => {
             });
 
             // If the guest user exists and is not already the same record as the authenticated user
-            if (dbGuestUser && dbGuestUser.id !== dbAuthUser.id) {
+            if (dbGuestUser && !dbGuestUser.email && !dbGuestUser.password_hash && dbGuestUser.id !== dbAuthUser.id) {
                 console.log(`[AUTH CONTROLLER] Migrating data from guest user "${dbGuestUser.id}" to auth user "${dbAuthUser.id}"`);
 
                 await prisma.$transaction(async (tx) => {
@@ -117,7 +110,7 @@ const syncSession = async (req, res) => {
                 });
 
                 console.log(`[AUTH CONTROLLER] Migration transaction completed successfully.`);
-            } else if (dbAuthUser.guest_session_id !== guestSessionId) {
+            } else if (!dbGuestUser && dbAuthUser.guest_session_id !== guestSessionId) {
                 // If the guest user doesn't exist in DB, but we want to associate the guest_session_id with the authenticated user
                 try {
                     await prisma.user.update({
@@ -143,7 +136,7 @@ const syncSession = async (req, res) => {
         });
     } catch (error) {
         console.error("[AUTH CONTROLLER ERROR] Sync session failed:", error.message);
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
             error: { message: "Internal server error during session sync", code: "SERVER_ERROR" }
         });
@@ -156,7 +149,7 @@ const syncSession = async (req, res) => {
 const sendVerificationCode = async (req, res) => {
     try {
         const { email } = req.body;
-        if (!email) {
+        if (typeof email !== 'string' || !email) {
             return res.status(400).json({ success: false, error: { message: "Email is required." } });
         }
         
@@ -174,31 +167,7 @@ const sendVerificationCode = async (req, res) => {
             });
         }
         
-        // Generate a 6-digit random code
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
-        
-        // Save in Redis if active, otherwise fallback to memory
-        const redisKey = `gf:otp:${cleanEmail}`;
-        let savedInRedis = false;
-        if (redisConnection && redisConnection.status === 'ready') {
-            try {
-                await redisConnection.set(redisKey, code, 'EX', 300); // 5 minutes expiration
-                savedInRedis = true;
-            } catch (err) {
-                console.error("[AUTH] Failed to save OTP in Redis:", err.message);
-            }
-        }
-        
-        if (!savedInRedis) {
-            memoryOtpStore.set(cleanEmail, { code, expiresAt: Date.now() + 300 * 1000 });
-        }
-        
-        console.log(`\n┌────────────────────────────────────────────────────────┐`);
-        console.log(`│ [EMAIL VERIFICATION]                                   │`);
-        console.log(`│ Verification code for: ${cleanEmail.padEnd(32)} │`);
-        console.log(`│ Code: ${code.padEnd(48)} │`);
-        console.log(`└────────────────────────────────────────────────────────┘\n`);
-        
+        const code = await verification.createChallenge(cleanEmail);
         let emailSent = false;
         // Try sending real email using nodemailer if configured
         if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
@@ -236,88 +205,56 @@ const sendVerificationCode = async (req, res) => {
             }
         }
         
+        if (!emailSent) {
+            await verification.cancelChallenge(cleanEmail);
+            return res.status(503).json({ success: false, error: { message: "Verification email could not be delivered. Please try again later." } });
+        }
         res.json({
             success: true,
             data: {
                 message: "Verification code sent successfully.",
-                // In dev/no-SMTP mode, tell the client the code was logged server-side
-                devMode: !emailSent
+                devMode: false
             }
         });
     } catch (error) {
         console.error("[AUTH CONTROLLER ERROR] Send verification code failed:", error.message);
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
-            error: { message: "Internal server error during verification code delivery", code: "SERVER_ERROR" }
+            error: { message: error.expose ? error.message : "Internal server error during verification code delivery", code: "SERVER_ERROR" }
         });
     }
 };
 
 /**
- * Verifies a 6-digit code against Redis or memory store.
+ * Verifies a 6-digit code and returns a single-use registration proof.
  */
 const verifyCode = async (req, res) => {
     try {
         const { email, code } = req.body;
-        if (!email || !code) {
+        if (typeof email !== 'string' || typeof code !== 'string' || !/^\d{6}$/.test(code.trim())) {
             return res.status(400).json({ success: false, error: { message: "Email and code are required." } });
         }
         
         const cleanEmail = email.trim().toLowerCase();
         const cleanCode = code.trim();
         
-        let validCode = null;
-        
-        // Try getting from Redis first
-        const redisKey = `gf:otp:${cleanEmail}`;
-        if (redisConnection && redisConnection.status === 'ready') {
-            try {
-                validCode = await redisConnection.get(redisKey);
-            } catch (err) {
-                console.error("[AUTH] Failed to get OTP from Redis:", err.message);
-            }
+        const verificationToken = await verification.verifyChallenge(cleanEmail, cleanCode);
+        if (!verificationToken) {
+            return res.status(400).json({ success: false, error: { message: "Invalid or expired verification code." } });
         }
-        
-        // If not found in Redis, check memory
-        if (!validCode) {
-            const memoryRecord = memoryOtpStore.get(cleanEmail);
-            if (memoryRecord) {
-                if (memoryRecord.expiresAt > Date.now()) {
-                    validCode = memoryRecord.code;
-                } else {
-                    memoryOtpStore.delete(cleanEmail);
-                }
-            }
-        }
-        
-        if (!validCode || validCode !== cleanCode) {
-            return res.status(400).json({
-                success: false,
-                error: { message: "Invalid or expired verification code." }
-            });
-        }
-        
-        // Clean up code after success
-        if (redisConnection && redisConnection.status === 'ready') {
-            try {
-                await redisConnection.del(redisKey);
-            } catch (err) {
-                console.error("[AUTH] Failed to delete OTP from Redis:", err.message);
-            }
-        }
-        memoryOtpStore.delete(cleanEmail);
-        
+
         res.json({
             success: true,
             data: {
-                message: "Email successfully verified."
+                message: "Email successfully verified.",
+                verificationToken
             }
         });
     } catch (error) {
         console.error("[AUTH CONTROLLER ERROR] Verify code failed:", error.message);
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
-            error: { message: "Internal server error during verification check", code: "SERVER_ERROR" }
+            error: { message: error.expose ? error.message : "Internal server error during verification check", code: "SERVER_ERROR" }
         });
     }
 };
@@ -328,12 +265,12 @@ const verifyCode = async (req, res) => {
  */
 const register = async (req, res) => {
     try {
-        const { email, name, password } = req.body;
+        const { email, name, password, verificationToken } = req.body;
         
-        if (!email || !name || !password) {
+        if (typeof email !== 'string' || typeof name !== 'string' || typeof password !== 'string' || !name.trim() || password.length < 8 || Buffer.byteLength(password) > 72) {
             return res.status(400).json({
                 success: false,
-                error: { message: "Email, name, and password are required." }
+                error: { message: "Email, name, and a password of 8 characters to 72 bytes are required." }
             });
         }
 
@@ -347,36 +284,17 @@ const register = async (req, res) => {
             });
         }
 
-        // Check if user already exists
+        localSession.getSecret();
         const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
-        if (existingUser && existingUser.password_hash) {
-            return res.status(409).json({
-                success: false,
-                error: { message: "An account with this email already exists. Please log in.", code: "EMAIL_EXISTS" }
-            });
+        if (existingUser) {
+            return res.status(409).json({ success: false, error: { message: "An account with this email already exists. Please log in.", code: "EMAIL_EXISTS" } });
         }
-
-        // Hash the password
-        const saltRounds = 12;
-        const passwordHash = await bcrypt.hash(password, saltRounds);
-
-        // Generate a stable mock user ID from email
-        const userId = getMockUserId(cleanEmail);
-
-        // Upsert user (in case they were a guest before)
-        const user = await prisma.user.upsert({
-            where: { id: userId },
-            update: {
-                email: cleanEmail,
-                name: cleanName,
-                password_hash: passwordHash
-            },
-            create: {
-                id: userId,
-                email: cleanEmail,
-                name: cleanName,
-                password_hash: passwordHash
-            }
+        if (!await verification.consumeProof(cleanEmail, verificationToken)) {
+            return res.status(403).json({ success: false, error: { message: "Email verification is required.", code: "EMAIL_VERIFICATION_REQUIRED" } });
+        }
+        const passwordHash = await bcrypt.hash(password, 12);
+        const user = await prisma.user.create({
+            data: { id: randomUUID(), email: cleanEmail, name: cleanName, password_hash: passwordHash }
         });
 
         console.log(`[AUTH CONTROLLER] Registered new user: ${cleanEmail} (ID: ${user.id})`);
@@ -385,6 +303,7 @@ const register = async (req, res) => {
             success: true,
             data: {
                 message: "Account created successfully.",
+                token: localSession.issueSession(user),
                 user: {
                     id: user.id,
                     email: user.email,
@@ -394,7 +313,7 @@ const register = async (req, res) => {
         });
     } catch (error) {
         console.error("[AUTH CONTROLLER ERROR] Register failed:", error.message);
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
             error: { message: "Internal server error during registration", code: "SERVER_ERROR" }
         });
@@ -407,7 +326,7 @@ const register = async (req, res) => {
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        if (!email || !password) {
+        if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
             return res.status(400).json({ success: false, error: { message: "Email and password are required." } });
         }
         
@@ -447,6 +366,7 @@ const login = async (req, res) => {
             success: true,
             data: {
                 message: "Login successful.",
+                token: localSession.issueSession(user),
                 user: {
                     id: user.id,
                     email: user.email,
@@ -456,7 +376,7 @@ const login = async (req, res) => {
         });
     } catch (error) {
         console.error("[AUTH CONTROLLER ERROR] Login check failed:", error.message);
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
             error: { message: "Internal server error during login check", code: "SERVER_ERROR" }
         });
@@ -475,7 +395,7 @@ const getAuthConfig = async (req, res) => {
         });
     } catch (error) {
         console.error("[AUTH CONTROLLER ERROR] Get auth config failed:", error.message);
-        res.status(500).json({
+        res.status(error.status || 500).json({
             success: false,
             error: { message: "Internal server error during config retrieval", code: "SERVER_ERROR" }
         });
