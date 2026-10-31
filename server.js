@@ -24,6 +24,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/v1/dev-editor/assist', express.json({limit:'512kb'}));
+app.use('/api/v1/dev-editor/execute', express.json({limit:'512kb'}));
 app.use(express.json());
 
 // 2. Custom Lightweight Logger (Enhanced)

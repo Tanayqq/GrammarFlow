@@ -1,6 +1,7 @@
 const assert=require('node:assert/strict');
 const {JSDOM}=require('jsdom');
 const fs=require('node:fs');
+assert.ok(!/\u00c2|\u00e2\u20ac/.test(fs.readFileSync(__dirname+'/dev-editor.mjs','utf8')),'UI source must not contain double-encoded punctuation');
 const report=JSON.parse(fs.readFileSync(__dirname+'/test-fixture.json','utf8'));
 const dom=new JSDOM(fs.readFileSync(__dirname+'/dev-editor.html','utf8'),{runScripts:'outside-only',url:'http://127.0.0.1:8786/dev-editor.html'});
 const w=dom.window,$=id=>w.document.getElementById(id);

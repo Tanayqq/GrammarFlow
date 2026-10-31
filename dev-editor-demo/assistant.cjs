@@ -40,7 +40,7 @@ function requestFor(body) {
     const sourceLines=body.code.split('\n');
     if(sourceLines.length>1000||sourceLines.some(line=>line.length>1000))throw Error('Use up to 1,000 lines and 1,000 characters per line.');
     if(body.mode==='lines'&&(!Number.isInteger(body.rangeStart)||body.rangeStart<1||body.rangeStart>sourceLines.length))throw Error('Select a valid starting line.');
-    if((body.codeLanguage||'Python')!=='Python'&&(body.error||body.steps?.length))throw Error('Execution observations are only supported for Python.');
+    if((body.codeLanguage||'Python')!=='Python'&&body.steps?.length)throw Error('Variable snapshots are only supported for Python.');
     if(body.mode==='why'&&(!Number.isInteger(body.selectedLine)||body.selectedLine<1||body.selectedLine>sourceLines.length||!sourceLines[body.selectedLine-1].trim()))throw Error('Select a valid non-empty source line.');
     const steps=Array.isArray(body.steps)?body.steps.filter(step=>body.mode!=='why'||step?.line===body.selectedLine).slice(-12):[];
     const compact=steps.map(s=>{

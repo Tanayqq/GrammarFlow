@@ -243,7 +243,7 @@ const globalSafetyLimiter = rateLimit({
         const coveredRoutes = [
             '/rewrite', '/grammar-fix', '/suggestions', '/autocomplete',
             '/analyze-realtime', '/analyze-smart', '/process-document',
-            '/history', '/job', '/dev-editor/assist'
+            '/history', '/job', '/dev-editor/assist', '/dev-editor/execute'
         ];
         
         if (coveredRoutes.some(route => url.includes(route))) {
@@ -256,6 +256,10 @@ const globalSafetyLimiter = rateLimit({
 });
 
 module.exports = {
+    executionLimiter: rateLimit({
+        windowMs:60000,limit:10,standardHeaders:true,legacyHeaders:false,
+        store:new SlidingWindowStore(60000),keyGenerator:req=>getRateLimitKey(req,'execution'),handler:limitReachedHandler
+    }),
     authLimiter: rateLimit({
         windowMs: 15 * 60 * 1000,
         limit: 20,

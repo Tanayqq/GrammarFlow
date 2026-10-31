@@ -2,6 +2,7 @@
 import {createServer} from 'node:http';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import assistant from './assistant.cjs';
+import execution from '../src/services/execution.service.js';
 import dotenv from 'dotenv';
 process.env.GRAMMARFLOW_LOCAL_DEMO='true';
 // Reuse the user's existing local Groq setup without copying the key to another
@@ -21,14 +22,15 @@ const types = {html:'text/html; charset=utf-8',css:'text/css; charset=utf-8',js:
 function serve(port, runtime) {
     const server=createServer(async(req,res)=>{
         const path=(req.url||'/').split('?')[0];
-        if(!runtime && path==='/assist'){
+        if(!runtime && ['/assist','/execute'].includes(path)){
             if(req.method!=='POST'||req.headers.host!=='127.0.0.1:8786'||req.headers.origin!=='http://127.0.0.1:8786'||req.headers['content-type']!=='application/json'){
                 res.writeHead(403);res.end();return;
             }
             try{
                 const chunks=[];let bytes=0;
                 for await(const chunk of req){bytes+=chunk.length;if(bytes>524288){res.writeHead(413);res.end();return;}chunks.push(chunk);}
-                const result=await assistant.assist(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+                const body=JSON.parse(Buffer.concat(chunks).toString('utf8'));
+                const result=path==='/execute'?await execution.execute(body):await assistant.assist(body);
                 res.writeHead(result.status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(result.body));
             }catch{res.writeHead(400,{'Content-Type':'application/json'});res.end(JSON.stringify({success:false,error:{message:'Invalid explanation request.'}}));}
             return;

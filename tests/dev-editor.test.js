@@ -12,7 +12,7 @@ test('Dev Editor API validates input, uses the existing limiter and disables loc
     }};
     load('src/routes/ai.routes.js',{
         express:{Router:()=>router},'../controllers/ai.controller':{},
-        '../middlewares/rateLimiter':{aiLimiter:(req,res,next)=>{limits++;next();}},
+        '../middlewares/rateLimiter':{aiLimiter:(req,res,next)=>{limits++;next();},executionLimiter:pass},
         '../middlewares/auth':{passiveAuth:pass},'./auth.routes':{},'../middlewares/validateAIInput':pass,
         '../../dev-editor-demo/assistant.cjs':assistant
     });

@@ -1,12 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const aiController = require('../controllers/ai.controller');
-const { aiLimiter, docLimiter, readLimiter } = require('../middlewares/rateLimiter');
+const { aiLimiter, docLimiter, readLimiter, executionLimiter } = require('../middlewares/rateLimiter');
 const { passiveAuth } = require('../middlewares/auth');
 const authRoutes = require('./auth.routes');
 const validateAIInput = require('../middlewares/validateAIInput');
 
 router.use('/auth', authRoutes);
+
+router.post('/dev-editor/execute', passiveAuth, executionLimiter, async (req,res)=>{
+    res.setHeader('Cache-Control','no-store');
+    const execution=require('../services/execution.service');
+    try{execution.validate(req.body);}catch{return res.status(400).json({success:false,error:{message:'Use a supported language, up to 1,000 lines / 60,000 characters and 50 short input lines.'}});}
+    const controller=new AbortController();
+    const closed=()=>{if(!res.writableEnded)controller.abort();};res.once('close',closed);
+    try{const result=await execution.execute(req.body,{signal:controller.signal});if(!res.destroyed)res.status(result.status).json(result.body);}
+    finally{res.removeListener('close',closed);}
+});
 
 router.post('/dev-editor/assist', passiveAuth, aiLimiter, async (req, res) => {
     res.setHeader('Cache-Control', 'no-store');

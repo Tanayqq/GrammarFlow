@@ -1,5 +1,28 @@
 # Dev Editor — Python beta
 
+Execution update: all 12 listed languages can now run. Python snippets up to
+12,000 characters retain the local recorded trace. Other languages and longer
+Python programs use Judge0's separate compilation/execution service. Clicking
+Run on Judge0 sends the source and test inputs to that service; never include
+secrets. Only single-file, standard-runtime programs are supported. Java uses
+class Main. Remote results show real stdout, stderr and compiler diagnostics;
+they do not include variable snapshots or a fabricated execution timeline.
+
+Runs are bounded to 2 CPU seconds, 5 wall-clock seconds, 256 MB of memory and
+bounded file/output sizes, with a 25-second server deadline including queueing.
+Networking is disabled in the submitted job. Stop aborts waiting, but a remote
+job already submitted can finish within its limits. No source is executed on
+Render or Vercel. Keys, if a dedicated provider is configured later, remain
+server-side. Remote runs have a separate limiter from AI explanations and do
+not spend AI credits. The shared external service has no availability or
+unlimited-capacity guarantee; use a dedicated instance as traffic grows.
+
+The real execution smoke check passed all 12 language examples. Unit checks
+cover fixed runtimes, network/time limits, input/output bounds, compiler and
+runtime errors, provider failures and safe messaging.
+
+Official execution API reference: https://ce.judge0.com/
+
 Multilanguage source explanations: Python, JavaScript, TypeScript, Java, C,
 C++, C#, Go, Rust, PHP, Ruby and SQL. Select the language, paste code, then
 choose an overview, a specific line, or a 10-line batch. Previous/Next change
@@ -15,10 +38,11 @@ dependencies outside the excerpt. Every requested line must appear exactly
 once in a batch response, including blanks and closing braces; malformed or
 wrong-language responses are rejected. AI narration can still be incorrect.
 
-Execution remains Python-only, with the original 12,000-character, 500-step
-and external timeout limits. Other languages and longer Python programs use
-source explanations, not simulated or recorded execution. Error help still
-requires a captured Python error.
+Recorded variable traces remain Python-only, with the original 12,000-character,
+500-step and external timeout limits. Remote language execution returns output
+and errors. Source explanations are separate from actual runtime observations.
+Error help accepts captured compiler or runtime diagnostics in the selected
+language; it does not apply fixes or automatically run generated code.
 
 `node test-multilang.cjs` checks all 12 prompts/examples, 1,000-line pagination,
 bounded context, line-coverage validation and cache behaviour. The real Chrome

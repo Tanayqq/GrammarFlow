@@ -42,7 +42,7 @@ try{
     if(process.argv[4]==='--workspace-only'){
         for(const language of ['Python','JavaScript','TypeScript','Java','C','C++','C#','Go','Rust','PHP','Ruby','SQL']){
             await page.select('#code-language',language);await page.click('#load-language-example');
-            assert.equal(await page.$eval('#run',node=>node.disabled),language!=='Python');
+            assert.equal(await page.$eval('#run',node=>node.disabled),false);
         }
         await page.select('#code-language','JavaScript');
         await page.$eval('#code',node=>{node.value=Array.from({length:1000},(_,i)=>`const value_${i+1} = ${i+1};`).join('\n');node.dispatchEvent(new Event('input'));});
