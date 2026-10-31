@@ -43,6 +43,12 @@ try{
         for(const language of ['Python','JavaScript','TypeScript','Java','C','C++','C#','Go','Rust','PHP','Ruby','SQL']){
             await page.select('#code-language',language);await page.click('#load-language-example');
             assert.equal(await page.$eval('#run',node=>node.disabled),false);
+            await page.select('#language','English');
+            assert.equal(await page.$eval('#concept-guide',node=>node.hidden),false,language+' has a visible guide');
+            const english=await page.$eval('#concept-definitions',node=>node.textContent);
+            assert.match(await page.$eval('#concept-title',node=>node.textContent),new RegExp(language.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+' concepts'));
+            await page.select('#language','Hinglish');
+            assert.notEqual(await page.$eval('#concept-definitions',node=>node.textContent),english);
         }
         await page.select('#code-language','JavaScript');
         await page.$eval('#code',node=>{node.value=Array.from({length:1000},(_,i)=>`const value_${i+1} = ${i+1};`).join('\n');node.dispatchEvent(new Event('input'));});

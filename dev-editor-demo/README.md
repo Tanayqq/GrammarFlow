@@ -8,10 +8,14 @@ early returns. Explanations must respect explicit loop bounds instead of
 inventing infinite-loop counterfactuals. No program execution is inferred from
 source-only explanations.
 
-An expandable local Rust concept guide defines priority queues, copying traits,
-integer limits, checked addition, Option/Result propagation and nested vectors
-in English/Hinglish. It follows the selected source and uses no AI calls. It
-is reference material, not proof of what an arbitrary program did at runtime.
+Expandable local concept guides cover all 12 selectable languages with 68
+English/Hinglish reference entries. They follow source-line or batch selection
+and clear previous-language notes on switching. They cover common declarations,
+control flow, collections, functions, input/output and language-specific traps
+such as JavaScript const mutation, C/C++ integer overflow, Go slice sharing and
+SQL NULL handling. Keyword matching can also match comments or strings; these
+are reference notes, not a parser, correctness verdict or execution trace.
+Opening a guide, selecting lines and switching its language make no AI requests.
 Line explanations are checked as plain text, so a literal Rust #[derive(...)]
 prefix is not discarded as a Markdown heading. English-only answers in Hinglish
 mode (and clear Hinglish answers in English mode) are still rejected.
@@ -29,6 +33,18 @@ Option early return, and priority-queue ordering. Reports are bounded samples
 for manual review, not a guarantee of semantic correctness for arbitrary code.
 Do not claim that prompts or language heuristics make all AI explanations
 accurate. Kannada and Telugu are not added by this change.
+
+`node test-guides.cjs` verifies all 12 guide catalogs, bilingual content,
+selection and language switching, lowercase SQL, stale-note removal, and zero
+network/execution calls. To check the packaged UI, pass the installed Puppeteer
+module entry file and browser executable as the first two arguments:
+
+```text
+node test-browser-release.mjs "ABSOLUTE/PATH/TO/puppeteer-core.js" "ABSOLUTE/PATH/TO/chrome.exe" --workspace-only
+```
+
+Real language execution is checked separately by
+`benchmark-execution.mjs` because local concept notes do not run the program.
 
 Execution update: all 12 listed languages can now run. Python snippets up to
 12,000 characters retain the local recorded trace. Other languages and longer
