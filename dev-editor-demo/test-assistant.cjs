@@ -15,10 +15,15 @@ assert.throws(()=>requestFor({...base,mode:'why',selectedLine:1.5}));
 assert.throws(()=>requestFor({...base,code:'\nprint(42)',mode:'why',selectedLine:1}));
 assert.equal(parseAnswer(JSON.stringify({explanation:'| invented | trace |',proposed_fix:'',caveat:''}),'English'),null);
 assert.equal(parseAnswer(JSON.stringify({explanation:'The loop calculates the total and prints the result.',proposed_fix:'',caveat:''}),'Hinglish'),null);
+assert.equal(parseAnswer(JSON.stringify({explanation:'Yeh loop total ko calculate karta hai aur result dikhata hai.',proposed_fix:'',caveat:''}),'English'),null);
 assert.ok(parseAnswer(JSON.stringify({explanation:'Yeh loop total ko calculate karta hai aur result dikhata hai.',proposed_fix:'',caveat:'Yeh code ko dekhkar samjhaya gaya hai.'}),'Hinglish'));
 assert.match(requestFor({...base,mode:'error',error:{type:'IndexError',message:'index out of range',frames:[]}}).system,/Never claim unchanged behavior/);
 assert.equal(parseAnswer(JSON.stringify({explanation:'This does not change functionality.',proposed_fix:'print(1)',caveat:''}),'English','error'),null);
 if(!process.env.GROQ_API_KEY)assist(base).then(result=>{assert.equal(result.status,503);console.log('AI context bounds, changed-value filtering, input validation and unconfigured-provider fallback passed.');});
+assist({code:'\n'.repeat(10)+'print(1)',language:'Hinglish',mode:'lines',rangeStart:1}).then(result=>{
+    assert.equal(result.status,200);assert.equal(result.body.source,'local');assert.equal((result.body.data.match(/Khali line/g)||[]).length,10);
+    console.log('Blank-only batches are explained locally without a provider key.');
+});
 const load=require('../tests/load-module');
 (async()=>{
     const models=[];

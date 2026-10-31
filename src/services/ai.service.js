@@ -51,6 +51,7 @@ async function generate(systemPrompt, userText, temperature, opts, key) {
                     messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userText }],
                     temperature,
                     ...(Number.isInteger(opts.maxTokens) && opts.maxTokens >= 128 && opts.maxTokens <= 4096 && { max_completion_tokens: opts.maxTokens }),
+                    ...(['low','medium','high'].includes(opts.reasoningEffort)&&MODELS.includes(model)&&{reasoning_effort:opts.reasoningEffort}),
                     ...(opts.responseFormat === 'json' && { response_format: { type: 'json_object' } })
                 }),
                 signal: controller.signal
@@ -102,7 +103,7 @@ async function generate(systemPrompt, userText, temperature, opts, key) {
 
 async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = {}) {
     const opts = typeof options === 'string' ? { model: options } : (options || {});
-    const key = generateCacheKey(JSON.stringify([systemPrompt, temperature, opts.model || '', opts.responseFormat || '', opts.maxTokens || '']), userText);
+    const key = generateCacheKey(JSON.stringify([systemPrompt, temperature, opts.model || '', opts.responseFormat || '', opts.maxTokens || '',opts.reasoningEffort||'']), userText);
     const cached = cache.get(key);
     if (cached?.expires > Date.now() && (!opts.validate || opts.validate(cached.text))) return { text: cached.text, source: 'cache' };
     cache.delete(key);

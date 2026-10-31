@@ -19,6 +19,16 @@ test('optional output budgets reach the provider and have separate cache entries
     assert.equal(bodies[2].max_completion_tokens,undefined);
 });
 
+test('explicit reasoning effort is opt-in and separates cached explanations',async()=>{
+    const bodies=[];
+    const ai=service(async(url,request)=>{bodies.push(JSON.parse(request.body));return success('Explanation.');});
+    await ai.callGroqAPI('teaching','source',.1,{reasoningEffort:'low'});
+    await ai.callGroqAPI('teaching','source',.1,{reasoningEffort:'medium'});
+    await ai.callGroqAPI('teaching','source',.1,{reasoningEffort:'low'});
+    await ai.callGroqAPI('teaching','source',.1);
+    assert.deepEqual(bodies.map(body=>body.reasoning_effort),['low','medium',undefined]);
+});
+
 test('provider throttling falls back, deduplicates identical work and caches successful results', async () => {
     let calls = 0;
     const ai = service(async () => ++calls === 1 ? new Response('private provider details', {

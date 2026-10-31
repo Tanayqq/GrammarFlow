@@ -1,5 +1,35 @@
 # Dev Editor — Python beta
 
+Teaching-quality update: explanations now ask for both the action and its
+practical purpose, short definitions of unfamiliar terms, and meaningful
+descriptions of compound declarations. Rust guidance distinguishes copying,
+finite integer ranges, checked overflow, stale queue entries and Option/Result
+early returns. Explanations must respect explicit loop bounds instead of
+inventing infinite-loop counterfactuals. No program execution is inferred from
+source-only explanations.
+
+An expandable local Rust concept guide defines priority queues, copying traits,
+integer limits, checked addition, Option/Result propagation and nested vectors
+in English/Hinglish. It follows the selected source and uses no AI calls. It
+is reference material, not proof of what an arbitrary program did at runtime.
+Line explanations are checked as plain text, so a literal Rust #[derive(...)]
+prefix is not discarded as a Markdown heading. English-only answers in Hinglish
+mode (and clear Hinglish answers in English mode) are still rejected.
+
+Blank lines are labelled locally and retain their original line numbers. Mixed
+batches send only non-blank selected lines for AI explanation; an entirely blank
+batch does not call the provider or require a provider key. Client status makes
+that distinction visible. Closing braces and comments still get brief,
+contextual explanations. Rejected/missing/duplicated line responses are not
+displayed as complete answers.
+
+`benchmark-teaching.mjs --paced` evaluates five synthetic sections of the Rust
+Dijkstra example: imports/traits, stale entries/overflow, path reconstruction,
+Option early return, and priority-queue ordering. Reports are bounded samples
+for manual review, not a guarantee of semantic correctness for arbitrary code.
+Do not claim that prompts or language heuristics make all AI explanations
+accurate. Kannada and Telugu are not added by this change.
+
 Execution update: all 12 listed languages can now run. Python snippets up to
 12,000 characters retain the local recorded trace. Other languages and longer
 Python programs use Judge0's separate compilation/execution service. Clicking

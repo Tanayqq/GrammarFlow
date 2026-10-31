@@ -15,8 +15,17 @@ for(const codeLanguage of languages){
     assert.equal(parseLines(JSON.stringify({lines:lines.map(item=>({...item,line:991})),caveat:''}),body),null);
 }
 const base={code:'x = 1\n\nprint(x)',codeLanguage:'Python',language:'Hinglish',mode:'lines',rangeStart:1};
-const rows=[1,2,3].map(line=>({line,explanation:'Yeh line code ka ek hissa samjhati hai aur yahan structure dikhati hai.'}));
-assert.ok(parseLines(JSON.stringify({lines:rows,caveat:'Yeh sirf source ka explanation hai.'}),base));
+const attribute={code:'#[derive(Debug, Clone, Copy)]',codeLanguage:'Rust',language:'Hinglish',mode:'lines',rangeStart:1};
+const attributeAnswer=explanation=>JSON.stringify({lines:[{line:1,explanation}],caveat:''});
+assert.ok(parseLines(attributeAnswer('#[derive(Debug, Clone, Copy)] se Edge ko printing aur copying ke traits milte hain.'),attribute));
+assert.ok(parseLines(attributeAnswer('#[derive(Debug, Clone, Copy)] - Is attribute se Edge ko printing aur copying ke traits milte hain.'),attribute).includes('Line 1: Is attribute'));
+assert.equal(parseLines(attributeAnswer('#[derive(Debug, Clone, Copy)] generates debugging and copying traits automatically.'),attribute),null);
+const {isRomanHinglish}=require('../src/utils/documentLanguage');
+assert.equal(isRomanHinglish('# Yeh heading hai aur ismein Hindi ke shabd hain.'),false,'document Markdown headings remain excluded by default');
+const rows=[1,3].map(line=>({line,explanation:'Yeh line code ka ek hissa samjhati hai aur yahan structure dikhati hai.'}));
+assert.match(parseLines(JSON.stringify({lines:rows,caveat:''}),base),/Line 2: Khali line/);
+assert.equal(parseLines(JSON.stringify({lines:[rows[0],{line:2,explanation:'Invented blank explanation'},rows[1]],caveat:''}),base),null);
+assert.deepEqual(JSON.parse(requestFor(base).text).selectedLines.map(item=>item.line),[1,3]);
 assert.equal(parseLines(JSON.stringify({lines:rows.map(row=>({...row,explanation:'This line declares a variable.'})),caveat:''}),base),null);
 for(const rangeStart of [0,1.5,1001])assert.throws(()=>requestFor({...base,rangeStart}));
 assert.throws(()=>requestFor({...base,code:'x\n'.repeat(1000)}));
