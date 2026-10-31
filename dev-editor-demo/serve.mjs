@@ -27,7 +27,7 @@ function serve(port, runtime) {
             }
             try{
                 const chunks=[];let bytes=0;
-                for await(const chunk of req){bytes+=chunk.length;if(bytes>60000){res.writeHead(413);res.end();return;}chunks.push(chunk);}
+                for await(const chunk of req){bytes+=chunk.length;if(bytes>524288){res.writeHead(413);res.end();return;}chunks.push(chunk);}
                 const result=await assistant.assist(JSON.parse(Buffer.concat(chunks).toString('utf8')));
                 res.writeHead(result.status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(result.body));
             }catch{res.writeHead(400,{'Content-Type':'application/json'});res.end(JSON.stringify({success:false,error:{message:'Invalid explanation request.'}}));}

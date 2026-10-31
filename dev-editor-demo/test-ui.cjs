@@ -8,7 +8,7 @@ w.HTMLElement.prototype.scrollIntoView=function(){};
 let current=report.results[0].trace,calls=0,requests=[];
 w.run=async()=>{calls++;return structuredClone(current);};
 w.fetch=async(url,options)=>{requests.push(JSON.parse(options.body));return {ok:false,json:async()=>({success:false,error:{message:'Optional AI is not configured.'}})};};
-const script=fs.readFileSync(__dirname+'/dev-editor.mjs','utf8').replace(/^import .*\n/,'').replace('export function narrate','function narrate');
+const script=fs.readFileSync(__dirname+'/dev-editor.mjs','utf8').replace(/^import [^\r\n]*\r?\n/,'').replace('export function narrate','function narrate');
 w.eval(script);
 (async()=>{
     assert.equal(calls,0,'never auto-run');
@@ -55,7 +55,7 @@ w.eval(script);
     $('code').value=Array.from({length:200},(_,i)=>`value_${i+1} = ${i+1}`).join('\n');$('code').oninput();
     assert.equal($('why-line').max,'200');
     assert.equal($('code-line-numbers').textContent.split('\n').length,200);
-    assert.match($('code-line-count').textContent,/200 lines/);
+    assert.match($('code-line-count').textContent,/200 \/ 1,000 lines/);
     $('code').scrollTop=100;$('code').onscroll();assert.equal($('code-gutter').scrollTop,100);
     const cursor=$('code').value.lastIndexOf('value_200');$('code').setSelectionRange(cursor,cursor);$('cursor-line').onclick();
     assert.equal($('why-line').value,'200');assert.match($('selected-source').textContent,/value_200 = 200/);

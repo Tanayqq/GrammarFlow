@@ -39,6 +39,28 @@ try{
     await page.waitForFunction(()=>document.querySelector('#run-state').textContent.includes('Completed'));
     await page.$eval('#timeline',node=>{node.value=node.max;node.dispatchEvent(new Event('input'));});
     assert.match(await page.$eval('#stdout',node=>node.textContent),/3/);
+    if(process.argv[4]==='--workspace-only'){
+        for(const language of ['Python','JavaScript','TypeScript','Java','C','C++','C#','Go','Rust','PHP','Ruby','SQL']){
+            await page.select('#code-language',language);await page.click('#load-language-example');
+            assert.equal(await page.$eval('#run',node=>node.disabled),language!=='Python');
+        }
+        await page.select('#code-language','JavaScript');
+        await page.$eval('#code',node=>{node.value=Array.from({length:1000},(_,i)=>`const value_${i+1} = ${i+1};`).join('\n');node.dispatchEvent(new Event('input'));});
+        await page.$eval('#range-start',node=>{node.value='991';node.dispatchEvent(new Event('input'));});
+        assert.match(await page.$eval('#range-preview',node=>node.textContent),/1000  const value_1000/);
+        await page.setRequestInterception(true);
+        page.on('request',request=>{
+            if(request.url().endsWith('/api/v1/dev-editor/assist')){
+                const body=JSON.parse(request.postData());
+                assert.equal(body.rangeStart,991);assert.equal(body.codeLanguage,'JavaScript');
+                request.respond({status:200,contentType:'application/json',body:JSON.stringify({success:true,data:'Line 1000: Synthetic response for UI verification.'})});
+            }else request.continue();
+        });
+        await page.click('#line-batch');await page.waitForFunction(()=>!document.querySelector('#ai-result').hidden);
+        assert.match(await page.$eval('#ai-result',node=>node.textContent),/Line 1000:/);
+        await page.setViewport({width:390,height:844});
+        assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+    }
     await page.screenshot({path:fileURLToPath(new URL('./release/Dev-Editor-Release-Desktop.png',import.meta.url)),fullPage:true});
     console.log('Packaged workspace execution passed against HTTPS runtime; see the saved 26-case browser report.');
 }finally{await browser?.close();await new Promise(resolve=>server.close(resolve));}

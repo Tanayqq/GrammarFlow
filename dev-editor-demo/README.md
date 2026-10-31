@@ -1,5 +1,32 @@
 # Dev Editor — Python beta
 
+Multilanguage source explanations: Python, JavaScript, TypeScript, Java, C,
+C++, C#, Go, Rust, PHP, Ruby and SQL. Select the language, paste code, then
+choose an overview, a specific line, or a 10-line batch. Previous/Next change
+the selected range; only clicking Explain makes an AI request. Cached answers
+replay without a new request. Changing language preserves the draft; Load
+language example explicitly replaces it.
+
+Explanations accept up to 1,000 lines / 60,000 characters, with at most 1,000
+characters per line. Source over 12,000 characters uses a bounded excerpt
+around the requested lines, plus nearby/top-level context. The result states
+this limitation: it cannot establish whole-program behaviour or understand
+dependencies outside the excerpt. Every requested line must appear exactly
+once in a batch response, including blanks and closing braces; malformed or
+wrong-language responses are rejected. AI narration can still be incorrect.
+
+Execution remains Python-only, with the original 12,000-character, 500-step
+and external timeout limits. Other languages and longer Python programs use
+source explanations, not simulated or recorded execution. Error help still
+requires a captured Python error.
+
+`node test-multilang.cjs` checks all 12 prompts/examples, 1,000-line pagination,
+bounded context, line-coverage validation and cache behaviour. The real Chrome
+workspace check also covers language controls, long-source navigation and mobile
+layout, using a synthetic API response for UI testing. Four separate live
+provider samples cover JavaScript, Java line 200, C++ Hinglish, and Python lines
+991–1000; these are examples, not proof of accuracy for arbitrary programs.
+
 Release preparation (2026-10-31): `node build-public.mjs` generates only the
 allowlisted app assets under `public/dev-editor/`. Vercel runs this automatically.
 The runtime is hosted separately at https://grammarflow-python-runtime.vercel.app

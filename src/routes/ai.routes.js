@@ -14,7 +14,7 @@ router.post('/dev-editor/assist', passiveAuth, aiLimiter, async (req, res) => {
     try {
         assistant.requestFor(req.body);
     } catch {
-        return res.status(400).json({success:false,error:{message:'Use a valid Python explanation request with at most 12,000 characters.'}});
+        return res.status(400).json({success:false,error:{message:'Choose a supported language and use up to 1,000 lines / 60,000 characters, with at most 1,000 characters per line.'}});
     }
     const result = await assistant.assist(req.body, {localAdmission:false});
     return res.status(result.status).json(result.body);
