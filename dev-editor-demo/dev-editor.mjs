@@ -1,6 +1,5 @@
 import {run} from './runner.js';
 const $=id=>document.getElementById(id);
-const examples={loop:'total = 0\nfor i in range(3):\n    total += i\nprint(total)',sort:'numbers = [4, 1, 3, 2]\nfor i in range(len(numbers)):\n    for j in range(len(numbers) - 1 - i):\n        if numbers[j] > numbers[j + 1]:\n            numbers[j], numbers[j + 1] = numbers[j + 1], numbers[j]\nprint(numbers)',recursion:'def factorial(n):\n    if n <= 1:\n        return 1\n    return n * factorial(n - 1)\n\nprint(factorial(4))',error:'numbers = [10, 20, 30]\nprint(numbers[3])'};
 let trace=null,source='',position=0,playing=null,controller=null,aiController=null;
 const languageExamples={"Python": "total = 0\nfor i in range(3):\n    total += i\nprint(total)", "JavaScript": "const numbers = [1, 2, 3];\nlet total = 0;\nfor (const n of numbers) {\n  total += n;\n}\nconsole.log(total);", "TypeScript": "const numbers: number[] = [1, 2, 3];\nconst total: number = numbers.reduce((sum, n) => sum + n, 0);\nconsole.log(total);", "Java": "class Main {\n  public static void main(String[] args) {\n    int total = 0;\n    for (int i = 1; i <= 3; i++) total += i;\n    System.out.println(total);\n  }\n}", "C": "#include <stdio.h>\nint main(void) {\n  int total = 0;\n  for (int i = 1; i <= 3; i++) total += i;\n  printf(\"%d\\n\", total);\n  return 0;\n}", "C++": "#include <iostream>\nint main() {\n  int total = 0;\n  for (int i = 1; i <= 3; ++i) total += i;\n  std::cout << total << \"\\n\";\n}", "C#": "using System;\nclass Program {\n  static void Main() {\n    int total = 0;\n    for (int i = 1; i <= 3; i++) total += i;\n    Console.WriteLine(total);\n  }\n}", "Go": "package main\nimport \"fmt\"\nfunc main() {\n  total := 0\n  for i := 1; i <= 3; i++ { total += i }\n  fmt.Println(total)\n}", "Rust": "fn main() {\n  let numbers = [1, 2, 3];\n  let total: i32 = numbers.iter().sum();\n  println!(\"{}\", total);\n}", "PHP": "<?php\n$numbers = [1, 2, 3];\n$total = array_sum($numbers);\necho $total;", "Ruby": "numbers = [1, 2, 3]\ntotal = numbers.sum\nputs total", "SQL": "CREATE TABLE expenses (category TEXT, amount INTEGER);\nINSERT INTO expenses VALUES ('Books', 10), ('Books', 20), ('Food', 5);\nSELECT category, SUM(amount) AS total\nFROM expenses\nGROUP BY category\nORDER BY total DESC;"};
 const aiCache=new Map();
@@ -463,7 +462,7 @@ function rangePreview(){
 }
 function executionControls(){
  const python=$('code-language').value==='Python';
- $('run').disabled=!executionAvailable();$('example').disabled=!python;$('example').hidden=!python;$('inputs').disabled=false;$('try-error').disabled=!python;$('try-error').hidden=!python;
+ $('run').disabled=!executionAvailable();$('inputs').disabled=false;$('try-error').disabled=!python;$('try-error').hidden=!python;
  const local=python&&$('code').value.length<=12000;
  $('execution-help').textContent=local?'Python runs on your device: 500 recorded steps and a 3-second execution limit. Longer programs run on Judge0.':'Run sends this code and test inputs to Judge0 for compilation/execution. Do not include secrets. Single-file programs only; Java needs class Main. Remote runs show real output/errors, not variable snapshots.';
  $('empty-help').textContent=local?'Run Python for real snapshots, or use line-by-line source explanations below.':'Run your code for real output and errors, then explore the source line by line below. Remote execution does not record variable snapshots.';
@@ -535,9 +534,8 @@ function render(followLine=true){
     $('error').textContent=trace.error?`${trace.error.type}: ${trace.error.message}`:'';
     $('limits').textContent=remote?'Single-file execution on Judge0 with time, memory and output limits. Stop stops waiting; a submitted job may finish remotely. '+(trace.meta.truncated?'Output may be truncated.':''):(trace.meta.truncated?`Partial trace — ${trace.meta.stopReason}. `:'')+'Snapshots show state before each line; a changed value belongs to the preceding observed line in that frame.';
 }
-$('example').onchange=()=>{$('code').value=examples[$('example').value];invalidate();};
 function invalidate(){pause();aiController?.abort();trace=null;$('range-start').value='1';lineOptions();executionControls();$('trace-view').hidden=true;$('empty').hidden=false;$('fix').disabled=false;$('fix-help').textContent='Run the code to capture a compiler or runtime error first.';$('ai-result').hidden=true;$('ai-state').textContent='';$('run-state').textContent=executionAvailable()?'Code changed. Run again for a fresh trace.':'Use up to 1,000 lines / 60,000 characters to run or explain code.';}
-$('try-error').onclick=()=>{$('example').value='error';$('code').value=examples.error;invalidate();$('run-state').textContent='Error example loaded. Click Run & explore; then use Fix my error.';$('run').focus();};
+$('try-error').onclick=()=>{$('code').value='numbers = [10, 20, 30]\nprint(numbers[3])';invalidate();$('run-state').textContent='Error example loaded. Click Run & explore; then use Fix my error.';$('run').focus();};
 $('code').oninput=$('inputs').oninput=invalidate;
 $('code-language').onchange=()=>{invalidate();$('run-state').textContent=executionAvailable()?'Ready to run. Check where execution happens above.':'Use up to 1,000 lines / 60,000 characters.';};
 $('load-language-example').onclick=()=>{$('code').value=languageExamples[$('code-language').value];invalidate();};
@@ -569,10 +567,10 @@ $('run').onclick=async()=>{
     pause();aiController?.abort();controller=new AbortController();source=$('code').value;trace=null;$('why').disabled=$('fix').disabled=true;
     $('trace-view').hidden=true;$('empty').hidden=false;$('ai-result').hidden=true;$('ai-state').textContent='';pause();
     $('prev').disabled=$('next').disabled=$('play').disabled=$('timeline').disabled=true;
-    $('run').disabled=true;$('why-line').disabled=true;$('try-error').disabled=true;$('stop').disabled=false;$('code').readOnly=true;$('example').disabled=true;$('inputs').readOnly=true;$('run-state').textContent=$('code-language').value==='Python'&&source.length<=12000?'Loading Python and recording...':'Compiling/running on Judge0...';
+    $('run').disabled=true;$('why-line').disabled=true;$('try-error').disabled=true;$('stop').disabled=false;$('code').readOnly=true;$('inputs').readOnly=true;$('run-state').textContent=$('code-language').value==='Python'&&source.length<=12000?'Loading Python and recording...':'Compiling/running on Judge0...';
     try{const inputs=$('inputs').value?$('inputs').value.split('\n'):[];trace=$('code-language').value==='Python'&&source.length<=12000?await run(source,inputs,{signal:controller.signal}):await runRemote(source,inputs,controller.signal);position=0;render();$('run-state').textContent=`${trace.meta.stopReason||'Completed'} · ${trace.meta.executionKind==='remote'?'remote result':trace.steps.length+' steps'} · ${trace.meta.executionMs??'?'} ms execution`;}
     catch(error){$('run-state').textContent=error.name==='AbortError'?'Stopped waiting. A submitted remote job may still finish.':error.message;}
-    finally{$('code-language').disabled=$('load-language-example').disabled=false;executionControls();$('why-line').disabled=false;$('why').disabled=!$('why-line').value;$('try-error').disabled=false;$('fix').disabled=false;$('stop').disabled=true;$('code').readOnly=false;$('example').disabled=false;$('inputs').readOnly=false;$('timeline').disabled=false;}
+    finally{$('code-language').disabled=$('load-language-example').disabled=false;executionControls();$('why-line').disabled=false;$('why').disabled=!$('why-line').value;$('try-error').disabled=false;$('fix').disabled=false;$('stop').disabled=true;$('code').readOnly=false;$('inputs').readOnly=false;$('timeline').disabled=false;}
 };
 async function assist(mode){
     if(mode==='error'&&!trace?.error){$('ai-state').textContent='No captured error to fix yet. Click Load an error example, then Run & explore. No AI request was sent.';return;}

@@ -13,10 +13,7 @@ const script=fs.readFileSync(__dirname+'/dev-editor.mjs','utf8').replace(/^impor
 w.eval(script);
 (async()=>{
     assert.equal(calls,0,'never auto-run');
-    assert.deepEqual(Array.from($('example').options,option=>option.value),['loop','sort','recursion','error']);
-    $('example').value='sort';$('example').onchange();assert.match($('code').value,/numbers =/);
-    $('example').value='recursion';$('example').onchange();assert.match($('code').value,/factorial/);
-    $('example').value='loop';$('example').onchange();
+    assert.equal($('example'),null,'Python-only sample selector is removed');
     assert.equal($('code-line-numbers').textContent,'1\n2\n3\n4');
     await $('run').onclick();
     assert.equal(calls,1);assert.match($('step-label').textContent,/1 \/ 11/);
