@@ -3,6 +3,8 @@ const $=id=>document.getElementById(id);
 let trace=null,source='',position=0,playing=null,controller=null,aiController=null;
 const languageExamples={"Python": "total = 0\nfor i in range(3):\n    total += i\nprint(total)", "JavaScript": "const numbers = [1, 2, 3];\nlet total = 0;\nfor (const n of numbers) {\n  total += n;\n}\nconsole.log(total);", "TypeScript": "const numbers: number[] = [1, 2, 3];\nconst total: number = numbers.reduce((sum, n) => sum + n, 0);\nconsole.log(total);", "Java": "class Main {\n  public static void main(String[] args) {\n    int total = 0;\n    for (int i = 1; i <= 3; i++) total += i;\n    System.out.println(total);\n  }\n}", "C": "#include <stdio.h>\nint main(void) {\n  int total = 0;\n  for (int i = 1; i <= 3; i++) total += i;\n  printf(\"%d\\n\", total);\n  return 0;\n}", "C++": "#include <iostream>\nint main() {\n  int total = 0;\n  for (int i = 1; i <= 3; ++i) total += i;\n  std::cout << total << \"\\n\";\n}", "C#": "using System;\nclass Program {\n  static void Main() {\n    int total = 0;\n    for (int i = 1; i <= 3; i++) total += i;\n    Console.WriteLine(total);\n  }\n}", "Go": "package main\nimport \"fmt\"\nfunc main() {\n  total := 0\n  for i := 1; i <= 3; i++ { total += i }\n  fmt.Println(total)\n}", "Rust": "fn main() {\n  let numbers = [1, 2, 3];\n  let total: i32 = numbers.iter().sum();\n  println!(\"{}\", total);\n}", "PHP": "<?php\n$numbers = [1, 2, 3];\n$total = array_sum($numbers);\necho $total;", "Ruby": "numbers = [1, 2, 3]\ntotal = numbers.sum\nputs total", "SQL": "CREATE TABLE expenses (category TEXT, amount INTEGER);\nINSERT INTO expenses VALUES ('Books', 10), ('Books', 20), ('Food', 5);\nSELECT category, SUM(amount) AS total\nFROM expenses\nGROUP BY category\nORDER BY total DESC;"};
 const aiCache=new Map();
+const sourceAiCache=new Map();
+let sourceCacheContext='',sourceMode=false,sourceLine=1,sourcePending=null;
 const conceptGuides={
   "Python": [
     [
@@ -445,6 +447,76 @@ function conceptGuide(text,label){
  for(const [name,pattern,english,hinglish]of matches){addText($('concept-definitions'),'dt',name);addText($('concept-definitions'),'dd',$('language').value==='Hinglish'?hinglish:english);}
 }
 
+// Reading hints are shared by construct, with only syntax recognition varying by language.
+const sourceNotes={
+ imports:['Imports or references','This line names code or library references used by the program. This reading view does not load them or check whether they are available.','Yeh line program ke code ya library references batati hai. Reading view unhe load ya unki availability check nahi karta.'],
+ blank:['Blank line','A blank line separates nearby code. It does not by itself change program state.','Khali line aas-paas ke code ko alag dikhati hai. Isse apne aap program ki values nahi badalti.'],
+ comment:['Comment','This appears to be a comment. Read it as an explanation from the author, not an instruction being executed.','Yeh comment lagta hai. Yeh author ki explanation hai, chalne wali instruction nahi.'],
+ loop:['Loop','When reached, a loop can repeat its body depending on a condition or collection. This walkthrough visits each source line once; it does not replay iterations.','Loop tak pahunchne par condition ya collection ke hisaab se body repeat ho sakti hai. Yahan har source line ek baar dikh rahi hai; iterations replay nahi ho rahe.'],
+ condition:['Condition or branch','The condition controls which branch runs. This view reads all branches in source order; highlighting does not mean this branch was taken.','Condition decide karti hai ki kaunsi branch chalegi. Yeh view sab branches ko source order mein dikhata hai; highlight ka matlab yeh branch chali nahi hai.'],
+ function:['Function definition','This appears to define a function or method. Its body normally runs when called, not simply because you reach it while reading.','Yeh function ya method ki definition lagti hai. Iski body aam taur par call hone par chalti hai, sirf yahan padhne par nahi.'],
+ output:['Output statement','When executed, this can write output. The source walkthrough does not run it or produce its output.','Execution par yeh output likh sakti hai. Source walkthrough ise chalata ya iska output banata nahi hai.'],
+ call:['Function call','A call can transfer control to another function, including the same function through recursion. This reading view does not follow calls or build a runtime call stack.','Call se control doosre function mein, ya recursion mein isi function mein ja sakta hai. Yeh reading view calls ko follow ya runtime call stack record nahi karta.'],
+ return:['Return','When reached during execution, return exits the current function and may pass a value to its caller. The next source line shown here is not necessarily the next executed line.','Execution mein return tak pahunchne par current function se bahar aate hain aur value caller ko mil sakti hai. Yahan dikhne wali agli source line zaroori nahi ki execution mein agli chale.'],
+ declaration:['Declaration','This appears to introduce a name, type or value. Read its scope and initializer in context; no value has been calculated by this walkthrough.','Yeh naam, type ya value ki declaration lagti hai. Iska scope aur initial value aas-paas ke code ke saath samjho; is walkthrough ne koi value calculate nahi ki.'],
+ assignment:['Assignment or update','This appears to assign or update a value when executed. The walkthrough does not calculate the resulting value.','Execution mein yeh line value assign ya update kar sakti hai. Walkthrough nayi value calculate nahi karta.'],
+ boundary:['Scope boundary','This marks a source block boundary. Braces or end keywords help group code; runtime control flow still depends on the surrounding construct.','Yeh source block ki boundary hai. Braces ya end keyword code ko group karte hain; execution ka flow aas-paas ke construct par depend karta hai.'],
+ query:['Query','This query describes which rows to read. Reading it here does not query a database or establish the actual result rows.','Yeh query batati hai ki kaunsi rows padhni hain. Yahan padhne se database query nahi hota aur actual result rows nahi milti.'],
+ change:['Data change','This statement can modify data when executed. The walkthrough does not connect to a database or apply the change.','Execution par yeh statement data badal sakti hai. Walkthrough database se connect ya data change nahi karta.'],
+ schema:['Schema definition','This statement describes a database structure or a schema change. Nothing is created or removed in this reading view.','Yeh statement database ka structure ya schema change batati hai. Is reading view mein kuch create ya remove nahi hota.'],
+ line:['Source line','Read this line with the surrounding code. Its runtime effect is not established by highlighting it.','Is line ko aas-paas ke code ke saath padho. Highlight hone se iska actual runtime effect pata nahi chalta.']
+};
+function sourceConstruct(text,language){
+ const value=text.trim().slice(0,500);
+ if(!value)return 'blank';
+ if((['Python','Ruby','PHP'].includes(language)&&/^#/.test(value))||(/^\/\//.test(value)&&!['Python','Ruby','SQL'].includes(language))||(/^--/.test(value)&&language==='SQL')||/^\/\*|^\*\//.test(value))return 'comment';
+ if(language!=='SQL'&&/^(?:import|from|use|require|include)\b|^#include\b|^using\s+[\w.]+\s*;/.test(value))return 'imports';
+ if(language==='SQL'){
+  if(/^(SELECT|WITH|VALUES)\b/i.test(value))return 'query';
+  if(/^(INSERT|UPDATE|DELETE|MERGE|REPLACE)\b/i.test(value))return 'change';
+  if(/^(CREATE|ALTER|DROP)\b/i.test(value))return 'schema';
+ }
+ if(/^(?:async\s+)?(?:for|foreach|while|do|loop|until)\b/.test(value)||(language==='Ruby'&&/\.(?:each|times|map)\b.*\bdo\b/.test(value)))return 'loop';
+ if(/^(?:}\s*)?(?:if|elif|else|unless|switch|case|match|when)\b/.test(value))return 'condition';
+ if(/^return\b/.test(value))return 'return';
+ if(/^(?:async\s+)?(?:def|fn|func|function)\b/.test(value)||/^(?:(?:public|private|protected|internal|static|async|final|virtual|override)\s+)*(?:[\w<>\[\],?]+\s+)+\w+\s*\(/.test(value)&&!/^new\s/.test(value))return 'function';
+ if(/^(?:(?:public|private|protected|internal|static|final|readonly|volatile)\s+)*(?:class|struct|enum|interface|type|let|const|var|val|int|long|float|double|bool|boolean|string|char|byte|short|decimal|auto)\b/.test(value))return 'declaration';
+ if(/^[\w$]+(?:\.[\w]+|\[[^\]]+\])*\s*(?:=(?!=|>)|[+\-*\/%]=|:=)/.test(value))return 'assignment';
+ if(/^[{};]+$|^end\b/.test(value))return 'boundary';
+ if(/^(?:puts|print|printf|println|echo|p)\b|\b(?:console\.(?:log|error|warn)|Console\.Write(?:Line)?|System\.out\.print(?:ln)?|fmt\.Print(?:ln|f)?|std::cout)\b/.test(value))return 'output';
+ if(/\b[\w$]+\s*\(/.test(value))return 'call';
+ return 'line';
+}
+function refreshSourceCache(){
+ const context=$('code-language').value+'\0'+$('code').value;
+ if(context!==sourceCacheContext){sourceCacheContext=context;sourceAiCache.clear();}
+}
+function sourceSelect(line){
+ const count=$('code').value.split('\n').length;
+ if(!Number.isInteger(line)||line<1||line>count)return;
+ aiController?.abort();$('source-ai-result').hidden=true;$('source-ai-state').textContent='';sourceLine=line;renderSource();
+}
+function renderSource(){
+ const rows=$('code').value.split('\n');sourceLine=Math.max(1,Math.min(sourceLine,rows.length));
+ const start=Math.floor((sourceLine-1)/10)*10;
+ $('source-line').max=rows.length;$('source-line').value=sourceLine;
+ $('source-prev').disabled=sourceLine===1;$('source-next').disabled=sourceLine===rows.length;
+ $('source-position').textContent='Reading line '+sourceLine+' of '+rows.length+' · source order, not execution';
+ $('source-code').replaceChildren();
+ rows.slice(start,start+10).forEach((text,index)=>{
+  const line=start+index+1,row=addText($('source-code'),'button','','code-line'+(line===sourceLine?' active':''));row.type='button';row.setAttribute('aria-label','Read source line '+line);if(line===sourceLine)row.setAttribute('aria-current','true');
+  addText(row,'span',String(line),'line-number');row.append(document.createTextNode(text));row.onclick=()=>sourceSelect(line);
+ });
+ const note=sourceNotes[sourceConstruct(rows[sourceLine-1],$('code-language').value)];
+ $('source-kind').textContent=note[0];$('source-note').textContent=note[$('language').value==='Hinglish'?2:1];
+ $('source-why').disabled=!rows[sourceLine-1].trim();
+}
+$('source-open').onclick=()=>{if(!executionAvailable())return;pause();aiController?.abort();sourceMode=true;sourceLine=1;refreshSourceCache();$('trace-view').hidden=true;$('empty').hidden=true;$('source-panel').hidden=false;$('source-ai-state').textContent='';$('source-ai-result').hidden=true;renderSource();};
+$('source-prev').onclick=()=>sourceSelect(sourceLine-1);$('source-next').onclick=()=>sourceSelect(sourceLine+1);
+$('source-line').onchange=()=>{const value=Number($('source-line').value);if(Number.isInteger(value)&&value>=1&&value<=$('code').value.split('\n').length)sourceSelect(value);else $('source-position').textContent='Enter a line number within your source.';};
+$('source-line').onkeydown=event=>{if(event.key==='Enter'){event.preventDefault();$('source-line').onchange();}};
+$('source-why').onclick=()=>assist('why',{sourceOnly:true});
+
 function executionAvailable(){return !!$('code').value.trim()&&$('code').value.length<=60000&&$('code').value.split('\n').length<=1000;}
 async function runRemote(code,inputs,signal){
  const response=await fetch('/execute',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,inputs,codeLanguage:$('code-language').value}),signal});
@@ -462,11 +534,11 @@ function rangePreview(){
 }
 function executionControls(){
  const python=$('code-language').value==='Python';
- $('run').disabled=!executionAvailable();$('inputs').disabled=false;$('try-error').disabled=!python;$('try-error').hidden=!python;
+ $('source-open').disabled=!executionAvailable();$('run').disabled=!executionAvailable();$('inputs').disabled=false;$('try-error').disabled=!python;$('try-error').hidden=!python;
  const local=python&&$('code').value.length<=12000;
  $('execution-help').textContent=local?'Python runs on your device: 500 recorded steps and a 3-second execution limit. Longer programs run on Judge0.':'Run sends this code and test inputs to Judge0 for compilation/execution. Do not include secrets. Single-file programs only; Java needs class Main. Remote runs show real output/errors, not variable snapshots.';
- $('empty-help').textContent=local?'Run Python for real snapshots, or use line-by-line source explanations below.':'Run your code for real output and errors, then explore the source line by line below. Remote execution does not record variable snapshots.';
- $('run').textContent=local?'Run & explore':'Run on Judge0';
+ $('empty-help').textContent=local?'Open Source walkthrough to read without running, or Run & trace for recorded Python snapshots.':'Open Source walkthrough to read without running. Run code separately for real output and errors; remote runs do not record variable snapshots.';
+ $('run').textContent=local?'Run & trace':'Run code';
 }
 
 function pause(){clearInterval(playing);playing=null;$('play').textContent='Play';}
@@ -505,8 +577,9 @@ function linePreview(){
     return valid;
 }
 function render(followLine=true){
+    if(sourceMode){renderSource();return;}
     if(!trace)return;const remote=trace.meta.executionKind==='remote';const step=trace.steps[position];
-    $('recording-kind').textContent=remote?'REAL PROGRAM RESULT - '+trace.meta.language:'RECORDED EXECUTION';
+    $('recording-kind').textContent=remote?'REAL PROGRAM RESULT - '+trace.meta.language:'RECORDED PYTHON EXECUTION';
     $('remote-diagnostics').hidden=!remote;
     $('remote-stderr').textContent=trace.stderr||'(none)';$('remote-compile').textContent=trace.compileOutput||'(none)';$('empty').hidden=true;$('trace-view').hidden=false;
     if(followLine&&step?.line>0)$('why-line').value=String(step.line);
@@ -534,8 +607,8 @@ function render(followLine=true){
     $('error').textContent=trace.error?`${trace.error.type}: ${trace.error.message}`:'';
     $('limits').textContent=remote?'Single-file execution on Judge0 with time, memory and output limits. Stop stops waiting; a submitted job may finish remotely. '+(trace.meta.truncated?'Output may be truncated.':''):(trace.meta.truncated?`Partial trace — ${trace.meta.stopReason}. `:'')+'Snapshots show state before each line; a changed value belongs to the preceding observed line in that frame.';
 }
-function invalidate(){pause();aiController?.abort();trace=null;$('range-start').value='1';lineOptions();executionControls();$('trace-view').hidden=true;$('empty').hidden=false;$('fix').disabled=false;$('fix-help').textContent='Run the code to capture a compiler or runtime error first.';$('ai-result').hidden=true;$('ai-state').textContent='';$('run-state').textContent=executionAvailable()?'Code changed. Run again for a fresh trace.':'Use up to 1,000 lines / 60,000 characters to run or explain code.';}
-$('try-error').onclick=()=>{$('code').value='numbers = [10, 20, 30]\nprint(numbers[3])';invalidate();$('run-state').textContent='Error example loaded. Click Run & explore; then use Fix my error.';$('run').focus();};
+function invalidate(){sourceMode=false;$('source-panel').hidden=true;refreshSourceCache();pause();aiController?.abort();trace=null;$('range-start').value='1';lineOptions();executionControls();$('trace-view').hidden=true;$('empty').hidden=false;$('fix').disabled=false;$('fix-help').textContent='Run the code to capture a compiler or runtime error first.';$('ai-result').hidden=true;$('ai-state').textContent='';$('run-state').textContent=executionAvailable()?'Code changed. Open Source walkthrough or run again for a fresh result.':'Use up to 1,000 lines / 60,000 characters to run or explain code.';}
+$('try-error').onclick=()=>{$('code').value='numbers = [10, 20, 30]\nprint(numbers[3])';invalidate();$('run-state').textContent='Error example loaded. Click Run & trace; then use Fix my error.';$('run').focus();};
 $('code').oninput=$('inputs').oninput=invalidate;
 let previousCodeLanguage=$('code-language').value;
 $('code-language').onchange=()=>{if($('code').value===languageExamples[previousCodeLanguage])$('code').value='';previousCodeLanguage=$('code-language').value;invalidate();$('run-state').textContent=executionAvailable()?'Language changed. Your code was kept; check it matches the selected language.':'Use up to 1,000 lines / 60,000 characters.';};
@@ -544,7 +617,7 @@ $('range-start').oninput=()=>{aiController?.abort();$('ai-result').hidden=true;$
 $('range-prev').onclick=()=>{$('range-start').value=Math.max(1,Number($('range-start').value)-10);$('range-start').oninput();};
 $('range-next').onclick=()=>{$('range-start').value=Math.min($('code').value.split('\n').length,Number($('range-start').value)+10);$('range-start').oninput();};
 $('line-batch').onclick=()=>assist('lines');
-$('language').onchange=()=>{aiController?.abort();$('ai-result').hidden=true;$('ai-state').textContent='';render(false);rangePreview();};
+$('language').onchange=()=>{$('source-ai-result').hidden=true;$('source-ai-state').textContent='';aiController?.abort();$('ai-result').hidden=true;$('ai-state').textContent='';render(false);rangePreview();};
 $('why-line').onchange=()=>{
     pause();aiController?.abort();$('ai-result').hidden=true;$('ai-state').textContent='';
     if(!linePreview()){$('line-help').textContent='Enter a non-empty line number within your code.';return;}
@@ -565,6 +638,7 @@ $('stop').onclick=()=>controller?.abort();
 $('run').onclick=async()=>{
     if(!executionAvailable()){$('run-state').textContent='Use up to 1,000 lines / 60,000 characters to run code.';return;}
     if($('code-language').value!=='Python'&&$('code').value.startsWith(languageExamples.Python.slice(0,-1))){$('run-state').textContent='The Python starter is still in this program. Select all source code and replace it with your complete '+$('code-language').value+' program before running.';$('code').focus();return;}
+    sourceMode=false;$('source-panel').hidden=true;$('source-open').disabled=true;
     $('code-language').disabled=$('load-language-example').disabled=true;
     pause();aiController?.abort();controller=new AbortController();source=$('code').value;trace=null;$('why').disabled=$('fix').disabled=true;
     $('trace-view').hidden=true;$('empty').hidden=false;$('ai-result').hidden=true;$('ai-state').textContent='';pause();
@@ -574,21 +648,25 @@ $('run').onclick=async()=>{
     catch(error){$('run-state').textContent=error.name==='AbortError'?'Stopped waiting. A submitted remote job may still finish.':error.message;}
     finally{$('code-language').disabled=$('load-language-example').disabled=false;executionControls();$('why-line').disabled=false;$('why').disabled=!$('why-line').value;$('try-error').disabled=false;$('fix').disabled=false;$('stop').disabled=true;$('code').readOnly=false;$('inputs').readOnly=false;$('timeline').disabled=false;}
 };
-async function assist(mode){
-    if(mode==='error'&&!trace?.error){$('ai-state').textContent='No captured error to fix yet. Click Load an error example, then Run & explore. No AI request was sent.';return;}
+async function assist(mode,{sourceOnly=false}={}){
+    const stateElement=sourceOnly?$('source-ai-state'):$('ai-state'),resultElement=sourceOnly?$('source-ai-result'):$('ai-result');
+    if(mode==='error'&&!trace?.error){stateElement.textContent='No captured error to fix yet. Click Load an error example, then Run & trace. No AI request was sent.';return;}
     const code=$('code').value;if(!code.trim())return;
-    if(code.length>60000||code.split('\n').length>1000||code.split('\n').some(line=>line.length>1000)){$('ai-state').textContent='Use up to 1,000 lines / 60,000 characters, with up to 1,000 characters per line.';return;}
+    if(code.length>60000||code.split('\n').length>1000||code.split('\n').some(line=>line.length>1000)){stateElement.textContent='Use up to 1,000 lines / 60,000 characters, with up to 1,000 characters per line.';return;}
     const rangeStart=Number($('range-start').value);
-    if(mode==='lines'&&(!Number.isInteger(rangeStart)||rangeStart<1||rangeStart>code.split('\n').length)){$('ai-state').textContent='Choose a valid starting line.';return;}
-    const selectedLine=Number($('why-line').value);
-    if(mode==='why'&&(!Number.isInteger(selectedLine)||selectedLine<1||!code.split('\n')[selectedLine-1]?.trim())){$('ai-state').textContent='Choose a non-empty line to explain.';return;}
-    const step=trace?.steps[position]?.line===selectedLine?trace.steps[position]:undefined;
-    const payload={code,mode,codeLanguage:$('code-language').value,...(mode==='lines'?{rangeStart}:{}),language:$('language').value,...(mode==='why'?{selectedLine}:{}),steps:(mode==='why'?[step]:trace?.steps.filter(s=>s.changed.length||s.event==='exception').slice(-12)||[]).filter(Boolean).map(s=>({line:s.line,event:s.event,changed:s.changed,vars:Object.fromEntries(Object.entries(s.vars).filter(([name])=>s.changed.includes(name))),causedBy:s.causedBy})),error:trace?.error||null};
+    if(mode==='lines'&&(!Number.isInteger(rangeStart)||rangeStart<1||rangeStart>code.split('\n').length)){stateElement.textContent='Choose a valid starting line.';return;}
+    const selectedLine=sourceOnly?sourceLine:Number($('why-line').value);
+    if(mode==='why'&&(!Number.isInteger(selectedLine)||selectedLine<1||!code.split('\n')[selectedLine-1]?.trim())){stateElement.textContent='Choose a non-empty line to explain.';return;}
+    const step=!sourceOnly&&trace?.steps[position]?.line===selectedLine?trace.steps[position]:undefined;
+    const payload={code,mode,codeLanguage:$('code-language').value,...(mode==='lines'?{rangeStart}:{}),language:$('language').value,...(mode==='why'?{selectedLine}:{}),steps:(mode==='why'?[step]:trace?.steps.filter(s=>s.changed.length||s.event==='exception').slice(-12)||[]).filter(Boolean).map(s=>({line:s.line,event:s.event,changed:s.changed,vars:Object.fromEntries(Object.entries(s.vars).filter(([name])=>s.changed.includes(name))),causedBy:s.causedBy})),error:sourceOnly?null:trace?.error||null};
+    refreshSourceCache();const cache=sourceOnly?sourceAiCache:aiCache;const key=sourceOnly?JSON.stringify([selectedLine,payload.language]):JSON.stringify(payload);
+    if(sourceOnly&&sourcePending?.key===key&&sourcePending.context===sourceCacheContext&&!sourcePending.controller.signal.aborted)return;
     aiController?.abort();
-    const key=JSON.stringify(payload);if(aiCache.has(key)){$('ai-result').hidden=false;$('ai-result').textContent=aiCache.get(key);$('ai-state').textContent='Reused this explanation. No new AI request.';return;}
-    aiController=new AbortController();const requestController=aiController;$('ai-state').textContent=mode==='lines'?`Explaining lines ${rangeStart}–${Math.min(rangeStart+9,code.split('\n').length)}…`:mode==='why'?`Explaining line ${selectedLine}…`:'Requesting an explanation…';$('ai-result').hidden=true;$('ai-state').scrollIntoView({block:'nearest'});
-    try{const response=await fetch('/assist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:requestController.signal});const data=await response.json();if(requestController.signal.aborted)return;if(!response.ok||!data.success)throw Error(data.error?.message||'Explanation unavailable. Your local trace still works.');if(aiCache.size>=20)aiCache.delete(aiCache.keys().next().value);aiCache.set(key,data.data);$('ai-result').hidden=false;$('ai-result').textContent=data.data;$('ai-state').textContent=data.source==='local'?'Blank lines labelled without calling the AI provider.':mode==='lines'?'AI source explanation — selected lines only; no code was executed.': 'AI interpretation — verify important claims against your code and tests.';}
-    catch(error){if(error.name!=='AbortError')$('ai-state').textContent=error.message;}
+    if(cache.has(key)){resultElement.hidden=false;resultElement.textContent=cache.get(key);stateElement.textContent='Reused this explanation. No new AI request.';return;}
+    aiController=new AbortController();const requestController=aiController;if(sourceOnly)sourcePending={key,context:sourceCacheContext,controller:requestController};stateElement.textContent=mode==='lines'?`Explaining lines ${rangeStart}–${Math.min(rangeStart+9,code.split('\n').length)}…`:mode==='why'?`Explaining line ${selectedLine}…`:'Requesting an explanation…';resultElement.hidden=true;stateElement.scrollIntoView({block:'nearest'});
+    try{const response=await fetch('/assist',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:requestController.signal});const data=await response.json();if(requestController.signal.aborted)return;if(!response.ok||!data.success)throw Error(data.error?.message||'Explanation unavailable. Your local trace still works.');if(cache.size>=(sourceOnly?2000:20))cache.delete(cache.keys().next().value);cache.set(key,data.data);resultElement.hidden=false;resultElement.textContent=data.data;stateElement.textContent=data.source==='local'?'Blank lines labelled without calling the AI provider.':mode==='lines'?'AI source explanation — selected lines only; no code was executed.': 'AI interpretation — verify important claims against your code and tests.';}
+    catch(error){if(error.name!=='AbortError')stateElement.textContent=error.message;}
+    finally{if(sourcePending?.controller===requestController)sourcePending=null;}
 }
 $('explain').onclick=()=>assist('explain');$('why').onclick=()=>assist('why');$('fix').onclick=()=>assist('error');
 lineOptions();executionControls();

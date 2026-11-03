@@ -35,6 +35,7 @@ try{
     assert.deepEqual(report.results.filter(item=>!item.pass).map(item=>item.name),[]);
     }
     await page.goto(`http://127.0.0.1:${server.address().port}/workspace`);
+    await page.click('#load-language-example');
     await page.click('#run');
     await page.waitForFunction(()=>document.querySelector('#run-state').textContent.includes('Completed'));
     await page.$eval('#timeline',node=>{node.value=node.max;node.dispatchEvent(new Event('input'));});
@@ -46,6 +47,14 @@ try{
             await page.select('#language','English');
             assert.equal(await page.$eval('#concept-guide',node=>node.hidden),false,language+' has a visible guide');
             const english=await page.$eval('#concept-definitions',node=>node.textContent);
+            await page.click('#source-open');
+            assert.equal(await page.$eval('#source-panel',node=>node.hidden),false);
+            assert.equal(await page.$eval('#trace-view',node=>node.hidden),true);
+            assert.match(await page.$eval('#source-panel',node=>node.textContent),/not running it/);
+            await page.click('#source-next');
+            assert.equal(await page.$eval('#source-line',node=>node.value),'2');
+            await page.click('#source-prev');
+            assert.equal(await page.$eval('#source-line',node=>node.value),'1');
             assert.match(await page.$eval('#concept-title',node=>node.textContent),new RegExp(language.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+' concepts'));
             await page.select('#language','Hinglish');
             assert.notEqual(await page.$eval('#concept-definitions',node=>node.textContent),english);
@@ -65,6 +74,9 @@ try{
         await page.click('#line-batch');await page.waitForFunction(()=>!document.querySelector('#ai-result').hidden);
         assert.match(await page.$eval('#ai-result',node=>node.textContent),/Line 1000:/);
         await page.setViewport({width:390,height:844});
+        await page.click('#source-open');
+        await page.$eval('#source-line',node=>{node.value='1000';node.dispatchEvent(new Event('change'));});
+        assert.match(await page.$eval('#source-position',node=>node.textContent),/Reading line 1000/);
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
     }
     await page.screenshot({path:fileURLToPath(new URL('./release/Dev-Editor-Release-Desktop.png',import.meta.url)),fullPage:true});
