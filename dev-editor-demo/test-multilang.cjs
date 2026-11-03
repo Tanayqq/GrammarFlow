@@ -41,6 +41,17 @@ w.eval(fs.readFileSync(__dirname+'/dev-editor.mjs','utf8').replace(/^import [^\r
 (async()=>{
     assert.deepEqual(Array.from($('code-language').options,o=>o.value),languages);
     for(const language of languages){$('code-language').value=language;$('code-language').onchange();$('load-language-example').onclick();assert.ok($('code').value.length>0);assert.equal($('run').disabled,false);}
+    $('code-language').value='Python';$('code-language').onchange();$('load-language-example').onclick();
+    $('code-language').value='C#';$('code-language').onchange();
+    assert.equal($('code').value,'','clear an untouched starter when its language changes');
+    $('code').value='using System; class MainClass { static void Main() {} }';$('code').oninput();
+    $('code-language').value='Java';$('code-language').onchange();
+    assert.ok($('code').value.startsWith('using System;'),'preserve custom source on language change');
+    $('code-language').value='C#';$('code-language').onchange();
+    $('code').value='total = 0\nfor i in range(3):\n    total += i\nprint(totalusing System;';$('code').oninput();
+    await $('run').onclick();
+    assert.equal(executionRequests.length,0,'do not send a known mixed Python starter to the compiler');
+    assert.match($('run-state').textContent,/Python starter/);
     $('code-language').value='JavaScript';$('code-language').onchange();$('code').value=code;$('code').oninput();
     assert.equal($('run').disabled,false);await $('run').onclick();assert.equal(runs,0);assert.equal(executionRequests.length,1);assert.equal($('stdout').textContent,'6\n');assert.equal($('python-details').hidden,true);assert.equal($('timeline-controls').hidden,true);
     $('range-start').value='991';$('range-start').oninput();assert.match($('range-preview').textContent,/1000  const value_1000/);

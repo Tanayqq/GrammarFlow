@@ -530,14 +530,15 @@ function render(followLine=true){
             values.forEach((v,i)=>{const cell=addText(cells,'div',v,'array-cell');addText(cell,'small',String(i));});
         }
     }
-    $('stack').textContent=step?.stack.join(' → ')||'—';$('stdout').textContent=(remote?trace.stdout:step?.stdout)||(remote?'(program produced no output)':'(no output yet)');
+    $('stack').textContent=step?.stack.join(' → ')||'—';$('stdout').textContent=(remote?trace.stdout:step?.stdout)||(remote?(trace.error?.type==='CompilationError'?'Compilation failed; the program did not run.':'(program produced no output)'):'(no output yet)');
     $('error').textContent=trace.error?`${trace.error.type}: ${trace.error.message}`:'';
     $('limits').textContent=remote?'Single-file execution on Judge0 with time, memory and output limits. Stop stops waiting; a submitted job may finish remotely. '+(trace.meta.truncated?'Output may be truncated.':''):(trace.meta.truncated?`Partial trace — ${trace.meta.stopReason}. `:'')+'Snapshots show state before each line; a changed value belongs to the preceding observed line in that frame.';
 }
 function invalidate(){pause();aiController?.abort();trace=null;$('range-start').value='1';lineOptions();executionControls();$('trace-view').hidden=true;$('empty').hidden=false;$('fix').disabled=false;$('fix-help').textContent='Run the code to capture a compiler or runtime error first.';$('ai-result').hidden=true;$('ai-state').textContent='';$('run-state').textContent=executionAvailable()?'Code changed. Run again for a fresh trace.':'Use up to 1,000 lines / 60,000 characters to run or explain code.';}
 $('try-error').onclick=()=>{$('code').value='numbers = [10, 20, 30]\nprint(numbers[3])';invalidate();$('run-state').textContent='Error example loaded. Click Run & explore; then use Fix my error.';$('run').focus();};
 $('code').oninput=$('inputs').oninput=invalidate;
-$('code-language').onchange=()=>{invalidate();$('run-state').textContent=executionAvailable()?'Ready to run. Check where execution happens above.':'Use up to 1,000 lines / 60,000 characters.';};
+let previousCodeLanguage=$('code-language').value;
+$('code-language').onchange=()=>{if($('code').value===languageExamples[previousCodeLanguage])$('code').value='';previousCodeLanguage=$('code-language').value;invalidate();$('run-state').textContent=executionAvailable()?'Language changed. Your code was kept; check it matches the selected language.':'Use up to 1,000 lines / 60,000 characters.';};
 $('load-language-example').onclick=()=>{$('code').value=languageExamples[$('code-language').value];invalidate();};
 $('range-start').oninput=()=>{aiController?.abort();$('ai-result').hidden=true;$('ai-state').textContent='Range changed. Click Explain lines to request an answer.';rangePreview();};
 $('range-prev').onclick=()=>{$('range-start').value=Math.max(1,Number($('range-start').value)-10);$('range-start').oninput();};
@@ -563,6 +564,7 @@ $('play').onclick=()=>{if(playing){pause();return;}if(position>=trace.steps.leng
 $('stop').onclick=()=>controller?.abort();
 $('run').onclick=async()=>{
     if(!executionAvailable()){$('run-state').textContent='Use up to 1,000 lines / 60,000 characters to run code.';return;}
+    if($('code-language').value!=='Python'&&$('code').value.startsWith(languageExamples.Python.slice(0,-1))){$('run-state').textContent='The Python starter is still in this program. Select all source code and replace it with your complete '+$('code-language').value+' program before running.';$('code').focus();return;}
     $('code-language').disabled=$('load-language-example').disabled=true;
     pause();aiController?.abort();controller=new AbortController();source=$('code').value;trace=null;$('why').disabled=$('fix').disabled=true;
     $('trace-view').hidden=true;$('empty').hidden=false;$('ai-result').hidden=true;$('ai-state').textContent='';pause();
