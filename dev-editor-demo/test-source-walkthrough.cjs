@@ -29,7 +29,7 @@ function select(line){$('source-line').value=String(line);$('source-line').oncha
  select(4);assert.equal($('source-kind').textContent,'Return');
  select(5);assert.equal($('source-kind').textContent,'Blank line');assert.equal($('source-why').disabled,true);
  select(6);assert.equal($('source-kind').textContent,'Comment');
- $('language').value='Hinglish';$('language').onchange();select(1);assert.match($('source-note').textContent,/repeat ho sakti hai/);
+ $('language').value='Hinglish';$('language').onchange();select(1);assert.match($('source-note').textContent,/baar-baar chalana/);
  $('language').value='English';$('language').onchange();
  await $('source-why').onclick();assert.equal(requests.length,1);
  assert.equal(requests[0].selectedLine,1);assert.deepEqual(requests[0].steps,[]);assert.equal(requests[0].error,null);
