@@ -124,15 +124,20 @@ const AUDIO_TYPES = { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'mp
 async function transcribe(audio, mimeType) {
     const apiKey = (process.env.GROQ_API_KEY || '').split(',')[0].trim();
     if (!apiKey || Date.now() < providerDisabledUntil) throw unavailable();
+    // One budget for all attempts, well inside the browser's 55 s request timeout.
+    const deadline = Date.now() + 40000;
     for (const model of WHISPER_MODELS) {
+        const remaining = deadline - Date.now();
+        if (remaining < 1000) break;
         const form = new FormData();
         form.append('file', new Blob([audio], { type: mimeType }), `speech.${AUDIO_TYPES[mimeType]}`);
         form.append('model', model);
         form.append('response_format', 'json');
         const response = await fetch(TRANSCRIBE_URL, {
-            method: 'POST', headers: { Authorization: `Bearer ${apiKey}` }, body: form, signal: AbortSignal.timeout(30000)
+            method: 'POST', headers: { Authorization: `Bearer ${apiKey}` }, body: form, signal: AbortSignal.timeout(remaining)
         }).catch(() => null);
         if (response?.ok) return String((await response.json()).text || '').trim();
+        await response?.body?.cancel().catch(() => {}); // free the connection
         if (response?.status === 429) throw unavailable(Number(response.headers.get('retry-after')) || 30);
         // Any other failure (e.g. a retired model): try the next model.
     }

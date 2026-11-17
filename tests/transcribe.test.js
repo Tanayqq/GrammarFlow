@@ -54,3 +54,18 @@ test('/transcribe route validates audio type, emptiness and size', async t => {
     assert.equal((await post('audio/webm', Buffer.alloc(0))).status, 400);
     assert.equal((await post('audio/webm', Buffer.alloc(5 * 1024 * 1024 + 1))).status, 413);
 });
+
+test('transcribe drains failed responses and keeps fallbacks inside one 40 s budget', async t => {
+    const realFetch = global.fetch, realNow = Date.now;
+    t.after(() => { global.fetch = realFetch; Date.now = realNow; });
+    let clock = 1_000_000, cancelled = 0, calls = 0;
+    Date.now = () => clock;
+    global.fetch = async () => {
+        calls++;
+        clock += 39_500; // the first model used almost the whole budget
+        return { ok: false, status: 500, headers: new Headers(), body: { cancel: async () => { cancelled++; } } };
+    };
+    await assert.rejects(aiService.transcribe(Buffer.from('x'), 'audio/webm'), e => e.status === 503);
+    assert.equal(calls, 1, 'no second model once the budget is spent');
+    assert.equal(cancelled, 1, 'failed response body was released');
+});
