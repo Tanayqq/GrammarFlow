@@ -1,7 +1,8 @@
 """Bridge head tracking from OpenTrack UDP to GrammarFlow's hands-free pointer.
 
 Any app that sends OpenTrack UDP works, for example GalaxyBudsClient (Galaxy Buds
-head tracking: Spatial audio page > enable "OpenTrack" broadcasting) or OpenTrack itself.
+head tracking: Spatial audio page > enable "OpenTrack" broadcasting), helpers/airpods
+(AirPods/Beats on macOS 14+), or OpenTrack itself.
 
     python helpers/head_bridge.py
 

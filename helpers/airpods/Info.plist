@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleIdentifier</key>
+    <string>app.grammarflow.airpods-opentrack</string>
+    <key>CFBundleName</key>
+    <string>GrammarFlow AirPods Head Tracking</string>
+    <key>NSMotionUsageDescription</key>
+    <string>GrammarFlow reads your AirPods head movement to move the hands-free pointer. Motion data stays on this Mac.</string>
+</dict>
+</plist>
