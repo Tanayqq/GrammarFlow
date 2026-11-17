@@ -620,7 +620,20 @@ const deleteHistory = async (req, res) => {
     }
 };
 
+// Body is raw audio (express.raw in server.js caps it at 5 MB).
+const transcribe = async (req, res) => {
+    const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
+    if (!aiService.AUDIO_TYPES[type]) return res.status(415).json({ success: false, error: { message: 'Send audio as webm, ogg, mp4, mp3 or wav.', code: 'UNSUPPORTED_AUDIO' } });
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) return res.status(400).json({ success: false, error: { message: 'No audio was received.', code: 'MISSING_INPUT' } });
+    try {
+        sendResponse(res, true, { text: await aiService.transcribe(req.body, type) });
+    } catch (error) {
+        sendAIError(res, error);
+    }
+};
+
 module.exports = {
+    transcribe,
     rewrite,
     grammarFix,
     suggestions,

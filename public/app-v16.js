@@ -79,8 +79,9 @@ const GrammarFlowAPI = {
             headers
         };
         if (method !== "GET" && method !== "HEAD" && payload !== undefined) {
-            headers["Content-Type"] = "application/json";
-            options.body = JSON.stringify(payload);
+            const raw = payload instanceof Blob; // audio for /transcribe
+            headers["Content-Type"] = raw ? payload.type : "application/json";
+            options.body = raw ? payload : JSON.stringify(payload);
         }
         
         let url = `${getBaseUrl()}${endpoint}`;
@@ -719,6 +720,50 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (e) { renderResults([`Error: ${e.message}`]); }
         finally { setBusy(false); }
+    };
+
+    // Voice dictation: record, transcribe with Whisper, insert at the cursor, then run Fix Grammar
+    // so the user reviews corrections instead of having their words changed silently.
+    const dictateBtn = document.getElementById("dictateBtn");
+    let recorder = null;
+    const setDictate = (label, busy) => { dictateBtn.textContent = label; dictateBtn.disabled = busy; dictateBtn.setAttribute("aria-pressed", String(label === "Stop")); };
+    dictateBtn.onclick = async () => {
+        if (recorder) { recorder.stop(); return; }
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } catch {
+            renderResults(["Error: Microphone access was blocked. Allow it in your browser to dictate."]);
+            return;
+        }
+        const chunks = [];
+        recorder = new MediaRecorder(stream, { audioBitsPerSecond: 32000 });
+        recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+        const limit = setTimeout(() => recorder?.stop(), 5 * 60 * 1000); // keeps uploads under the 5 MB server cap
+        recorder.onstop = async () => {
+            clearTimeout(limit);
+            stream.getTracks().forEach(t => t.stop());
+            const type = recorder.mimeType;
+            recorder = null;
+            setDictate("Transcribing…", true);
+            try {
+                const res = await GrammarFlowAPI.request("/transcribe", new Blob(chunks, { type }));
+                const spoken = res.data?.text || "";
+                if (spoken) {
+                    const { selectionStart: a, selectionEnd: b, value } = UI.inputText;
+                    const gap = a > 0 && !/\s$/.test(value.slice(0, a)) ? " " : "";
+                    UI.inputText.value = value.slice(0, a) + gap + spoken + value.slice(b);
+                    UI.inputText.dispatchEvent(new Event("input"));
+                    UI.fixGrammarBtn.click();
+                }
+            } catch (e) {
+                renderResults([`Error: ${e.message}`]);
+            } finally {
+                setDictate("Dictate", false);
+            }
+        };
+        recorder.start();
+        setDictate("Stop", false);
     };
 
     UI.fixGrammarBtn.onclick = async () => {

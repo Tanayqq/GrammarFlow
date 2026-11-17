@@ -33,6 +33,7 @@ router.post('/dev-editor/assist', passiveAuth, aiLimiter, async (req, res) => {
 // All AI operation routes include passiveAuth so req.userId is set when user is logged in.
 // This ensures history is saved under the user's account, not just guest_session_id.
 router.post('/rewrite',          passiveAuth, validateAIInput, aiLimiter, aiController.rewrite);
+router.post('/transcribe',       passiveAuth, aiLimiter, aiController.transcribe);           // Voice dictation (Groq Whisper)
 router.post('/grammar-fix',      passiveAuth, validateAIInput, aiLimiter, aiController.grammarFix);
 router.post('/suggestions',      passiveAuth, validateAIInput, aiLimiter, aiController.suggestions);
 router.post('/autocomplete',     passiveAuth, validateAIInput, aiLimiter, aiController.autocomplete);

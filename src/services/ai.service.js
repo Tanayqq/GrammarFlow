@@ -116,4 +116,27 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = 
     finally { pending.delete(key); }
 }
 
-module.exports = { callGroqAPI };
+// Speech to text with Groq-hosted Whisper; the same GROQ_API_KEY as the writing features.
+const TRANSCRIBE_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
+const WHISPER_MODELS = ['whisper-large-v3-turbo', 'whisper-large-v3'];
+const AUDIO_TYPES = { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav' };
+
+async function transcribe(audio, mimeType) {
+    const apiKey = (process.env.GROQ_API_KEY || '').split(',')[0].trim();
+    if (!apiKey || Date.now() < providerDisabledUntil) throw unavailable();
+    for (const model of WHISPER_MODELS) {
+        const form = new FormData();
+        form.append('file', new Blob([audio], { type: mimeType }), `speech.${AUDIO_TYPES[mimeType]}`);
+        form.append('model', model);
+        form.append('response_format', 'json');
+        const response = await fetch(TRANSCRIBE_URL, {
+            method: 'POST', headers: { Authorization: `Bearer ${apiKey}` }, body: form, signal: AbortSignal.timeout(30000)
+        }).catch(() => null);
+        if (response?.ok) return String((await response.json()).text || '').trim();
+        if (response?.status === 429) throw unavailable(Number(response.headers.get('retry-after')) || 30);
+        // Any other failure (e.g. a retired model): try the next model.
+    }
+    throw unavailable();
+}
+
+module.exports = { callGroqAPI, transcribe, AUDIO_TYPES };
