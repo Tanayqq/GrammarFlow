@@ -790,7 +790,47 @@ You MUST strictly adhere to the user's selected style preferences below:
 ### SOURCE DOCUMENT TEXT:`;
 };
 
+// Short summary/explanation prompts used by the browser extension's context menu.
+// They live on the server so clients choose an action, never the system prompt itself.
+const getExtensionSummaryPrompt = (language = "English") => `${getLanguageEnforcementBlock(language)}
+
+Summarize the following text concisely in ${language}.
+- Extract the most important points only.
+- Use bullet points where appropriate.
+- Keep it under 5 sentences or 5 bullet points.
+- Write ALL output in ${language}. No mixing of languages.
+- Do NOT add introductions like "Here is a summary" or "Sure!".
+- Return only the summary.`;
+
+const getExtensionExplainPrompt = (language = "English") => `${getLanguageEnforcementBlock(language)}
+
+Explain the following text clearly in ${language} as if speaking to a student.
+- Use simple, direct language.
+- Keep technical terms but define them immediately.
+- Do NOT add filler phrases like "Let's understand", "Great question", or "Sure!".
+- Do NOT summarize — explain the meaning and context.
+- Write ALL output in ${language}. No mixing of languages.
+- Return only the explanation.`;
+
+const EXTENSION_ACTIONS = ['grammar', 'summarize', 'explain'];
+
+const countSentences = (text) =>
+  String(text || '').split(/[.!?।]+/).map(s => s.trim()).filter(s => s.length > 2).length || 1;
+
+/**
+ * Single source of truth for the /grammar-fix system prompt, shared by the
+ * controller and the cache pre-check so both derive identical cache keys.
+ */
+const getGrammarFixRoutePrompt = (body = {}) => {
+  const { text, language = "English", style = "Standard", tone = "Neutral", humanize = false, extensionAction } = body;
+  if (extensionAction === 'summarize') return getExtensionSummaryPrompt(language);
+  if (extensionAction === 'explain') return getExtensionExplainPrompt(language);
+  return getGrammarFixPrompt(language, style, tone, humanize, countSentences(text));
+};
+
 module.exports = {
+  EXTENSION_ACTIONS,
+  getGrammarFixRoutePrompt,
   getRewritePrompt,
   getGrammarFixPrompt,
   getSuggestionsPrompt,

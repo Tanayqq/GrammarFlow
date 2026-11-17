@@ -3,6 +3,14 @@ let activeTarget = null;
 let activeSelectionRange = null;
 
 const MIN_SELECTION_CHARS = 5;
+
+// Server error messages are untrusted; render them as text only.
+function showError(container, message) {
+    const div = document.createElement('div');
+    div.className = 'gf-error';
+    div.textContent = String(message);
+    container.replaceChildren(div);
+}
 const PDF_VIEWER_PREFIX = "chrome-extension://mhjfbmdgcfjbbpaeojofohoefgiehjai/";
 
 function isPdfViewerPage() {
@@ -262,14 +270,14 @@ function pollJob(jobId, originalEndpoint, triggerAction) {
                 } else if (jobData && jobData.status === "failed") {
                     clearInterval(interval);
                     const errMsg = (response.error && response.error.message) || "Job failed in background worker.";
-                    contentDiv.innerHTML = `<div class="gf-error">${errMsg}</div>`;
+                    showError(contentDiv, errMsg);
                     positionOverlay();
                 }
                 // Keep polling if status is 'active' or 'queued'
             } else {
                 clearInterval(interval);
                 const errMsg = (response && response.error && response.error.message) || "Failed to retrieve status.";
-                contentDiv.innerHTML = `<div class="gf-error">${errMsg}</div>`;
+                showError(contentDiv, errMsg);
                 positionOverlay();
             }
         });
@@ -331,10 +339,15 @@ function renderResults(results) {
         const item = document.createElement('div');
         item.className = 'gf-result-item';
         
-        item.innerHTML = `
-            <div class="gf-result-badge">${res.label}</div>
-            <div class="gf-result-text">${res.text}</div>
-        `;
+        // AI output is untrusted and this script runs inside arbitrary pages:
+        // set it as text, never as HTML.
+        const badge = document.createElement('div');
+        badge.className = 'gf-result-badge';
+        badge.textContent = res.label;
+        const textDiv = document.createElement('div');
+        textDiv.className = 'gf-result-text';
+        textDiv.textContent = res.text;
+        item.append(badge, textDiv);
 
         item.addEventListener('click', () => {
             activeOverlay.querySelectorAll('.gf-result-item').forEach(el => el.classList.remove('active'));

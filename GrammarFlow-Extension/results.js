@@ -159,7 +159,10 @@ async function run() {
                 language: job.language || "Auto",
                 style: job.style || "Casual",
                 tone: job.tone || "Friendly",
-                humanize: job.humanize !== false
+                humanize: job.humanize !== false,
+                ...(job.endpoint === "/grammar-fix" && {
+                    extensionAction: ({ TRIGGER_SUMMARIZE: "summarize", TRIGGER_EXPLAIN: "explain" })[job.action] || "grammar"
+                })
             }),
             signal: controller.signal
         });

@@ -27,9 +27,9 @@ async function aiCacheCheck(req, res, next) {
                 userText = text;
             }
         } else if (path === '/grammar-fix') {
-            const { text, language = "English", humanize = false, _extensionPrompt } = req.body;
+            const { text } = req.body;
             if (text) {
-                prompt = _extensionPrompt || prompts.getGrammarFixPrompt(language, humanize);
+                prompt = prompts.getGrammarFixRoutePrompt(req.body);
                 userText = text;
             }
         } else if (path === '/suggestions') {

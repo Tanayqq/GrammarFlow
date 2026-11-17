@@ -124,16 +124,13 @@ const rewrite = async (req, res, next) => {
 
 const grammarFix = async (req, res, next) => {
     try {
-        const { text, language = "English", style = "Standard", tone = "Neutral", humanize = false, learningMode = false, _extensionPrompt } = req.body;
+        const { text, language = "English", style = "Standard", tone = "Neutral", humanize = false, learningMode = false } = req.body;
         const guestSessionId = req.headers['x-guest-session-id'] || null;
         const userId = req.userId || null;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required" } });
-        
-        // Count sentences using standard sentence terminators
-        const sentences = text.split(/[.!?।]+/).map(s => s.trim()).filter(s => s.length > 2);
-        const sentenceCount = sentences.length || 1;
-        
-        const prompt = _extensionPrompt || prompts.getGrammarFixPrompt(language, style, tone, humanize, sentenceCount);
+
+        // The system prompt is always chosen server-side; clients may only pick an extension action.
+        const prompt = prompts.getGrammarFixRoutePrompt(req.body);
         
         // Try background queue only if Redis is healthy and not limit-exceeded
         if (aiQueue && !isRedisQueueDisabled && redisConnection && redisConnection.status === 'ready') {
