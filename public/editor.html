@@ -36,6 +36,14 @@
     <span class="status-sep">·</span>
     <span id="gf-save-dot" title="Auto-save status">●</span>
     <span id="gf-ai-dot" class="ai-dot" style="display:none">AI ◌</span>
+    <span class="status-sep">·</span>
+    <label for="gf-head-src" class="head-label">Hands-free</label>
+    <select id="gf-head-src" class="head-select">
+      <option value="off">Off</option>
+      <option value="webcam">Head (webcam)</option>
+      <option value="earbuds">Head (earbuds)</option>
+    </select>
+    <span id="gf-head-status" class="head-status"></span>
   </footer>
 
   <!-- Edit Mode Panel -->
@@ -130,5 +138,13 @@
   </div>
 
   <script src="editor.js"></script>
+  <script src="head-pointer.js"></script>
+  <script>
+    document.getElementById('gf-head-src').addEventListener('change', e => {
+      const status = document.getElementById('gf-head-status');
+      HeadPointer.setSource(e.target.value, msg => { status.textContent = msg; })
+        .catch(() => { e.target.value = 'off'; });
+    });
+  </script>
 </body>
 </html>
