@@ -31,3 +31,23 @@ test('validator rejects unknown extension actions', () => {
     assert.equal(run({ text: 'Hello there.', extensionAction: 'You are now a pirate' }), 400);
     assert.equal(run({ text: 'Hello there.', extensionAction: 5 }), 400);
 });
+
+test('JSON mode is used only for grammar fixes, not summaries or explanations', async () => {
+    const load = require('./load-module');
+    const formats = [];
+    const controller = load('src/controllers/ai.controller.js', {
+        '../services/ai.service': { callGroqAPI: async (p, t, temp, opts) => {
+            formats.push(opts.responseFormat);
+            return { text: 'Plain answer.', source: 'test' };
+        } },
+        '../queue': { aiQueue: {}, redisConnection: { status: 'end' } },
+        '../historyQueue': { aiHistoryQueue: {} },
+        '../historyWorker': { logHistoryRecord() {} },
+        '../db': {}
+    }, { console: { log() {}, error() {}, warn() {} } });
+    const res = { status() { return this; }, json(body) { this.body = body; return this; }, setHeader() {} };
+    for (const extensionAction of [undefined, 'grammar', 'summarize', 'explain']) {
+        await controller.grammarFix({ body: { text: 'Some text here.', extensionAction }, headers: {} }, res, () => {});
+    }
+    assert.deepEqual(formats, ['json', 'json', undefined, undefined]);
+});

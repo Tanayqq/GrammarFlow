@@ -131,6 +131,8 @@ const grammarFix = async (req, res, next) => {
 
         // The system prompt is always chosen server-side; clients may only pick an extension action.
         const prompt = prompts.getGrammarFixRoutePrompt(req.body);
+        // Summary/explain prompts ask for plain text; JSON mode is only for the grammar contract.
+        const responseFormat = ['summarize', 'explain'].includes(req.body.extensionAction) ? undefined : 'json';
         
         // Try background queue only if Redis is healthy and not limit-exceeded
         if (aiQueue && !isRedisQueueDisabled && redisConnection && redisConnection.status === 'ready') {
@@ -140,7 +142,7 @@ const grammarFix = async (req, res, next) => {
                     prompt,
                     text,
                     temperature:    0.2,
-                    responseFormat: 'json',
+                    responseFormat,
                     guest_session_id: guestSessionId,
                     user_id:        userId,
                     operation_type: 'grammar_fix',
@@ -164,13 +166,13 @@ const grammarFix = async (req, res, next) => {
         // Direct synchronous processing fallback (bypasses Redis when limits are hit or offline)
         console.log(`[API v1] Executing grammarFix directly...`);
         const startTime = Date.now();
-        const response = await aiService.callGroqAPI(prompt, text, 0.2, { responseFormat: 'json' });
+        const response = await aiService.callGroqAPI(prompt, text, 0.2, { responseFormat });
 
         let finalOutputText = response.text;
         let operationIntent = null;
         let operationMetadata = { temperature: 0.2 };
 
-        try {
+        if (responseFormat === 'json') try {
             const parsed = JSON.parse(response.text);
             finalOutputText = parsed?.result?.corrected_text || response.text;
             operationIntent = parsed?.result?.intent || null;
