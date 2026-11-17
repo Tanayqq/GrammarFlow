@@ -79,7 +79,7 @@ const GrammarFlowAPI = {
             headers
         };
         if (method !== "GET" && method !== "HEAD" && payload !== undefined) {
-            const raw = payload instanceof Blob; // audio for /transcribe
+            const raw = typeof Blob !== "undefined" && payload instanceof Blob; // audio for /transcribe
             headers["Content-Type"] = raw ? payload.type : "application/json";
             options.body = raw ? payload : JSON.stringify(payload);
         }
