@@ -1,17 +1,10 @@
 'use strict';
 /* Hands-free head pointer: turn your head to move a pointer, rest on a control to click.
- * Inputs: the webcam (any laptop) or earbud motion streamed by a local helper app
- * (AirPods on macOS, Galaxy Buds on Windows/Linux) as JSON quaternions on ws://127.0.0.1:8765.
+ * Inputs: the webcam (any laptop) or earbud/tracker motion from helpers/head_bridge.py, which
+ * relays OpenTrack data (e.g. GalaxyBudsClient for Galaxy Buds) as {yaw, pitch} on ws://127.0.0.1:18765.
  * Only controls this page; browsers cannot move the system cursor. */
 (function (root) {
   const DEG = 180 / Math.PI;
-
-  // Unit quaternion -> yaw (turn left/right) and pitch (look up/down), in degrees.
-  function quatToYawPitch({ w, x, y, z }) {
-    const yaw = Math.atan2(2 * (w * z + x * y), 1 - 2 * (y * y + z * z)) * DEG;
-    const pitch = Math.asin(Math.max(-1, Math.min(1, 2 * (w * y - z * x)))) * DEG;
-    return { yaw, pitch };
-  }
 
   // 4x4 column-major face transform (MediaPipe) -> yaw/pitch in degrees.
   function matrixToYawPitch(m) {
@@ -50,7 +43,7 @@
     };
   }
 
-  const core = { quatToYawPitch, matrixToYawPitch, createPointer, createDwell };
+  const core = { matrixToYawPitch, createPointer, createDwell };
   if (typeof module !== 'undefined') { module.exports = core; return; }
 
   /* ── Browser wiring ── */
@@ -88,11 +81,11 @@
   }
 
   function startEarbuds() {
-    const ws = new WebSocket('ws://127.0.0.1:8765');
-    ws.onmessage = e => { try { onPose(quatToYawPitch(JSON.parse(e.data))); } catch { /* ignore malformed frames */ } };
+    const ws = new WebSocket('ws://127.0.0.1:18765');
+    ws.onmessage = e => { try { onPose(JSON.parse(e.data)); } catch { /* ignore malformed frames */ } };
     return new Promise((resolve, reject) => {
       ws.onopen = () => resolve(() => ws.close());
-      ws.onerror = () => reject(new Error('No earbud helper running on this computer.'));
+      ws.onerror = () => reject(new Error('Head bridge not running. Start helpers/head_bridge.py.'));
     });
   }
 

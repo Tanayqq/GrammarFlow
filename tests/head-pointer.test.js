@@ -1,13 +1,10 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { quatToYawPitch, matrixToYawPitch, createPointer, createDwell } = require('../public/head-pointer.js');
+const { matrixToYawPitch, createPointer, createDwell } = require('../public/head-pointer.js');
 
 const close = (a, b) => assert.ok(Math.abs(a - b) < 1e-6, `${a} != ${b}`);
 
-test('quaternion and matrix decode yaw/pitch', () => {
-    const half = (Math.PI / 4) / 2; // 45° yaw about z
-    const q = quatToYawPitch({ w: Math.cos(half), x: 0, y: 0, z: Math.sin(half) });
-    close(q.yaw, 45); close(q.pitch, 0);
+test('face matrix decodes yaw/pitch', () => {
     const a = 30 * Math.PI / 180; // 30° yaw about y, column-major
     const m = matrixToYawPitch([Math.cos(a), 0, -Math.sin(a), 0, 0, 1, 0, 0, Math.sin(a), 0, Math.cos(a), 0, 0, 0, 0, 1]);
     close(m.yaw, 30); close(m.pitch, 0);
