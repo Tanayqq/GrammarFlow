@@ -170,18 +170,25 @@ class ShadowHighlighter {
     }
     render() {
         const content = this.textarea.value;
-        if (!content || !this.highlights.length) { this.overlay.innerHTML = ""; return; }
-        let html = content.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
-        const sorted = [...this.highlights]
-            .filter(h => h.original && html.includes(h.original))
-            .sort((a, b) => html.lastIndexOf(b.original) - html.lastIndexOf(a.original));
-        sorted.forEach(h => {
+        const escape = text => text.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+        const types = new Map();
+        for (const h of this.highlights) {
+            if (typeof h.original !== "string" || !h.original || types.has(h.original)) continue;
             const category = String(h.category || 'grammar').toLowerCase();
-            const type = ['grammar', 'clarity', 'flow', 'transition', 'tone', 'authenticity'].includes(category) ? category : 'grammar';
-            const esc = h.original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            html = html.replace(new RegExp(esc, 'g'), `<mark class="highlight-${type}">$&</mark>`);
-        });
-        this.overlay.innerHTML = html;
+            types.set(h.original, ['grammar', 'clarity', 'flow', 'transition', 'tone', 'authenticity'].includes(category) ? category : 'grammar');
+        }
+        if (!content || !types.size) { this.overlay.innerHTML = ""; return; }
+        // One pass over the raw text, so a phrase can never match inside another highlight's
+        // markup, and text with &, < or > still matches before escaping. Overlapping phrases:
+        // the earlier one wins; at the same start, the longer one does.
+        const pattern = new RegExp([...types.keys()].sort((a, b) => b.length - a.length)
+            .map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|'), 'g');
+        let html = '', at = 0;
+        for (const m of content.matchAll(pattern)) {
+            html += escape(content.slice(at, m.index)) + `<mark class="highlight-${types.get(m[0])}">${escape(m[0])}</mark>`;
+            at = m.index + m[0].length;
+        }
+        this.overlay.innerHTML = html + escape(content.slice(at));
     }
 }
 

@@ -93,84 +93,227 @@
       last = { yaw, pitch };
       return p;
     };
+    p.rebase = () => { last = null; }; // after tracking loss: next pose is a new baseline, no jump
     return p;
   }
 
+  // One Euro filter (Casiez et al. 2012): strong smoothing when the head is nearly still,
+  // light smoothing during fast moves, so webcam jitter disappears without adding lag.
+  function createSmoother({ minCutoff = 0.5, beta = 0.05, dCutoff = 1 } = {}) {
+    let x = null, dx = 0, lastT = 0;
+    const alpha = (cutoff, dt) => 1 / (1 + 1 / (2 * Math.PI * cutoff * dt));
+    return (value, t) => {
+      if (x === null) { x = value; lastT = t; return x; }
+      const dt = Math.max(1e-3, t - lastT); lastT = t;
+      dx += alpha(dCutoff, dt) * ((value - x) / dt - dx);
+      x += alpha(minCutoff + beta * Math.abs(dx), dt) * (value - x);
+      return x;
+    };
+  }
+
+  // Keeps yaw continuous across ±180° so smoothing never sees a 358° jump.
+  function createUnwrap() {
+    let out = null, last = 0;
+    return raw => { out = out === null ? raw : out + ((raw - last + 540) % 360) - 180; last = raw; return out; };
+  }
+
   // Dwell click: holding the pointer inside `radius` px for `ms` fires once.
-  function createDwell({ radius = 28, ms = 1000 } = {}) {
-    let anchor = null, fired = false;
-    return (x, y, t) => {
+  // A gap in samples (tracking lost) restarts unfinished progress, so untracked time never
+  // counts; a completed click stays latched until the pointer leaves, so pauses never re-click.
+  function createDwell({ radius = 28, ms = 1000, maxGap = 250 } = {}) {
+    let anchor = null, fired = false, last = -Infinity;
+    const step = (x, y, t) => {
+      if (t - last > maxGap) step.interrupt();
+      last = t;
       if (!anchor || Math.hypot(x - anchor.x, y - anchor.y) > radius) { anchor = { x, y, t }; fired = false; }
       const progress = Math.min(1, (t - anchor.t) / ms);
       const click = progress === 1 && !fired;
       if (click) fired = true;
       return { progress: fired && !click ? 0 : progress, click };
     };
+    step.interrupt = () => { if (!fired) anchor = null; };
+    return step;
   }
 
-  const core = { matrixToYawPitch, rotvecToYawPitch, findHeadTracker, encodeStart, decodeRotation, createPointer, createDwell };
+  const core = { createSmoother, createUnwrap, matrixToYawPitch, rotvecToYawPitch, findHeadTracker, encodeStart, decodeRotation, createPointer, createDwell };
   if (typeof module !== 'undefined') { module.exports = core; return; }
 
   /* ── Browser wiring ── */
   const CLICKABLE = 'button, a[href], input, textarea, select, summary, [role="button"], [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
-  let stopSource = null, pointer = null, dwell = null, cursor = null;
+  let stopSource = null, pointer = null, dwell = null, cursor = null, reportStatus = () => {};
 
-  function onPose({ yaw, pitch }) {
+  // A source that breaks mid-session turns hands-free off and says so, instead of freezing.
+  // Each menu choice gets an id; a source that finishes starting (or fails) after the user has
+  // already chosen something else must not touch the current choice.
+  let selection = 0;
+  function failSource(message, id) {
+    if (id !== selection) return;
+    const menu = document.getElementById('gf-head-src');
+    if (menu) menu.value = 'off';
+    const report = reportStatus;
+    setSource('off', report).then(() => report(message));
+  }
+
+  // t: when the sample was captured (before any inference), so dwell measures real tracking time.
+  // Sources report through this, so one that was replaced while starting never moves the pointer.
+  function emit(id, pose, t) { if (id === selection) onPose(pose, t); }
+
+  function onPose({ yaw, pitch }, t = performance.now()) {
     if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return;
     const { x, y } = pointer.update(yaw, pitch);
     const target = document.elementFromPoint(x, y)?.closest(CLICKABLE);
-    const d = dwell(x, y, performance.now());
+    const d = dwell(x, y, t);
     cursor.style.transform = `translate(${x}px, ${y}px)`;
     cursor.style.setProperty('--p', target ? d.progress : 0);
     if (d.click && target) { target.focus(); target.click(); }
   }
 
-  async function startWebcam() {
+  async function startWebcam(id) {
+    // Per-frame callbacks (Chrome, Edge, Safari 15.4+, Firefox 132+) guarantee one inference per real camera frame.
+    if (!('requestVideoFrameCallback' in HTMLVideoElement.prototype)) throw new Error('Update your browser to use webcam mode.');
     const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
     const files = await vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
     const landmarker = await vision.FaceLandmarker.createFromOptions(files, {
       baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task' },
       runningMode: 'VIDEO', numFaces: 1, outputFacialTransformationMatrixes: true
     });
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-    const video = Object.assign(document.createElement('video'), { srcObject: stream, muted: true, playsInline: true });
-    await video.play();
-    let raf = 0;
-    const loop = () => {
-      const m = landmarker.detectForVideo(video, performance.now()).facialTransformationMatrixes?.[0]?.data;
-      if (m) { const pose = matrixToYawPitch(m); onPose({ yaw: -pose.yaw, pitch: pose.pitch }); } // mirror: turn right -> pointer right
-      raf = requestAnimationFrame(loop);
+    if (id !== selection) { landmarker.close(); return () => {}; } // chose something else while the model loaded
+    let stream, video, released = false;
+    const release = () => { // safe to call more than once
+      if (released) return;
+      released = true;
+      stream?.getTracks().forEach(t => t.stop());
+      landmarker.close();
     };
-    loop();
-    return () => { cancelAnimationFrame(raf); stream.getTracks().forEach(t => t.stop()); landmarker.close(); };
+    stopSource = release; // choosing Off during the permission prompt or playback start must free everything
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+      if (id !== selection) { stream.getTracks().forEach(t => t.stop()); release(); return () => {}; } // late stream after Off
+      video = Object.assign(document.createElement('video'), { srcObject: stream, muted: true, playsInline: true });
+      await video.play();
+    } catch (err) { // release what was acquired before the failure
+      release();
+      throw err;
+    }
+    if (id !== selection) { release(); return () => {}; }
+    let handle = 0;
+    let smoothYaw, smoothPitch, unwrapYaw, tracking = false, lastMs = -Infinity;
+    const loop = (now, frame) => { // once per delivered camera frame
+      handle = video.requestVideoFrameCallback(loop); // ask for the next frame first, so one bad frame cannot end the loop
+      try {
+        // Capture time where given, else this callback's clock; never let it go backwards (MediaPipe rejects that).
+        const ms = Math.max(frame.captureTime ?? now, lastMs + 1);
+        if (ms - lastMs > 250 && tracking) { // camera stalled: next pose is a fresh start, not a jump
+          tracking = false;
+          dwell.interrupt();
+          cursor?.style.setProperty('--p', 0);
+        }
+        lastMs = ms;
+        const m = landmarker.detectForVideo(video, ms).facialTransformationMatrixes?.[0]?.data;
+        if (m) {
+          if (!tracking) { smoothYaw = createSmoother(); smoothPitch = createSmoother(); unwrapYaw = createUnwrap(); pointer.rebase(); tracking = true; }
+          const pose = matrixToYawPitch(m), t = ms / 1000;
+          emit(id, { yaw: -smoothYaw(unwrapYaw(pose.yaw), t), pitch: smoothPitch(pose.pitch, t) }, ms); // mirror: turn right -> pointer right
+        } else if (tracking && cursor) { // no face: tracking is lost, an unfinished rest must start over
+          tracking = false;
+          dwell.interrupt();
+          cursor.style.setProperty('--p', 0);
+        }
+      } catch {
+        failSource('Webcam tracking stopped. Choose Head (webcam) again to restart.', id);
+      }
+    };
+    handle = video.requestVideoFrameCallback(loop);
+    // An unplugged camera just stops delivering frames, so watch the track itself.
+    const [track] = stream.getVideoTracks();
+    const onEnded = () => failSource('The camera was disconnected. Choose Head (webcam) again to restart.', id);
+    const onMute = () => { // camera stalled without disconnecting: no half-filled ring while nothing can move
+      if (id !== selection) return;
+      tracking = false; // next frame re-baselines instead of jumping
+      dwell.interrupt();
+      cursor?.style.setProperty('--p', 0);
+    };
+    track.addEventListener('ended', onEnded);
+    track.addEventListener('mute', onMute);
+    return () => {
+      track.removeEventListener('ended', onEnded);
+      track.removeEventListener('mute', onMute);
+      video.cancelVideoFrameCallback(handle);
+      release();
+    };
   }
 
   // Android-standard head tracker earbuds, read directly by Chrome/Edge through WebHID.
-  async function startHid() {
+  // The latest HID start's cleanup and any close still in progress, so a newer start can reuse the device.
+  let releaseHid = null, hidClosing = null, hidOpening = Promise.resolve();
+  async function startHid(id) {
     if (!navigator.hid) throw new Error('This browser cannot read earbud sensors. Use Chrome or Edge.');
     const [device] = await navigator.hid.requestDevice({ filters: [{ usagePage: 0x20, usage: 0xE1 }] });
     if (!device) throw new Error('No head-tracking earbuds selected.');
-    await device.open();
+    if (id !== selection) return () => {}; // an old picker resolved late: never touch the current session
+    // Opening is queued: each start waits until the previous one has opened (or cleaned up) the device.
+    const opened = hidOpening.then(async () => {
+      await releaseHid?.(); // an earlier start may still hold the same device
+      await hidClosing;     // ...or still be closing it
+      if (id !== selection) return false;
+      await device.open();
+      if (id !== selection) { await device.close(); return false; } // chose something else while opening
+      return true;
+    });
+    hidOpening = opened.catch(() => {});
+    if (!(await opened)) return () => {};
+    if (id !== selection) { // Off arrived just after opening: close through the queue, never enable sensors
+      const closing = device.close().catch(() => {});
+      hidOpening = hidOpening.then(() => closing);
+      await closing;
+      return () => {};
+    }
     const tracker = findHeadTracker(device.collections);
     if (!tracker) { await device.close(); throw new Error('These earbuds do not share head tracking.'); }
     const onReport = e => {
-      if (e.reportId === tracker.input.reportId) onPose(rotvecToYawPitch(decodeRotation(tracker.input, new Uint8Array(e.data.buffer))));
+      if (e.reportId === tracker.input.reportId) emit(id, rotvecToYawPitch(decodeRotation(tracker.input, new Uint8Array(e.data.buffer))));
     };
+    const onDisconnect = e => { if (e.device === device) failSource('The earbuds disconnected. Choose them again to restart.', id); };
+    let stopped = false;
+    const stop = () => { // safe to call more than once
+      if (stopped) return hidClosing;
+      stopped = true;
+      if (releaseHid === stop) releaseHid = null;
+      navigator.hid.removeEventListener('disconnect', onDisconnect);
+      device.removeEventListener('inputreport', onReport);
+      const closing = hidClosing = device.close().catch(() => {}).finally(() => { if (hidClosing === closing) hidClosing = null; });
+      return closing;
+    };
+    releaseHid = stop;
+    stopSource = stop; // choosing Off while the start command is in flight must still stop it
     device.addEventListener('inputreport', onReport);
-    await device.sendFeatureReport(tracker.control.reportId, encodeStart(tracker.control));
-    return () => { device.removeEventListener('inputreport', onReport); device.close(); };
+    navigator.hid.addEventListener('disconnect', onDisconnect);
+    try {
+      await device.sendFeatureReport(tracker.control.reportId, encodeStart(tracker.control));
+    } catch (err) { // release the device, or the next attempt cannot open it
+      await stop();
+      throw err;
+    }
+    return stop;
   }
 
-  function startEarbuds() {
+  function startEarbuds(id) {
     const ws = new WebSocket('ws://127.0.0.1:18765');
-    ws.onmessage = e => { try { onPose(JSON.parse(e.data)); } catch { /* ignore malformed frames */ } };
+    stopSource = () => ws.close(); // choosing Off during the handshake cancels the connection
+    ws.onmessage = e => { try { emit(id, JSON.parse(e.data)); } catch { /* ignore malformed frames */ } };
     return new Promise((resolve, reject) => {
-      ws.onopen = () => resolve(() => ws.close());
+      ws.onopen = () => {
+        // A deliberate switch closes this too, but by then its id is stale and failSource ignores it.
+        ws.onclose = () => failSource('The head bridge stopped. Start helpers/head_bridge.py and choose it again.', id);
+        resolve(() => ws.close());
+      };
       ws.onerror = () => reject(new Error('Head bridge not running. Start helpers/head_bridge.py.'));
     });
   }
 
   async function setSource(name, status) {
+    const id = ++selection;
+    reportStatus = status;
     if (stopSource) { stopSource(); stopSource = null; }
     cursor?.remove(); cursor = null;
     if (name === 'off') { status(''); return; }
@@ -181,12 +324,15 @@
     cursor.setAttribute('aria-hidden', 'true');
     document.body.appendChild(cursor);
     pointer = createPointer({ width: innerWidth, height: innerHeight });
-    dwell = createDwell();
+    dwell = createDwell(name === 'earbuds' ? { maxGap: 1000 } : {}); // OpenTrack senders can update slowly
     status('Starting…');
     try {
-      stopSource = await ({ webcam: startWebcam, hid: startHid, earbuds: startEarbuds })[name]();
+      const stop = await ({ webcam: startWebcam, hid: startHid, earbuds: startEarbuds })[name](id);
+      if (id !== selection) { stop(); return; } // the user picked something else while this was starting
+      stopSource = stop;
       status('Turn your head to point; rest on a button to click.');
     } catch (err) {
+      if (id !== selection) return; // a superseded start failed: nothing to report
       cursor?.remove(); cursor = null;
       status(err.name === 'NotAllowedError' ? 'Camera permission was denied.' : err.message);
       throw err;

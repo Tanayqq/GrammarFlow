@@ -69,3 +69,23 @@ test('transcribe drains failed responses and keeps fallbacks inside one 40 s bud
     assert.equal(calls, 1, 'no second model once the budget is spent');
     assert.equal(cancelled, 1, 'failed response body was released');
 });
+
+test('dictation gate refuses a 4th upload before its body is read, and frees slots when done', () => {
+    const gate = require('../src/middlewares/transcribeGate');
+    const { EventEmitter } = require('node:events');
+    const response = () => Object.assign(new EventEmitter(), { set() { return this; }, status(c) { this.code = c; return this; }, json() { return this; } });
+    const open = [1, 2, 3].map(() => { const res = response(); let passed = false; gate({}, res, () => { passed = true; }); assert.ok(passed); return res; });
+    const fourth = response(); let reached = false;
+    gate({}, fourth, () => { reached = true; });
+    assert.equal(reached, false, 'body parser never runs for the refused upload');
+    assert.equal(fourth.code, 503);
+    open[0].emit('close');
+    let later = false;
+    const replacement = response();
+    try {
+        gate({}, replacement, () => { later = true; });
+        assert.equal(later, true, 'a finished upload frees its slot');
+    } finally {
+        [...open.slice(1), replacement].forEach(r => r.emit('close')); // leave the shared gate empty
+    }
+});

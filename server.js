@@ -25,7 +25,7 @@ app.use((req, res, next) => {
 
 app.use('/api/v1/dev-editor/assist', express.json({limit:'512kb'}));
 app.use('/api/v1/dev-editor/execute', express.json({limit:'512kb'}));
-app.use('/api/v1/transcribe', express.raw({ type: 'audio/*', limit: '5mb' }));
+app.use('/api/v1/transcribe', require('./src/middlewares/transcribeGate'), express.raw({ type: 'audio/*', limit: '5mb' }));
 app.use(express.json());
 
 // 2. Custom Lightweight Logger (Enhanced)

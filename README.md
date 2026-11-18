@@ -9,7 +9,6 @@ GrammarFlow is a web writing assistant with grammar correction, rewriting, sugge
 - `public/editor.html`, `public/head-pointer.js`: Flow-State Editor with the hands-free head pointer (webcam, Android-standard earbuds via WebHID, or the helpers below).
 - `helpers/head_bridge.py`: relays OpenTrack head tracking (e.g. GalaxyBudsClient for Galaxy Buds) to the editor. `helpers/airpods/`: AirPods head tracking for macOS 14+.
 - `GrammarFlow-Extension/`: browser extension sources. Build store zips from this folder; they are not kept in the repo.
-- Root `index.html` and `app.js`: older standalone frontend.
 
 ## Deployment
 

@@ -24,16 +24,9 @@ This document explains how to deploy GrammarFlow to a production environment.
 ### For Hosted Web Usage
 If you deploy the backend to `https://grammarflow.onrender.com`, the frontend is automatically served at that URL. No further steps are needed.
 
-### For Extension / Standalone Usage
-If you want a standalone HTML file to talk to your cloud backend:
-1. Open `app.js` (or `GrammarFlow_Web.html`).
-2. Update the `CONFIG.PRODUCTION_API_URL` variable:
-   ```javascript
-   const CONFIG = {
-       PRODUCTION_API_URL: "https://grammarflow.onrender.com",
-       // ...
-   };
-   ```
+### For Extension / Other Clients
+- Extension: set `API_BASE` in `GrammarFlow-Extension/background.js` to the backend URL **plus** `/api/v1`.
+- Web app: set `CONFIG.PRODUCTION_API_URL` in `public/app-v16.js` to the backend origin **only** (it appends `/api/v1` itself).
 
 ## 3. Scaling for Extension & Mobile
 The backend is now client-agnostic. To support a Chrome Extension or Mobile App:

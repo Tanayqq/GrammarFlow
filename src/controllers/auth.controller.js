@@ -4,6 +4,8 @@ const localSession = require('../services/auth/localSession');
 const { randomUUID } = require('node:crypto');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
+// Hash of a random value nobody knows; compared against when the email is unknown.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync(require('node:crypto').randomBytes(16).toString('hex'), 12);
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -337,29 +339,26 @@ const login = async (req, res) => {
             where: { email: cleanEmail }
         });
         
+        // Same answer and similar timing for unknown emails and wrong passwords, so login cannot
+        // be used to find out who has an account.
+        const invalid = () => res.status(401).json({
+            success: false,
+            error: { message: "Email or password is incorrect. If you usually sign in another way (for example with Google), use that instead.", code: "INVALID_CREDENTIALS" }
+        });
         if (!user) {
-            return res.status(404).json({
-                success: false,
-                error: { message: "Account not found. Please Sign Up first.", code: "ACCOUNT_NOT_FOUND" }
-            });
+            await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+            return invalid();
         }
 
-        // If the user has no password_hash (e.g. old mock user or Clerk-only user)
+        // Clerk-only accounts have no password; answer exactly like an unknown email.
         if (!user.password_hash) {
-            return res.status(401).json({
-                success: false,
-                error: { message: "This account was created with a different sign-in method. Please use Sign In with Clerk or reset your password.", code: "NO_PASSWORD" }
-            });
+            await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
+            return invalid();
         }
 
         // Verify password
         const passwordMatch = await bcrypt.compare(password, user.password_hash);
-        if (!passwordMatch) {
-            return res.status(401).json({
-                success: false,
-                error: { message: "Incorrect password. Please try again.", code: "WRONG_PASSWORD" }
-            });
-        }
+        if (!passwordMatch) return invalid();
         
         // Password correct! Return user details
         res.json({
