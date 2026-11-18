@@ -1,14 +1,19 @@
 # GrammarFlow
 
-GrammarFlow is a web writing assistant with grammar correction, rewriting, suggestions, document processing, and writing history. The active application is the root Express backend and the frontend in `public/`.
+GrammarFlow is a web writing assistant with grammar correction, rewriting, suggestions, document processing, voice dictation, and writing history. The active application is the root Express backend and the frontend in `public/`.
 
 ## Project layout
 
-- `server.js`, `src/`: API, authentication, PostgreSQL access, Redis queues and workers.
+- `server.js`, `src/`: API, authentication, PostgreSQL access, Redis queues and workers. AI calls (including Whisper dictation via `/api/v1/transcribe`) use Groq with `GROQ_API_KEY`.
 - `public/index.html`, `public/app-v16.js`: currently served browser application.
-- `GrammarFlow-Extension/`: browser extension sources.
-- `GrammarFlow-Backend/`: older standalone backend; it is not used by the root start command.
+- `public/editor.html`, `public/head-pointer.js`: Flow-State Editor with the hands-free head pointer (webcam, Android-standard earbuds via WebHID, or the helpers below).
+- `helpers/head_bridge.py`: relays OpenTrack head tracking (e.g. GalaxyBudsClient for Galaxy Buds) to the editor. `helpers/airpods/`: AirPods head tracking for macOS 14+.
+- `GrammarFlow-Extension/`: browser extension sources. Build store zips from this folder; they are not kept in the repo.
 - Root `index.html` and `app.js`: older standalone frontend.
+
+## Deployment
+
+The backend runs on Render (`grammarflow-brain`), which auto-deploys from the GitLab mirror `gitlab.com/Tanayqq/grammarflowt` branch `main`; keep that branch in step with GitHub `main`. The frontend is the Vercel project `grammarflowt`, which serves `public/` and proxies `/api/*` to Render.
 
 The previous native macOS/offline roadmap is historical; it does not describe this hosted application.
 

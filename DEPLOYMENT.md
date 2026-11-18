@@ -9,7 +9,7 @@ This document explains how to deploy GrammarFlow to a production environment.
 - A Groq API Key.
 
 ### Steps
-1. **Push to GitHub**: Push the `GrammarFlow-Backend` folder (or the whole repo) to a new GitHub repository.
+1. **Push to GitHub**: Push the whole repo to a GitHub (or GitLab) repository; the backend is the root `server.js`.
 2. **Connect to Hosting**:
    - On **Render.com**, create a new "Web Service" and link your repo.
    - Set the "Build Command" to `npm install`.
