@@ -1,6 +1,6 @@
 'use strict';
 /* Hands-free head pointer: turn your head to move a pointer, rest on a control to click.
- * Inputs: the webcam (any laptop) or earbud/tracker motion from helpers/head_bridge.py, which
+ * Inputs: the webcam (head, or hand: fingertip points and a pinch clicks) or earbud/tracker motion from helpers/head_bridge.py, which
  * relays OpenTrack data (e.g. GalaxyBudsClient for Galaxy Buds) as {yaw, pitch} on ws://127.0.0.1:18765.
  * Android-standard head-tracking earbuds are read directly through WebHID.
  * Only controls this page; browsers cannot move the system cursor. */
@@ -135,10 +135,65 @@
     return step;
   }
 
-  const core = { createSmoother, createUnwrap, matrixToYawPitch, rotvecToYawPitch, findHeadTracker, encodeStart, decodeRotation, createPointer, createDwell };
+  /* ── Hand mode: index fingertip points, a thumb–index pinch clicks ── */
+
+  // Fingertip (MediaPipe normalized 0..1, camera view) -> screen pixels. The camera image is
+  // mirrored so moving right moves right, and only the central area is used, so the edges of
+  // the screen are reachable without reaching the edge of the camera view.
+  function fingerToScreen(nx, ny, width, height, margin = 0.2) {
+    const span = 1 - 2 * margin, clamp = v => Math.max(0, Math.min(1, v));
+    return { x: clamp((1 - nx - margin) / span) * (width - 1), y: clamp((ny - margin) / span) * (height - 1) }; // last pixel is width - 1
+  }
+
+  // Thumb–index distance relative to hand size (wrist to middle knuckle), so it works near or
+  // far from the camera. Landmarks: 0 wrist, 4 thumb tip, 8 index tip, 9 middle knuckle.
+  function pinchRatio(hand, aspect = 4 / 3) {
+    const d = (a, b) => Math.hypot((hand[a].x - hand[b].x) * aspect, hand[a].y - hand[b].y);
+    return d(4, 8) / Math.max(1e-6, d(0, 9));
+  }
+
+  // Pinch with hysteresis: `click` fires once when the fingers close, and not again until they
+  // open past `open`. `hold` is true while closing, so the pointer can freeze and the click lands
+  // where you were pointing, not where the pinch pulled the fingertip.
+  function createPinch({ close = 0.3, open = 0.5 } = {}) {
+    let down = false;
+    return ratio => {
+      const click = !down && ratio < close;
+      if (click) down = true;
+      else if (down && ratio > open) down = false;
+      return { click, hold: down || ratio < open };
+    };
+  }
+
+  // Gesture state that must survive tracker restarts (tracking loss, camera stalls): the pinch,
+  // where the pointer froze, and the last position. Only the smoothing starts fresh.
+  const createGesture = () => ({ pinch: createPinch(), held: null, previous: null });
+
+  // One hand frame -> { x, y, click } in screen pixels, or null when no hand is in view.
+  function createHandTracker(gesture = createGesture()) {
+    const sx = createSmoother({ minCutoff: 1, beta: 0.01 }), sy = createSmoother({ minCutoff: 1, beta: 0.01 });
+    return (hand, t, width, height, aspect = 4 / 3) => {
+      if (!hand) return null;
+      const tip = fingerToScreen(hand[8].x, hand[8].y, width, height);
+      const at = { x: sx(tip.x, t), y: sy(tip.y, t), t };
+      const p = gesture.pinch(pinchRatio(hand, aspect));
+      // Freeze at the spot from just before the fingers started closing (if that was recent), so
+      // the click lands where you were pointing, not where the pinch pulled the fingertip.
+      const recent = gesture.previous && t - gesture.previous.t < 0.5 ? gesture.previous : null;
+      if (!p.hold) gesture.held = null;
+      else if (!gesture.held) gesture.held = recent || at;
+      gesture.previous = at;
+      const { x, y } = gesture.held || at;
+      return { x, y, click: p.click };
+    };
+  }
+
+  const core = { createGesture, createHandTracker, fingerToScreen, pinchRatio, createPinch, createSmoother, createUnwrap, matrixToYawPitch, rotvecToYawPitch, findHeadTracker, encodeStart, decodeRotation, createPointer, createDwell };
   if (typeof module !== 'undefined') { module.exports = core; return; }
 
   /* ── Browser wiring ── */
+  // The clickable area: unlike innerWidth/innerHeight, this leaves out scrollbars.
+  const viewport = () => [document.documentElement.clientWidth, document.documentElement.clientHeight];
   const CLICKABLE = 'button, a[href], input, textarea, select, summary, [role="button"], [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
   let stopSource = null, pointer = null, dwell = null, cursor = null, reportStatus = () => {};
 
@@ -168,15 +223,65 @@
     if (d.click && target) { target.focus(); target.click(); }
   }
 
-  async function startWebcam(id) {
+  // Hand mode: the pointer follows the fingertip directly, and a pinch clicks (no resting needed).
+  function onPoint({ x, y, click }) {
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    cursor.style.transform = `translate(${x}px, ${y}px)`;
+    cursor.style.setProperty('--p', 0);
+    const target = click && document.elementFromPoint(x, y)?.closest(CLICKABLE);
+    if (target) { target.focus(); target.click(); }
+  }
+
+  // What each camera mode tracks. `frame` returns false when nothing is in view.
+  const CAMERA_MODES = {
+    head: {
+      label: 'Head (webcam)',
+      model: (vision, files) => vision.FaceLandmarker.createFromOptions(files, {
+        baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task' },
+        runningMode: 'VIDEO', numFaces: 1, outputFacialTransformationMatrixes: true
+      }),
+      start() {
+        const yaw = createSmoother(), pitch = createSmoother(), unwrap = createUnwrap();
+        pointer.rebase();
+        return (result, ms, id) => {
+          const m = result.facialTransformationMatrixes?.[0]?.data;
+          if (!m) return false;
+          const pose = matrixToYawPitch(m), t = ms / 1000;
+          emit(id, { yaw: -yaw(unwrap(pose.yaw), t), pitch: pitch(pose.pitch, t) }, ms); // mirror: turn right -> pointer right
+          return true;
+        };
+      }
+    },
+    hand: {
+      label: 'Hand (webcam)',
+      model: (vision, files) => vision.HandLandmarker.createFromOptions(files, {
+        baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task' },
+        runningMode: 'VIDEO', numHands: 1
+      }),
+      start(session) {
+        session.gesture ||= createGesture(); // survives restarts: a held pinch is never a new click
+        const track = createHandTracker(session.gesture);
+        return (result, ms, id, video) => {
+          const point = track(result.landmarks?.[0], ms / 1000, ...viewport(), (video.videoWidth || 4) / (video.videoHeight || 3));
+          if (!point) return false;
+          emitPoint(id, point);
+          return true;
+        };
+      }
+    }
+  };
+
+  // Sources report through this, so one replaced while starting never moves the pointer.
+  function emitPoint(id, point) { if (id === selection) onPoint(point); }
+
+  async function startCamera(id, kind) {
+    const mode = CAMERA_MODES[kind];
+    const again = `Choose ${mode.label} again to restart.`;
     // Per-frame callbacks (Chrome, Edge, Safari 15.4+, Firefox 132+) guarantee one inference per real camera frame.
     if (!('requestVideoFrameCallback' in HTMLVideoElement.prototype)) throw new Error('Update your browser to use webcam mode.');
     const vision = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
     const files = await vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
-    const landmarker = await vision.FaceLandmarker.createFromOptions(files, {
-      baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task' },
-      runningMode: 'VIDEO', numFaces: 1, outputFacialTransformationMatrixes: true
-    });
+    const landmarker = await mode.model(vision, files);
     if (id !== selection) { landmarker.close(); return () => {}; } // chose something else while the model loaded
     let stream, video, released = false;
     const release = () => { // safe to call more than once
@@ -196,48 +301,38 @@
       throw err;
     }
     if (id !== selection) { release(); return () => {}; }
-    let handle = 0;
-    let smoothYaw, smoothPitch, unwrapYaw, tracking = false, lastMs = -Infinity;
+    let handle = 0, track = null, tracking = false, lastMs = -Infinity;
+    const session = {}; // state a mode keeps across tracking restarts
+    const lose = () => { // nothing in view, or the camera stalled: an unfinished rest must start over
+      tracking = false;
+      dwell.interrupt();
+      cursor?.style.setProperty('--p', 0);
+    };
     const loop = (now, frame) => { // once per delivered camera frame
       handle = video.requestVideoFrameCallback(loop); // ask for the next frame first, so one bad frame cannot end the loop
       try {
         // Capture time where given, else this callback's clock; never let it go backwards (MediaPipe rejects that).
         const ms = Math.max(frame.captureTime ?? now, lastMs + 1);
-        if (ms - lastMs > 250 && tracking) { // camera stalled: next pose is a fresh start, not a jump
-          tracking = false;
-          dwell.interrupt();
-          cursor?.style.setProperty('--p', 0);
-        }
+        if (ms - lastMs > 250 && tracking) lose(); // camera stalled: next sample is a fresh start, not a jump
         lastMs = ms;
-        const m = landmarker.detectForVideo(video, ms).facialTransformationMatrixes?.[0]?.data;
-        if (m) {
-          if (!tracking) { smoothYaw = createSmoother(); smoothPitch = createSmoother(); unwrapYaw = createUnwrap(); pointer.rebase(); tracking = true; }
-          const pose = matrixToYawPitch(m), t = ms / 1000;
-          emit(id, { yaw: -smoothYaw(unwrapYaw(pose.yaw), t), pitch: smoothPitch(pose.pitch, t) }, ms); // mirror: turn right -> pointer right
-        } else if (tracking && cursor) { // no face: tracking is lost, an unfinished rest must start over
-          tracking = false;
-          dwell.interrupt();
-          cursor.style.setProperty('--p', 0);
-        }
+        const result = landmarker.detectForVideo(video, ms);
+        if (!tracking) track = mode.start(session); // fresh filters and baseline after any loss
+        if (track(result, ms, id, video)) tracking = true;
+        else if (tracking && cursor) lose();
       } catch {
-        failSource('Webcam tracking stopped. Choose Head (webcam) again to restart.', id);
+        failSource(`Webcam tracking stopped. ${again}`, id);
       }
     };
     handle = video.requestVideoFrameCallback(loop);
     // An unplugged camera just stops delivering frames, so watch the track itself.
-    const [track] = stream.getVideoTracks();
-    const onEnded = () => failSource('The camera was disconnected. Choose Head (webcam) again to restart.', id);
-    const onMute = () => { // camera stalled without disconnecting: no half-filled ring while nothing can move
-      if (id !== selection) return;
-      tracking = false; // next frame re-baselines instead of jumping
-      dwell.interrupt();
-      cursor?.style.setProperty('--p', 0);
-    };
-    track.addEventListener('ended', onEnded);
-    track.addEventListener('mute', onMute);
+    const [videoTrack] = stream.getVideoTracks();
+    const onEnded = () => failSource(`The camera was disconnected. ${again}`, id);
+    const onMute = () => { if (id === selection) lose(); }; // camera stalled without disconnecting
+    videoTrack.addEventListener('ended', onEnded);
+    videoTrack.addEventListener('mute', onMute);
     return () => {
-      track.removeEventListener('ended', onEnded);
-      track.removeEventListener('mute', onMute);
+      videoTrack.removeEventListener('ended', onEnded);
+      videoTrack.removeEventListener('mute', onMute);
       video.cancelVideoFrameCallback(handle);
       release();
     };
@@ -323,14 +418,14 @@
       'background:conic-gradient(rgba(168,85,247,.85) calc(var(--p) * 360deg), transparent 0)';
     cursor.setAttribute('aria-hidden', 'true');
     document.body.appendChild(cursor);
-    pointer = createPointer({ width: innerWidth, height: innerHeight });
+    pointer = createPointer({ width: viewport()[0] - 1, height: viewport()[1] - 1 });
     dwell = createDwell(name === 'earbuds' ? { maxGap: 1000 } : {}); // OpenTrack senders can update slowly
     status('Starting…');
     try {
-      const stop = await ({ webcam: startWebcam, hid: startHid, earbuds: startEarbuds })[name](id);
+      const stop = await ({ webcam: id => startCamera(id, 'head'), hand: id => startCamera(id, 'hand'), hid: startHid, earbuds: startEarbuds })[name](id);
       if (id !== selection) { stop(); return; } // the user picked something else while this was starting
       stopSource = stop;
-      status('Turn your head to point; rest on a button to click.');
+      status(name === 'hand' ? 'Point with your index finger; pinch thumb and finger to click.' : 'Turn your head to point; rest on a button to click.');
     } catch (err) {
       if (id !== selection) return; // a superseded start failed: nothing to report
       cursor?.remove(); cursor = null;
@@ -339,7 +434,7 @@
     }
   }
 
-  addEventListener('resize', () => pointer?.resize(innerWidth, innerHeight));
+  addEventListener('resize', () => pointer?.resize(viewport()[0] - 1, viewport()[1] - 1));
   // Any page with a #gf-head-src menu (and optional #gf-head-status) gets hands-free mode.
   document.getElementById('gf-head-src')?.addEventListener('change', e => {
     const status = document.getElementById('gf-head-status');
