@@ -1,16 +1,11 @@
 'use strict';
 /* Hands-free head pointer: turn your head to move a pointer, rest on a control to click.
- * Inputs: the webcam (head, or hand: fingertip points and a pinch clicks) or earbud/tracker motion from helpers/head_bridge.py, which
+ * Inputs: the webcam (hand: fingertip points and a pinch clicks) or earbud/tracker motion from helpers/head_bridge.py, which
  * relays OpenTrack data (e.g. GalaxyBudsClient for Galaxy Buds) as {yaw, pitch} on ws://127.0.0.1:18765.
  * Android-standard head-tracking earbuds are read directly through WebHID.
  * Only controls this page; browsers cannot move the system cursor. */
 (function (root) {
   const DEG = 180 / Math.PI;
-
-  // 4x4 column-major face transform (MediaPipe) -> yaw/pitch in degrees.
-  function matrixToYawPitch(m) {
-    return { yaw: Math.atan2(m[8], m[10]) * DEG, pitch: Math.asin(Math.max(-1, Math.min(1, -m[9]))) * DEG };
-  }
 
   /* ── Android head tracker HID protocol (source.android.com, "Head tracker HID protocol") ──
    * Earbuds implementing it expose a HID sensor (page 0x20, usage 0xE1) that WebHID can read. */
@@ -93,7 +88,6 @@
       last = { yaw, pitch };
       return p;
     };
-    p.rebase = () => { last = null; }; // after tracking loss: next pose is a new baseline, no jump
     return p;
   }
 
@@ -109,12 +103,6 @@
       x += alpha(minCutoff + beta * Math.abs(dx), dt) * (value - x);
       return x;
     };
-  }
-
-  // Keeps yaw continuous across ±180° so smoothing never sees a 358° jump.
-  function createUnwrap() {
-    let out = null, last = 0;
-    return raw => { out = out === null ? raw : out + ((raw - last + 540) % 360) - 180; last = raw; return out; };
   }
 
   // Dwell click: holding the pointer inside `radius` px for `ms` fires once.
@@ -147,21 +135,25 @@
 
   // Thumb–index distance relative to hand size (wrist to middle knuckle), so it works near or
   // far from the camera. Landmarks: 0 wrist, 4 thumb tip, 8 index tip, 9 middle knuckle.
-  function pinchRatio(hand, aspect = 4 / 3) {
-    const d = (a, b) => Math.hypot((hand[a].x - hand[b].x) * aspect, hand[a].y - hand[b].y);
+  // Uses MediaPipe's 3D hand points (`world`, metres) when given: in the flat camera image a palm
+  // tilted towards the camera looks short, which made real pinches look wide open.
+  function pinchRatio(hand, aspect = 4 / 3, world = null) {
+    const d = world
+      ? (a, b) => Math.hypot(world[a].x - world[b].x, world[a].y - world[b].y, world[a].z - world[b].z)
+      : (a, b) => Math.hypot((hand[a].x - hand[b].x) * aspect, hand[a].y - hand[b].y);
     return d(4, 8) / Math.max(1e-6, d(0, 9));
   }
 
   // Pinch with hysteresis: `click` fires once when the fingers close, and not again until they
   // open past `open`. `hold` is true while closing, so the pointer can freeze and the click lands
   // where you were pointing, not where the pinch pulled the fingertip.
-  function createPinch({ close = 0.3, open = 0.5 } = {}) {
+  function createPinch({ close = 0.35, open = 0.55, hold = 0.45 } = {}) {
     let down = false;
     return ratio => {
       const click = !down && ratio < close;
       if (click) down = true;
       else if (down && ratio > open) down = false;
-      return { click, hold: down || ratio < open };
+      return { click, hold: down || ratio < hold };
     };
   }
 
@@ -172,11 +164,11 @@
   // One hand frame -> { x, y, click } in screen pixels, or null when no hand is in view.
   function createHandTracker(gesture = createGesture()) {
     const sx = createSmoother({ minCutoff: 1, beta: 0.01 }), sy = createSmoother({ minCutoff: 1, beta: 0.01 });
-    return (hand, t, width, height, aspect = 4 / 3) => {
+    return (hand, t, width, height, aspect = 4 / 3, world = null) => {
       if (!hand) return null;
       const tip = fingerToScreen(hand[8].x, hand[8].y, width, height);
       const at = { x: sx(tip.x, t), y: sy(tip.y, t), t };
-      const p = gesture.pinch(pinchRatio(hand, aspect));
+      const p = gesture.pinch(pinchRatio(hand, aspect, world));
       // Freeze at the spot from just before the fingers started closing (if that was recent), so
       // the click lands where you were pointing, not where the pinch pulled the fingertip.
       const recent = gesture.previous && t - gesture.previous.t < 0.5 ? gesture.previous : null;
@@ -184,11 +176,11 @@
       else if (!gesture.held) gesture.held = recent || at;
       gesture.previous = at;
       const { x, y } = gesture.held || at;
-      return { x, y, click: p.click };
+      return { x, y, click: p.click, hold: p.hold };
     };
   }
 
-  const core = { createGesture, createHandTracker, fingerToScreen, pinchRatio, createPinch, createSmoother, createUnwrap, matrixToYawPitch, rotvecToYawPitch, findHeadTracker, encodeStart, decodeRotation, createPointer, createDwell };
+  const core = { createGesture, createHandTracker, fingerToScreen, pinchRatio, createPinch, createSmoother, rotvecToYawPitch, findHeadTracker, encodeStart, decodeRotation, createPointer, createDwell };
   if (typeof module !== 'undefined') { module.exports = core; return; }
 
   /* ── Browser wiring ── */
@@ -224,36 +216,18 @@
   }
 
   // Hand mode: the pointer follows the fingertip directly, and a pinch clicks (no resting needed).
+  let clickFlashUntil = 0;
   function onPoint({ x, y, click }) {
     if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+    if (click) clickFlashUntil = performance.now() + 300; // the ring fills briefly so every pinch is visible
     cursor.style.transform = `translate(${x}px, ${y}px)`;
-    cursor.style.setProperty('--p', 0);
+    cursor.style.setProperty('--p', performance.now() < clickFlashUntil ? 1 : 0);
     const target = click && document.elementFromPoint(x, y)?.closest(CLICKABLE);
     if (target) { target.focus(); target.click(); }
   }
 
   // What each camera mode tracks. `frame` returns false when nothing is in view.
   const CAMERA_MODES = {
-    head: {
-      label: 'Head (webcam)',
-      ready: 'Turn your head to point; rest on a button to click.',
-      missing: 'Face the camera to start pointing.',
-      model: (vision, files) => vision.FaceLandmarker.createFromOptions(files, {
-        baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task' },
-        runningMode: 'VIDEO', numFaces: 1, outputFacialTransformationMatrixes: true
-      }),
-      start() {
-        const yaw = createSmoother(), pitch = createSmoother(), unwrap = createUnwrap();
-        pointer.rebase();
-        return (result, ms, id) => {
-          const m = result.facialTransformationMatrixes?.[0]?.data;
-          if (!m) return false;
-          const pose = matrixToYawPitch(m), t = ms / 1000;
-          emit(id, { yaw: -yaw(unwrap(pose.yaw), t), pitch: pitch(pose.pitch, t) }, ms); // mirror: turn right -> pointer right
-          return true;
-        };
-      }
-    },
     hand: {
       label: 'Hand (webcam)',
       ready: 'Point with your index finger; pinch thumb and finger to click.',
@@ -267,8 +241,8 @@
         const track = createHandTracker(session.gesture);
         return (result, ms, id, video, preview) => {
           const hand = result.landmarks?.[0];
-          preview.mark(hand?.[8]);
-          const point = track(hand, ms / 1000, ...viewport(), (video.videoWidth || 4) / (video.videoHeight || 3));
+          const point = track(hand, ms / 1000, ...viewport(), (video.videoWidth || 4) / (video.videoHeight || 3), result.worldLandmarks?.[0]);
+          preview.mark(hand?.[8], point);
           if (!point) return false;
           emitPoint(id, point);
           return true;
@@ -298,9 +272,15 @@
       'z-index:9998;pointer-events:none;background:#000;box-shadow:0 2px 12px rgba(0,0,0,.35)';
     dot.style.cssText = 'position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;' +
       'background:#a855f7;border:2px solid #fff;display:none';
-    preview.mark = tip => { // fingertip in camera coordinates, drawn mirrored like the video
+    let dotFlashUntil = 0;
+    preview.mark = (tip, point) => { // fingertip in camera coordinates, drawn mirrored like the video
       dot.style.display = tip ? 'block' : 'none';
-      if (tip) { dot.style.left = `${(1 - tip.x) * 100}%`; dot.style.top = `${tip.y * 100}%`; }
+      if (!tip) return;
+      dot.style.left = `${(1 - tip.x) * 100}%`;
+      dot.style.top = `${tip.y * 100}%`;
+      if (point?.click) dotFlashUntil = performance.now() + 400;
+      // purple: pointing; amber: fingers closing; green: click registered
+      dot.style.background = performance.now() < dotFlashUntil ? '#22c55e' : point?.hold ? '#f59e0b' : '#a855f7';
     };
     const release = () => { // safe to call more than once
       if (released) return;
@@ -450,10 +430,10 @@
     dwell = createDwell(name === 'earbuds' ? { maxGap: 1000 } : {}); // OpenTrack senders can update slowly
     status('Starting…');
     try {
-      const stop = await ({ webcam: id => startCamera(id, 'head'), hand: id => startCamera(id, 'hand'), hid: startHid, earbuds: startEarbuds })[name](id);
+      const stop = await ({ hand: id => startCamera(id, 'hand'), hid: startHid, earbuds: startEarbuds })[name](id);
       if (id !== selection) { stop(); return; } // the user picked something else while this was starting
       stopSource = stop;
-      status(name === 'hand' ? CAMERA_MODES.hand.ready : CAMERA_MODES.head.ready);
+      status(name === 'hand' ? CAMERA_MODES.hand.ready : 'Turn your head to point; rest on a button to click.');
     } catch (err) {
       if (id !== selection) return; // a superseded start failed: nothing to report
       cursor?.remove(); cursor = null;

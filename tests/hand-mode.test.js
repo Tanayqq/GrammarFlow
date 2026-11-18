@@ -21,7 +21,7 @@ test('pinch ratio is relative to hand size, so near and far hands agree', () => 
 });
 
 test('pinch clicks once per close, with hysteresis and a hold while closing', () => {
-    const pinch = createPinch({ close: 0.3, open: 0.5 });
+    const pinch = createPinch({ close: 0.3, open: 0.5, hold: 0.5 });
     assert.deepEqual(pinch(0.9), { click: false, hold: false });
     assert.deepEqual(pinch(0.45), { click: false, hold: true });                // closing: freeze the pointer
     assert.deepEqual(pinch(0.2), { click: true, hold: true });                  // closed: one click
@@ -97,4 +97,19 @@ test('a pinch that closes across a camera stall still clicks where you were poin
     createHandTracker(stale)(handAt(100, 100, 0.9), 1.0, W, H);              // pointed somewhere long ago
     const back = createHandTracker(stale)(handAt(625, 418, 0.1), 5.0, W, H); // hand returns 4 s later, pinched
     assert.ok(Math.hypot(back.x - 625, back.y - 418) < 1, 'an old position is never reused');
+});
+
+test('a real pinch with the palm facing the camera registers (3D points), though it looks open in 2D', () => {
+    const { pinchRatio, createHandTracker } = require('../public/head-pointer.js');
+    const flat = Array.from({ length: 21 }, () => ({ x: 0.5, y: 0.5 }));
+    flat[0] = { x: 0.5, y: 0.53 }; flat[9] = { x: 0.5, y: 0.5 };      // palm towards the camera: looks very short
+    flat[8] = { x: 0.5, y: 0.45 }; flat[4] = { x: 0.52, y: 0.45 };    // tips 0.02 apart
+    const world = Array.from({ length: 21 }, () => ({ x: 0, y: 0, z: 0 }));
+    world[0] = { x: 0, y: 0.03, z: 0.08 }; world[9] = { x: 0, y: 0, z: 0 };  // real palm ~8.5 cm
+    world[8] = { x: 0, y: -0.06, z: -0.02 }; world[4] = { x: 0.012, y: -0.06, z: -0.02 }; // tips 1.2 cm apart
+    assert.ok(pinchRatio(flat) > 0.5, '2D alone thinks the hand is open');
+    assert.ok(pinchRatio(flat, 4 / 3, world) < 0.2, '3D sees the pinch');
+    const out = createHandTracker()(flat, 0, 1000, 800, 4 / 3, world);
+    assert.equal(out.click, true);
+    assert.equal(out.hold, true);
 });
