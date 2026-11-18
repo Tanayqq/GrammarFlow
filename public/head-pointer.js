@@ -236,6 +236,8 @@
   const CAMERA_MODES = {
     head: {
       label: 'Head (webcam)',
+      ready: 'Turn your head to point; rest on a button to click.',
+      missing: 'Face the camera to start pointing.',
       model: (vision, files) => vision.FaceLandmarker.createFromOptions(files, {
         baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task' },
         runningMode: 'VIDEO', numFaces: 1, outputFacialTransformationMatrixes: true
@@ -254,6 +256,8 @@
     },
     hand: {
       label: 'Hand (webcam)',
+      ready: 'Point with your index finger; pinch thumb and finger to click.',
+      missing: 'Show your hand to the camera.',
       model: (vision, files) => vision.HandLandmarker.createFromOptions(files, {
         baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task' },
         runningMode: 'VIDEO', numHands: 1
@@ -261,8 +265,10 @@
       start(session) {
         session.gesture ||= createGesture(); // survives restarts: a held pinch is never a new click
         const track = createHandTracker(session.gesture);
-        return (result, ms, id, video) => {
-          const point = track(result.landmarks?.[0], ms / 1000, ...viewport(), (video.videoWidth || 4) / (video.videoHeight || 3));
+        return (result, ms, id, video, preview) => {
+          const hand = result.landmarks?.[0];
+          preview.mark(hand?.[8]);
+          const point = track(hand, ms / 1000, ...viewport(), (video.videoWidth || 4) / (video.videoHeight || 3));
           if (!point) return false;
           emitPoint(id, point);
           return true;
@@ -284,9 +290,22 @@
     const landmarker = await mode.model(vision, files);
     if (id !== selection) { landmarker.close(); return () => {}; } // chose something else while the model loaded
     let stream, video, released = false;
+    // A small mirrored preview, so you can see whether your hand or face is in view. It also puts the
+    // video on the page, which some browsers need before they deliver camera frames. Stays on-device.
+    const preview = document.createElement('div'), dot = document.createElement('div');
+    preview.setAttribute('aria-hidden', 'true');
+    preview.style.cssText = 'position:fixed;right:16px;bottom:16px;width:min(192px,30vw);aspect-ratio:4/3;border-radius:10px;overflow:hidden;' +
+      'z-index:9998;pointer-events:none;background:#000;box-shadow:0 2px 12px rgba(0,0,0,.35)';
+    dot.style.cssText = 'position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;' +
+      'background:#a855f7;border:2px solid #fff;display:none';
+    preview.mark = tip => { // fingertip in camera coordinates, drawn mirrored like the video
+      dot.style.display = tip ? 'block' : 'none';
+      if (tip) { dot.style.left = `${(1 - tip.x) * 100}%`; dot.style.top = `${tip.y * 100}%`; }
+    };
     const release = () => { // safe to call more than once
       if (released) return;
       released = true;
+      preview.remove();
       stream?.getTracks().forEach(t => t.stop());
       landmarker.close();
     };
@@ -295,13 +314,22 @@
       stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
       if (id !== selection) { stream.getTracks().forEach(t => t.stop()); release(); return () => {}; } // late stream after Off
       video = Object.assign(document.createElement('video'), { srcObject: stream, muted: true, playsInline: true });
+      video.style.cssText = 'width:100%;height:100%;object-fit:cover;transform:scaleX(-1)';
+      preview.append(video, dot);
+      document.body.appendChild(preview);
+      // Match the camera's real shape (often 16:9), so nothing is cropped and the dot lines up.
+      // 'resize' fires once the size is known, and again if the camera changes it.
+      video.addEventListener('resize', () => {
+        if (video.videoWidth && video.videoHeight) preview.style.aspectRatio = `${video.videoWidth} / ${video.videoHeight}`;
+      });
       await video.play();
     } catch (err) { // release what was acquired before the failure
       release();
       throw err;
     }
     if (id !== selection) { release(); return () => {}; }
-    let handle = 0, track = null, tracking = false, lastMs = -Infinity;
+    let handle = 0, track = null, tracking = false, lastMs = -Infinity, shown = mode.ready;
+    const hint = text => { if (text !== shown && id === selection) { shown = text; reportStatus(text); } };
     const session = {}; // state a mode keeps across tracking restarts
     const lose = () => { // nothing in view, or the camera stalled: an unfinished rest must start over
       tracking = false;
@@ -317,8 +345,8 @@
         lastMs = ms;
         const result = landmarker.detectForVideo(video, ms);
         if (!tracking) track = mode.start(session); // fresh filters and baseline after any loss
-        if (track(result, ms, id, video)) tracking = true;
-        else if (tracking && cursor) lose();
+        if (track(result, ms, id, video, preview)) { tracking = true; hint(mode.ready); }
+        else { if (tracking && cursor) lose(); hint(mode.missing); }
       } catch {
         failSource(`Webcam tracking stopped. ${again}`, id);
       }
@@ -425,7 +453,7 @@
       const stop = await ({ webcam: id => startCamera(id, 'head'), hand: id => startCamera(id, 'hand'), hid: startHid, earbuds: startEarbuds })[name](id);
       if (id !== selection) { stop(); return; } // the user picked something else while this was starting
       stopSource = stop;
-      status(name === 'hand' ? 'Point with your index finger; pinch thumb and finger to click.' : 'Turn your head to point; rest on a button to click.');
+      status(name === 'hand' ? CAMERA_MODES.hand.ready : CAMERA_MODES.head.ready);
     } catch (err) {
       if (id !== selection) return; // a superseded start failed: nothing to report
       cursor?.remove(); cursor = null;
