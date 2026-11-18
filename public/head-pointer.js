@@ -163,7 +163,8 @@
 
   // One hand frame -> { x, y, click } in screen pixels, or null when no hand is in view.
   function createHandTracker(gesture = createGesture()) {
-    const sx = createSmoother({ minCutoff: 1, beta: 0.01 }), sy = createSmoother({ minCutoff: 1, beta: 0.01 });
+    // Tuned for pixels: steady when the finger rests, little trailing when it moves.
+    const sx = createSmoother({ minCutoff: 1.5, beta: 0.05 }), sy = createSmoother({ minCutoff: 1.5, beta: 0.05 });
     return (hand, t, width, height, aspect = 4 / 3, world = null) => {
       if (!hand) return null;
       const tip = fingerToScreen(hand[8].x, hand[8].y, width, height);
@@ -187,6 +188,17 @@
   // The clickable area: unlike innerWidth/innerHeight, this leaves out scrollbars.
   const viewport = () => [document.documentElement.clientWidth, document.documentElement.clientHeight];
   const CLICKABLE = 'button, a[href], input, textarea, select, summary, [role="button"], [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
+
+  // Browsers never let a page open a native dropdown list, so a hands-free "click" on one picks
+  // its next option instead. The hands-free menu itself is skipped so a click can't turn it off.
+  function activate(target) {
+    target.focus();
+    if (target.tagName !== 'SELECT') { target.click(); return; }
+    if (target.id === 'gf-head-src' || target.disabled || !target.options.length) return;
+    target.selectedIndex = (target.selectedIndex + 1) % target.options.length;
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+    target.dispatchEvent(new Event('change', { bubbles: true }));
+  }
   let stopSource = null, pointer = null, dwell = null, cursor = null, reportStatus = () => {};
 
   // A source that breaks mid-session turns hands-free off and says so, instead of freezing.
@@ -212,7 +224,7 @@
     const d = dwell(x, y, t);
     cursor.style.transform = `translate(${x}px, ${y}px)`;
     cursor.style.setProperty('--p', target ? d.progress : 0);
-    if (d.click && target) { target.focus(); target.click(); }
+    if (d.click && target) activate(target);
   }
 
   // Hand mode: the pointer follows the fingertip directly, and a pinch clicks (no resting needed).
@@ -223,7 +235,7 @@
     cursor.style.transform = `translate(${x}px, ${y}px)`;
     cursor.style.setProperty('--p', performance.now() < clickFlashUntil ? 1 : 0);
     const target = click && document.elementFromPoint(x, y)?.closest(CLICKABLE);
-    if (target) { target.focus(); target.click(); }
+    if (target) activate(target);
   }
 
   // What each camera mode tracks. `frame` returns false when nothing is in view.
@@ -232,10 +244,15 @@
       label: 'Hand (webcam)',
       ready: 'Point with your index finger; pinch thumb and finger to click.',
       missing: 'Show your hand to the camera.',
-      model: (vision, files) => vision.HandLandmarker.createFromOptions(files, {
-        baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task' },
-        runningMode: 'VIDEO', numHands: 1
-      }),
+      model: async (vision, files) => {
+        const options = delegate => ({
+          baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', delegate },
+          runningMode: 'VIDEO', numHands: 1
+        });
+        // The graphics chip is usually much faster; fall back to the processor where it is unavailable.
+        try { return await vision.HandLandmarker.createFromOptions(files, options('GPU')); }
+        catch { return vision.HandLandmarker.createFromOptions(files, options('CPU')); }
+      },
       start(session) {
         session.gesture ||= createGesture(); // survives restarts: a held pinch is never a new click
         const track = createHandTracker(session.gesture);

@@ -113,3 +113,32 @@ test('a real pinch with the palm facing the camera registers (3D points), though
     assert.equal(out.click, true);
     assert.equal(out.hold, true);
 });
+
+test('hand pointer keeps up with a quick move but stays steady at rest', () => {
+    const { createHandTracker } = require('../public/head-pointer.js');
+    const W = 1000, H = 800;
+    const handAt = (sx, sy) => {
+        const nx = 1 - (0.2 + (sx / (W - 1)) * 0.6), ny = 0.2 + (sy / (H - 1)) * 0.6;
+        const h = Array.from({ length: 21 }, () => ({ x: nx, y: ny + 0.1 }));
+        h[8] = { x: nx, y: ny }; h[9] = { x: nx, y: ny + 0.1 }; h[0] = { x: nx, y: ny + 0.3 }; h[4] = { x: nx + 0.2, y: ny };
+        return h;
+    };
+    const track = createHandTracker();
+    let t = 0, p;
+    for (let i = 0; i < 30; i++) p = track(handAt(300, 400), (t += 1 / 30), W, H);
+    let worst = 0;
+    for (let i = 1; i <= 9; i++) {                                                  // 300 px in 0.3 s
+        const finger = 300 + (300 * i) / 9;
+        p = track(handAt(finger, 400), (t += 1 / 30), W, H);
+        worst = Math.max(worst, finger - p.x);
+    }
+    assert.ok(worst < 15, `pointer trails the finger by up to ${worst.toFixed(1)} px while moving`);
+    assert.ok(600 - p.x < 6, `pointer is ${(600 - p.x).toFixed(1)} px behind when the finger stops`);
+    let seed = 3, min = Infinity, max = -Infinity;
+    const noise = () => { seed = (seed * 16807) % 2147483647; return (seed / 2147483647 - 0.5) * 6; }; // ±3 px of tracking noise
+    for (let i = 0; i < 60; i++) {
+        p = track(handAt(600 + noise(), 400 + noise()), (t += 1 / 30), W, H);
+        if (i > 20) { min = Math.min(min, p.x); max = Math.max(max, p.x); }
+    }
+    assert.ok(max - min < 4, `resting pointer wobbles ${(max - min).toFixed(1)} px`);
+});
