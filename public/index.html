@@ -706,6 +706,17 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
             <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
         </label>
     </div>
+    <!-- Hands-free head pointer (public/head-pointer.js) -->
+    <div class="flex items-center gap-3">
+        <span class="text-sm font-medium text-gray-400">Hands-free:</span>
+        <select id="gf-head-src" class="appearance-none bg-[#252545] border border-white/10 rounded-full py-2 pl-4 pr-10 text-sm font-semibold text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500/50 hover:bg-[#2d2d55] transition-all cursor-pointer shadow-[0_0_10px_rgba(168,85,247,0.1)]" aria-label="Hands-free head pointer">
+            <option value="off">Off</option>
+            <option value="webcam">Head (webcam)</option>
+            <option value="hid">Head (Android-standard earbuds)</option>
+            <option value="earbuds">Head (Galaxy Buds / OpenTrack app)</option>
+        </select>
+        <span id="gf-head-status" class="text-xs text-gray-400" role="status" aria-live="polite"></span>
+    </div>
 </div>
 
             
@@ -807,6 +818,7 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="vendor/purify.min.js"></script>
 <script src="app-v16.js?v=26"></script>
+<script src="head-pointer.js?v=2"></script>
 <script src="analytics.js?v=1" defer></script>
 
 

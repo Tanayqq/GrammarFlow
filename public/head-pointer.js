@@ -175,6 +175,9 @@
     cursor?.remove(); cursor = null;
     if (name === 'off') { status(''); return; }
     cursor = Object.assign(document.createElement('div'), { id: 'gf-head-cursor' });
+    cursor.style.cssText = 'position:fixed;top:-14px;left:-14px;width:28px;height:28px;border-radius:50%;pointer-events:none;z-index:9999;' +
+      'border:2px solid rgba(255,255,255,.9);box-shadow:0 0 0 2px rgba(0,0,0,.5);--p:0;' +
+      'background:conic-gradient(rgba(168,85,247,.85) calc(var(--p) * 360deg), transparent 0)';
     cursor.setAttribute('aria-hidden', 'true');
     document.body.appendChild(cursor);
     pointer = createPointer({ width: innerWidth, height: innerHeight });
@@ -191,5 +194,10 @@
   }
 
   addEventListener('resize', () => pointer?.resize(innerWidth, innerHeight));
+  // Any page with a #gf-head-src menu (and optional #gf-head-status) gets hands-free mode.
+  document.getElementById('gf-head-src')?.addEventListener('change', e => {
+    const status = document.getElementById('gf-head-status');
+    setSource(e.target.value, msg => { if (status) status.textContent = msg; }).catch(() => { e.target.value = 'off'; });
+  });
   root.HeadPointer = { setSource, feed: p => cursor && onPose(p), core };
 })(typeof window !== 'undefined' ? window : globalThis);

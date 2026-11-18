@@ -388,11 +388,3 @@ body::-webkit-scrollbar, #gf-canvas::-webkit-scrollbar { display: none; }
   border: 1px solid rgba(168,85,247,.3); border-radius: 6px; padding: 2px 6px;
 }
 .head-status { color: #a855f7; }
-#gf-head-cursor {
-  --p: 0;
-  position: fixed; top: -14px; left: -14px; width: 28px; height: 28px; border-radius: 50%;
-  pointer-events: none; z-index: 9999;
-  border: 2px solid rgba(255,255,255,.9); box-shadow: 0 0 0 2px rgba(0,0,0,.5);
-  background: conic-gradient(rgba(168,85,247,.85) calc(var(--p) * 360deg), transparent 0);
-}
-@media (prefers-reduced-motion: no-preference) { #gf-head-cursor { transition: transform 40ms linear; } }

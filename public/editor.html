@@ -139,13 +139,6 @@
   </div>
 
   <script src="editor.js"></script>
-  <script src="head-pointer.js"></script>
-  <script>
-    document.getElementById('gf-head-src').addEventListener('change', e => {
-      const status = document.getElementById('gf-head-status');
-      HeadPointer.setSource(e.target.value, msg => { status.textContent = msg; })
-        .catch(() => { e.target.value = 'off'; });
-    });
-  </script>
+  <script src="head-pointer.js?v=2"></script>
 </body>
 </html>
