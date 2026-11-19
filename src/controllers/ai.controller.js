@@ -577,7 +577,10 @@ const getHistoryDetail = async (req, res) => {
             return res.status(403).json({ success: false, error: { message: 'Access denied' } });
         }
 
-        sendResponse(res, true, operation);
+        // The `user` relation (including password_hash) was only fetched for the ownership
+        // check above; never send it to the client.
+        const { user, ...safeOperation } = operation;
+        sendResponse(res, true, safeOperation);
     } catch (error) {
         console.error('[API v1] getHistoryDetail error:', error.message);
         res.status(500).json({ success: false, error: { message: 'Failed to retrieve operation details' } });

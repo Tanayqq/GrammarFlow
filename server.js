@@ -20,6 +20,7 @@ app.use((req, res, next) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.setHeader('X-Frame-Options', 'DENY');
+    if (process.env.RENDER === 'true') res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
     next();
 });
 

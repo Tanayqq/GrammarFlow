@@ -273,3 +273,23 @@ test('a leaked guest header cannot read or delete registered-account history', a
     assert.equal(await invoke(controller.deleteHistory), 200);
     assert.equal(deleted, true);
 });
+
+test('getHistoryDetail never sends the owner\'s password hash (or any user field) to the client', async () => {
+    const owner = { guest_session_id: 'leaked-header', email: 'owner@example.com', password_hash: 'super-secret-bcrypt-hash' };
+    const controller = load('src/controllers/ai.controller.js', {
+        '../services/ai.service': {}, '../queue': {}, '../historyQueue': {}, '../historyWorker': {},
+        '../db': { aiOperation: {
+            async findUnique({ include }) {
+                const selected = Object.fromEntries(Object.keys(include.user.select).map(key => [key, owner[key]]));
+                return { id: 'operation', user_id: 'owner', operation_type: 'rewrite', user: selected };
+            }
+        } }
+    });
+    const response = { statusCode: 200, setHeader() {}, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; } };
+    await controller.getHistoryDetail({ headers: {}, params: { id: 'operation' }, userId: 'owner' }, response);
+    assert.equal(response.statusCode, 200);
+    assert.equal('user' in response.body.data, false, 'response must not include the user relation at all');
+    assert.equal(JSON.stringify(response.body).includes('super-secret-bcrypt-hash'), false, 'password hash must never appear in the response');
+    assert.equal(response.body.data.id, 'operation');
+    assert.equal(response.body.data.operation_type, 'rewrite');
+});
