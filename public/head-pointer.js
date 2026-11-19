@@ -290,7 +290,10 @@
       model: async (vision, files) => {
         const options = delegate => ({
           baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', delegate },
-          runningMode: 'VIDEO', numHands: 1
+          runningMode: 'VIDEO', numHands: 1,
+          // A fast-moving finger is a blurry finger: at the 0.5 defaults one blurred frame drops the
+          // hand and the model has to search the whole image again. Keep following it instead.
+          minHandDetectionConfidence: 0.3, minHandPresenceConfidence: 0.3, minTrackingConfidence: 0.3
         });
         // The graphics chip is usually much faster; fall back to the processor where it is unavailable.
         try { const m = await vision.HandLandmarker.createFromOptions(files, options('GPU')); diag.device = 'GPU'; return m; }
@@ -352,7 +355,7 @@
     };
     stopSource = release; // choosing Off during the permission prompt or playback start must free everything
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+      stream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, frameRate: { ideal: 60 } } }); // shorter frames blur less, where the camera can
       if (id !== selection) { stream.getTracks().forEach(t => t.stop()); release(); return () => {}; } // late stream after Off
       video = Object.assign(document.createElement('video'), { srcObject: stream, muted: true, playsInline: true });
       video.style.cssText = 'width:100%;height:100%;object-fit:cover;transform:scaleX(-1)';
