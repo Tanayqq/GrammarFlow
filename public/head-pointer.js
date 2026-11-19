@@ -189,15 +189,52 @@
   const viewport = () => [document.documentElement.clientWidth, document.documentElement.clientHeight];
   const CLICKABLE = 'button, a[href], input, textarea, select, summary, [role="button"], [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
 
-  // Browsers never let a page open a native dropdown list, so a hands-free "click" on one picks
-  // its next option instead. The hands-free menu itself is skipped so a click can't turn it off.
+  // Browsers never let a page open a native dropdown list, so a hands-free click on one opens
+  // this large on-screen list instead: point at an option and pinch (or rest) to choose it.
+  // The hands-free menu itself is skipped so a click can't turn hands-free off.
+  let picker = null;
+  function closePicker() { picker?.remove(); picker = null; }
+  function openPicker(select) {
+    closePicker();
+    picker = document.createElement('div');
+    picker.setAttribute('role', 'dialog');
+    picker.setAttribute('aria-label', select.getAttribute('aria-label') || 'Choose an option');
+    picker.style.cssText = 'position:fixed;inset:0;z-index:9997;display:flex;align-items:center;justify-content:center;' +
+      'background:rgba(0,0,0,.45);padding:16px';
+    const panel = document.createElement('div');
+    panel.style.cssText = 'background:#fff;color:#111;border-radius:14px;padding:12px;width:min(420px,100%);' +
+      'max-height:80vh;overflow:auto;display:grid;gap:8px;box-shadow:0 10px 40px rgba(0,0,0,.3)';
+    const choice = (label, onPick, current) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = label;
+      b.style.cssText = 'min-height:56px;font:600 18px/1.2 system-ui,sans-serif;border-radius:10px;cursor:pointer;' +
+        (current ? 'background:#2f5d45;color:#fff;border:2px solid #2f5d45' : 'background:#f3f5f1;color:#111;border:2px solid #d6dbd3');
+      if (current) b.setAttribute('aria-current', 'true');
+      b.addEventListener('click', onPick);
+      return b;
+    };
+    [...select.options].forEach((option, i) => {
+      if (option.disabled) return;
+      panel.append(choice(option.textContent.trim(), () => {
+        select.selectedIndex = i;
+        select.dispatchEvent(new Event('input', { bubbles: true }));
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        closePicker();
+      }, i === select.selectedIndex));
+    });
+    panel.append(choice('Cancel', closePicker, false));
+    picker.append(panel);
+    picker.addEventListener('keydown', e => { if (e.key === 'Escape') { closePicker(); select.focus(); } });
+    document.body.append(picker);
+    (panel.querySelector('[aria-current]') || panel.firstChild).focus();
+  }
+
   function activate(target) {
     target.focus();
     if (target.tagName !== 'SELECT') { target.click(); return; }
     if (target.id === 'gf-head-src' || target.disabled || !target.options.length) return;
-    target.selectedIndex = (target.selectedIndex + 1) % target.options.length;
-    target.dispatchEvent(new Event('input', { bubbles: true }));
-    target.dispatchEvent(new Event('change', { bubbles: true }));
+    openPicker(target);
   }
   let stopSource = null, pointer = null, dwell = null, cursor = null, reportStatus = () => {};
 
@@ -456,6 +493,7 @@
 
   async function setSource(name, status) {
     const id = ++selection;
+    closePicker(); // never leave the option list open after hands-free changes
     reportStatus = status;
     if (stopSource) { stopSource(); stopSource = null; }
     cursor?.remove(); cursor = null;
