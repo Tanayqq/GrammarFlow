@@ -169,7 +169,7 @@
       if (!hand) return null;
       const tip = fingerToScreen(hand[8].x, hand[8].y, width, height);
       const at = { x: sx(tip.x, t), y: sy(tip.y, t), t };
-      const p = gesture.pinch(pinchRatio(hand, aspect, world));
+      const ratio = pinchRatio(hand, aspect, world), p = gesture.pinch(ratio);
       // Freeze at the spot from just before the fingers started closing (if that was recent), so
       // the click lands where you were pointing, not where the pinch pulled the fingertip.
       const recent = gesture.previous && t - gesture.previous.t < 0.5 ? gesture.previous : null;
@@ -177,7 +177,7 @@
       else if (!gesture.held) gesture.held = recent || at;
       gesture.previous = at;
       const { x, y } = gesture.held || at;
-      return { x, y, click: p.click, hold: p.hold };
+      return { x, y, click: p.click, hold: p.hold, ratio };
     };
   }
 
@@ -227,6 +227,11 @@
     if (d.click && target) activate(target);
   }
 
+  // Diagnostics for tuning, shown under the camera preview only when the address has ?debug.
+  const DEBUG = new URLSearchParams(location.search).has('debug');
+  const diag = { device: '-', fps: 0, ms: 0, pinch: null, last: '-' };
+  const describe = el => el ? `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}` : 'nothing';
+
   // Hand mode: the pointer follows the fingertip directly, and a pinch clicks (no resting needed).
   let clickFlashUntil = 0;
   function onPoint({ x, y, click }) {
@@ -235,6 +240,7 @@
     cursor.style.transform = `translate(${x}px, ${y}px)`;
     cursor.style.setProperty('--p', performance.now() < clickFlashUntil ? 1 : 0);
     const target = click && document.elementFromPoint(x, y)?.closest(CLICKABLE);
+    if (click) diag.last = describe(target);
     if (target) activate(target);
   }
 
@@ -250,8 +256,8 @@
           runningMode: 'VIDEO', numHands: 1
         });
         // The graphics chip is usually much faster; fall back to the processor where it is unavailable.
-        try { return await vision.HandLandmarker.createFromOptions(files, options('GPU')); }
-        catch { return vision.HandLandmarker.createFromOptions(files, options('CPU')); }
+        try { const m = await vision.HandLandmarker.createFromOptions(files, options('GPU')); diag.device = 'GPU'; return m; }
+        catch { diag.device = 'CPU'; return vision.HandLandmarker.createFromOptions(files, options('CPU')); }
       },
       start(session) {
         session.gesture ||= createGesture(); // survives restarts: a held pinch is never a new click
@@ -260,6 +266,7 @@
           const hand = result.landmarks?.[0];
           const point = track(hand, ms / 1000, ...viewport(), (video.videoWidth || 4) / (video.videoHeight || 3), result.worldLandmarks?.[0]);
           preview.mark(hand?.[8], point);
+          diag.pinch = point ? point.ratio : null;
           if (!point) return false;
           emitPoint(id, point);
           return true;
@@ -280,7 +287,7 @@
     const files = await vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
     const landmarker = await mode.model(vision, files);
     if (id !== selection) { landmarker.close(); return () => {}; } // chose something else while the model loaded
-    let stream, video, released = false;
+    let stream, video, released = false, readout = null;
     // A small mirrored preview, so you can see whether your hand or face is in view. It also puts the
     // video on the page, which some browsers need before they deliver camera frames. Stays on-device.
     const preview = document.createElement('div'), dot = document.createElement('div');
@@ -313,6 +320,13 @@
       video = Object.assign(document.createElement('video'), { srcObject: stream, muted: true, playsInline: true });
       video.style.cssText = 'width:100%;height:100%;object-fit:cover;transform:scaleX(-1)';
       preview.append(video, dot);
+      if (DEBUG) {
+        readout = document.createElement('div');
+        readout.style.cssText = 'position:absolute;left:0;right:0;bottom:0;padding:3px 6px;font:11px/1.35 ui-monospace,monospace;' +
+          'color:#fff;background:rgba(0,0,0,.65);white-space:pre';
+        preview.append(readout);
+        preview.style.width = 'min(260px,60vw)'; // room for the numbers
+      }
       document.body.appendChild(preview);
       // Match the camera's real shape (often 16:9), so nothing is cropped and the dot lines up.
       // 'resize' fires once the size is known, and again if the camera changes it.
@@ -326,6 +340,7 @@
     }
     if (id !== selection) { release(); return () => {}; }
     let handle = 0, track = null, tracking = false, lastMs = -Infinity, shown = mode.ready;
+    const frameTimes = [];
     const hint = text => { if (text !== shown && id === selection) { shown = text; reportStatus(text); } };
     const session = {}; // state a mode keeps across tracking restarts
     const lose = () => { // nothing in view, or the camera stalled: an unfinished rest must start over
@@ -340,7 +355,15 @@
         const ms = Math.max(frame.captureTime ?? now, lastMs + 1);
         if (ms - lastMs > 250 && tracking) lose(); // camera stalled: next sample is a fresh start, not a jump
         lastMs = ms;
+        const started = performance.now();
         const result = landmarker.detectForVideo(video, ms);
+        if (readout) {
+          diag.ms = diag.ms * 0.9 + (performance.now() - started) * 0.1;
+          frameTimes.push(started);
+          while (frameTimes[0] < started - 1000) frameTimes.shift();
+          readout.textContent = `${frameTimes.length} fps · model ${diag.ms.toFixed(0)} ms (${diag.device})\n` +
+            `pinch ${diag.pinch == null ? '-' : diag.pinch.toFixed(2)} (clicks below 0.35)\nlast click: ${diag.last}`;
+        }
         if (!tracking) track = mode.start(session); // fresh filters and baseline after any loss
         if (track(result, ms, id, video, preview)) { tracking = true; hint(mode.ready); }
         else { if (tracking && cursor) lose(); hint(mode.missing); }
