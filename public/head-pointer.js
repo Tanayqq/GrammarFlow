@@ -163,7 +163,7 @@
 
   // One hand frame -> { x, y, click } in screen pixels, or null when no hand is in view.
   // Moves like a trackpad with pointer acceleration (as OS mice do): slow hand movement moves the
-  // pointer less, for small targets; fast movement moves it further, to cross the screen. It points
+  // pointer one to one, for small targets; fast movement moves it up to 2.5x further, to cross the screen. It points
   // from the index knuckle, which shakes less than the fingertip and stays put while you pinch.
   function createHandTracker(gesture = createGesture()) {
     // Tuned for pixels: steady when the hand rests, little trailing when it moves.
@@ -179,7 +179,7 @@
       else if (first) at = { x: recent.x, y: recent.y, t }; // restarted after a stall: carry on from here, not from where the hand was before it
       else {
         const dx = a.x - anchor.x, dy = a.y - anchor.y, dt = Math.max(1e-3, t - recent.t);
-        const gain = 0.5 + Math.min(1, Math.hypot(dx, dy) / dt / 1500); // 0.5x when slow, up to 1.5x from 1500 px/s
+        const gain = 1 + Math.min(1.5, Math.hypot(dx, dy) / dt / 800); // 1x when slow, up to 2.5x from 1200 px/s
         const clamp = (v, max) => Math.max(0, Math.min(max, v));
         at = { x: clamp(recent.x + dx * gain, width - 1), y: clamp(recent.y + dy * gain, height - 1), t };
       }

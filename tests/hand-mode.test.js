@@ -134,9 +134,9 @@ test('pointer acceleration: slow moves are precise, fast moves go far, rest is s
     for (let i = 0; i < 30; i++) p = track(handAt(300, 400), (t += 1 / 30), W, H);
     assert.ok(Math.abs(p.x - 300) < 1, 'starts where the hand points');
     const slow = move(300, 360, 1);                                                 // 60 px/s
-    assert.ok(slow > 25 && slow < 40, `slow 60 px hand move -> ${slow.toFixed(1)} px pointer move`);
+    assert.ok(slow > 50 && slow < 80, `slow 60 px hand move -> ${slow.toFixed(1)} px pointer move`);
     const fast = move(360, 660, 0.2);                                               // 1500 px/s
-    assert.ok(fast > 330, `fast 300 px hand move -> ${fast.toFixed(1)} px pointer move`);
+    assert.ok(fast > 450, `fast 300 px hand move -> ${fast.toFixed(1)} px pointer move`);
     let seed = 3, min = Infinity, max = -Infinity;
     const noise = () => { seed = (seed * 16807) % 2147483647; return (seed / 2147483647 - 0.5) * 6; }; // ±3 px of tracking noise
     for (let i = 0; i < 60; i++) {
