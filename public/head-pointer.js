@@ -1,5 +1,5 @@
 'use strict';
-/* Hands-free head pointer: turn your head to move a pointer, rest on a control to click.
+/* Hands-free head pointer: turn your head to move a pointer, nod or rest on a control to click.
  * Inputs: the webcam (hand: fingertip points and a pinch clicks) or earbud/tracker motion from helpers/head_bridge.py, which
  * relays OpenTrack data (e.g. GalaxyBudsClient for Galaxy Buds) as {yaw, pitch} on ws://127.0.0.1:18765.
  * Android-standard head-tracking earbuds are read directly through WebHID.
@@ -78,6 +78,7 @@
     let last = null;
     const p = { x: width / 2, y: height / 2 };
     p.resize = (w, h) => { width = w; height = h; p.x = Math.min(p.x, w); p.y = Math.min(p.y, h); };
+    p.rebase = (yaw, pitch) => { last = { yaw, pitch }; }; // follow on from this pose without moving
     p.update = (yaw, pitch) => {
       if (!last) { last = { yaw, pitch }; return p; }
       const dYaw = ((yaw - last.yaw + 540) % 360) - 180; // safe across the ±180° wrap
@@ -110,17 +111,119 @@
   // counts; a completed click stays latched until the pointer leaves, so pauses never re-click.
   function createDwell({ radius = 28, ms = 1000, maxGap = 250 } = {}) {
     let anchor = null, fired = false, last = -Infinity;
-    const step = (x, y, t) => {
+    const step = (x, y, t, hold = false) => { // hold: the head isn't still, so a rest starts over
       if (t - last > maxGap) step.interrupt();
       last = t;
       if (!anchor || Math.hypot(x - anchor.x, y - anchor.y) > radius) { anchor = { x, y, t }; fired = false; }
+      else if (hold && !fired) anchor = { x, y, t };
       const progress = Math.min(1, (t - anchor.t) / ms);
       const click = progress === 1 && !fired;
       if (click) fired = true;
       return { progress: fired && !click ? 0 : progress, click };
     };
     step.interrupt = () => { if (!fired) anchor = null; };
+    step.latch = (x, y, t) => { anchor = { x, y, t }; fired = true; last = t; }; // clicked here another way: no second click
     return step;
+  }
+
+  // Nod click, ported from AirCursor's GestureDetector (github.com/m-afham/AirCursor, MIT).
+  // A nod is a shape, not a speed: pitch leaves its start by >= `amplitude` degrees and comes
+  // back most of the way within `window` ms, quickly, with little sideways turning. It returns
+  // when the nod began so the click lands where you pointed before nodding. After a nod nothing
+  // re-arms until the head settles, so one nod (and its follow-through) clicks once.
+  function createNod({ amplitude = 5.5, window = 800, maxGap = 250 } = {}) {
+    let history = [], awaitingStill = false, stillSince = null;
+    const speed = (a, b, key) => (b.t > a.t ? Math.abs(b[key] - a[key]) / ((b.t - a.t) / 1000) : 0);
+    const detect = now => {
+      const last = history.length - 1, cur = history[last];
+      for (let j = 0; j < last - 1; j++) {
+        const start = history[j];
+        if (now - start.t > window) continue;
+        let extreme = 0, at = j;
+        for (let k = j + 1; k < last; k++) {
+          const d = history[k].pitch - start.pitch;
+          if (Math.abs(d) > Math.abs(extreme)) { extreme = d; at = k; }
+        }
+        const depth = Math.abs(extreme);
+        if (depth < amplitude || at === j) continue;
+        if (Math.abs(cur.pitch - start.pitch) > depth * 0.35) continue;      // must come back 65% of the way
+        const seg = history.slice(j), yaws = seg.map(p => p.yaw);
+        if (Math.max(...yaws) - Math.min(...yaws) > Math.max(depth * 0.6, 3)) continue; // not a glance sideways
+        let peak = 0;
+        for (let k = 1; k < seg.length; k++) peak = Math.max(peak, speed(seg[k - 1], seg[k], 'pitch'));
+        if (peak < 30) continue;                                              // slow = deliberate pointing
+        // The dip's onset, not the oldest qualifying sample: the earliest fast step toward the
+        // extreme (fast for this dip: 60% of its fastest outbound step, at most 40°/s), allowing a
+        // pause of up to 2 samples on the way down. Slower aiming just before the nod is pointing,
+        // so the click lands where it left the pointer.
+        const dir = Math.sign(extreme);
+        const out = k => ((history[k].pitch - history[k - 1].pitch) * dir) / ((history[k].t - history[k - 1].t) / 1000);
+        let outPeak = 0;
+        for (let k = j + 1; k <= at; k++) outPeak = Math.max(outPeak, out(k));
+        const quick = Math.min(40, outPeak * 0.6), fast = k => out(k) >= quick; // the fastest outbound step always qualifies
+        let onset = at;
+        for (let k = at, pause = 0; k > j && pause <= 2; k--) {
+          if (fast(k)) { onset = k - 1; pause = 0; } else pause++;
+        }
+        return history[onset].t;
+      }
+      return null;
+    };
+    const step = (yaw, pitch, t) => {
+      const prev = history[history.length - 1];
+      if (prev && (t - prev.t > maxGap || t <= prev.t)) { history = []; stillSince = null; } // stillness must be seen again
+      // unwrap yaw so a turn across ±180° stays continuous
+      const y = prev && history.length ? prev.yaw + (((yaw - prev.raw + 540) % 360) - 180) : yaw;
+      history.push({ t, yaw: y, raw: yaw, pitch });
+      history = history.filter(p => t - p.t <= 1500);
+      if (awaitingStill) {
+        const n = history.length;
+        const s = n >= 2 ? Math.max(speed(history[n - 2], history[n - 1], 'pitch'), speed(history[n - 2], history[n - 1], 'yaw')) : 0;
+        if (s >= 25) stillSince = null;
+        else {
+          if (stillSince === null) stillSince = t;
+          if (t - stillSince >= 150) { awaitingStill = false; stillSince = null; history = history.slice(-1); }
+        }
+        return null;
+      }
+      const began = history.length >= 3 ? detect(t) : null;
+      if (began !== null) { awaitingStill = true; stillSince = null; }
+      return began;
+    };
+    step.settling = () => awaitingStill; // true from a nod until the head is still again
+    return step;
+  }
+
+  // One head pose -> where the pointer is, dwell progress, and whether a nod clicked there.
+  function createHeadCursor({ pointer, dwell, nod, radius = 28, overlap = 100 }) {
+    let trail = [], rested = null, recent = []; // rested: where and when a rest last clicked
+    return (yaw, pitch, t) => {
+      const settling = nod.settling(), began = nod(yaw, pitch, t);
+      // Still = the head stayed within 1° for the last 400 ms, so a pause inside a nod isn't
+      // rest. Judged from the head, not the pointer, which can sit pinned at a screen edge.
+      recent.push({ yaw, pitch, t });
+      recent = recent.filter(p => t - p.t <= 400);
+      const moving = recent.some(p => Math.max(Math.abs(((yaw - p.yaw + 540) % 360) - 180), Math.abs(pitch - p.pitch)) > 1);
+      if (settling) pointer.rebase(yaw, pitch); // the nod's follow-through never moves the pointer
+      let { x, y } = settling ? pointer : pointer.update(yaw, pitch);
+      trail.push({ x, y, t });
+      trail = trail.filter(p => t - p.t <= 1500);
+      if (settling) return { x, y, progress: 0, click: false, nod: false };
+      if (began !== null) { // a nod clicks where you pointed before the nod moved the pointer
+        ({ x, y } = trail.find(p => p.t >= began) || { x, y });
+        pointer.x = x; pointer.y = y;
+        trail = [{ x, y, t }]; // the dip's positions are never a later nod's starting point
+        dwell.latch(x, y, t);
+        // A nod that began as a rest finished clicking the same spot is that same click;
+        // a nod started later is a new one.
+        const again = rested && began <= rested.t + overlap && Math.hypot(x - rested.x, y - rested.y) <= radius;
+        return { x, y, progress: 0, click: false, nod: !again };
+      }
+      // A rest finishes only on a still sample, so the first jolt of a nod can't click first.
+      const d = dwell(x, y, t, moving);
+      if (d.click) rested = { x, y, t };
+      return { x, y, ...d, nod: false };
+    };
   }
 
   /* ── Hand mode: index fingertip points, a thumb–index pinch clicks ── */
@@ -196,7 +299,7 @@
     };
   }
 
-  const core = { createGesture, createHandTracker, fingerToScreen, pinchRatio, createPinch, createSmoother, rotvecToYawPitch, findHeadTracker, encodeStart, decodeRotation, createPointer, createDwell };
+  const core = { createGesture, createHandTracker, fingerToScreen, pinchRatio, createPinch, createSmoother, rotvecToYawPitch, findHeadTracker, encodeStart, decodeRotation, createPointer, createDwell, createNod, createHeadCursor };
   if (typeof module !== 'undefined') { module.exports = core; return; }
 
   /* ── Browser wiring ── */
@@ -251,7 +354,7 @@
     if (target.id === 'gf-head-src' || target.disabled || !target.options.length) return;
     openPicker(target);
   }
-  let stopSource = null, pointer = null, dwell = null, cursor = null, reportStatus = () => {};
+  let stopSource = null, pointer = null, dwell = null, head = null, cursor = null, reportStatus = () => {};
 
   // A source that breaks mid-session turns hands-free off and says so, instead of freezing.
   // Each menu choice gets an id; a source that finishes starting (or fails) after the user has
@@ -271,12 +374,11 @@
 
   function onPose({ yaw, pitch }, t = performance.now()) {
     if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return;
-    const { x, y } = pointer.update(yaw, pitch);
-    const target = document.elementFromPoint(x, y)?.closest(CLICKABLE);
-    const d = dwell(x, y, t);
-    cursor.style.transform = `translate(${x}px, ${y}px)`;
+    const d = head(yaw, pitch, t);
+    const target = document.elementFromPoint(d.x, d.y)?.closest(CLICKABLE);
+    cursor.style.transform = `translate(${d.x}px, ${d.y}px)`;
     cursor.style.setProperty('--p', target ? d.progress : 0);
-    if (d.click && target) activate(target);
+    if ((d.click || d.nod) && target) activate(target);
   }
 
   // Diagnostics for tuning, shown under the camera preview only when the address has ?debug.
@@ -523,13 +625,15 @@
     cursor.setAttribute('aria-hidden', 'true');
     document.body.appendChild(cursor);
     pointer = createPointer({ width: viewport()[0] - 1, height: viewport()[1] - 1 });
-    dwell = createDwell(name === 'earbuds' ? { maxGap: 1000 } : {}); // OpenTrack senders can update slowly
+    const gap = name === 'earbuds' ? { maxGap: 1000 } : {}; // OpenTrack senders can update slowly
+    dwell = createDwell(gap);
+    head = createHeadCursor({ pointer, dwell, nod: createNod(gap) });
     status('Starting…');
     try {
       const stop = await ({ hand: id => startCamera(id, 'hand'), hid: startHid, earbuds: startEarbuds })[name](id);
       if (id !== selection) { stop(); return; } // the user picked something else while this was starting
       stopSource = stop;
-      status(name === 'hand' ? CAMERA_MODES.hand.ready : 'Turn your head to point; rest on a button to click.');
+      status(name === 'hand' ? CAMERA_MODES.hand.ready : 'Turn your head to point; nod or rest on a button to click.');
     } catch (err) {
       if (id !== selection) return; // a superseded start failed: nothing to report
       cursor?.remove(); cursor = null;
