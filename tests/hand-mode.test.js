@@ -32,13 +32,13 @@ test('pinch clicks once per close, with hysteresis and a hold while closing', ()
     assert.equal(pinch(0.2).click, true);                                       // a new pinch clicks again
 });
 
-test('hand tracker: points at the fingertip, clicks once per pinch, freezes while pinching', () => {
+test('hand tracker: points from the index knuckle, clicks once per pinch, freezes while pinching', () => {
     const { createHandTracker } = require('../public/head-pointer.js');
     const W = 1000, H = 800;
     const handAt = (sx, sy, gap) => {                       // index tip at screen (sx, sy); gap = pinch ratio
         const nx = 1 - (0.2 + (sx / W) * 0.6), ny = 0.2 + (sy / H) * 0.6;
         const h = Array.from({ length: 21 }, () => ({ x: nx, y: ny + 0.1 }));
-        h[8] = { x: nx, y: ny }; h[9] = { x: nx, y: ny + 0.1 }; h[0] = { x: nx, y: ny + 0.3 };
+        h[8] = { x: nx, y: ny }; h[5] = { x: nx, y: ny }; h[9] = { x: nx, y: ny + 0.1 }; h[0] = { x: nx, y: ny + 0.3 };
         h[4] = { x: nx + (gap * 0.2) / (4 / 3), y: ny };
         return h;
     };
@@ -47,7 +47,7 @@ test('hand tracker: points at the fingertip, clicks once per pinch, freezes whil
     const frame = (sx, sy, gap) => { last = track(handAt(sx, sy, gap), (t += 1 / 30), W, H); clicks += last.click ? 1 : 0; return last; };
     assert.equal(track(null, 0, W, H), null);                                  // no hand: nothing
     for (let i = 0; i < 30; i++) frame(600, 400, 0.9);                         // hold an open hand still for 1 s
-    assert.ok(Math.abs(last.x - 600) < 2 && Math.abs(last.y - 400) < 2, `settles on the fingertip (${last.x}, ${last.y})`);
+    assert.ok(Math.abs(last.x - 600) < 2 && Math.abs(last.y - 400) < 2, `settles where the hand points (${last.x}, ${last.y})`);
     assert.equal(clicks, 0, 'an open hand never clicks');
     const before = { x: last.x, y: last.y };
     frame(615, 410, 0.42);                                                     // fingers closing pull the tip a little
@@ -83,7 +83,7 @@ test('a pinch that closes across a camera stall still clicks where you were poin
     const handAt = (sx, sy, gap) => {
         const nx = 1 - (0.2 + (sx / (W - 1)) * 0.6), ny = 0.2 + (sy / (H - 1)) * 0.6;
         const h = Array.from({ length: 21 }, () => ({ x: nx, y: ny + 0.1 }));
-        h[8] = { x: nx, y: ny }; h[9] = { x: nx, y: ny + 0.1 }; h[0] = { x: nx, y: ny + 0.3 };
+        h[8] = { x: nx, y: ny }; h[5] = { x: nx, y: ny }; h[9] = { x: nx, y: ny + 0.1 }; h[0] = { x: nx, y: ny + 0.3 };
         h[4] = { x: nx + (gap * 0.2) / (4 / 3), y: ny };
         return h;
     };
@@ -114,31 +114,54 @@ test('a real pinch with the palm facing the camera registers (3D points), though
     assert.equal(out.hold, true);
 });
 
-test('hand pointer keeps up with a quick move but stays steady at rest', () => {
+test('pointer acceleration: slow moves are precise, fast moves go far, rest is steady', () => {
     const { createHandTracker } = require('../public/head-pointer.js');
     const W = 1000, H = 800;
     const handAt = (sx, sy) => {
         const nx = 1 - (0.2 + (sx / (W - 1)) * 0.6), ny = 0.2 + (sy / (H - 1)) * 0.6;
         const h = Array.from({ length: 21 }, () => ({ x: nx, y: ny + 0.1 }));
-        h[8] = { x: nx, y: ny }; h[9] = { x: nx, y: ny + 0.1 }; h[0] = { x: nx, y: ny + 0.3 }; h[4] = { x: nx + 0.2, y: ny };
+        h[5] = h[8] = { x: nx, y: ny }; h[9] = { x: nx, y: ny + 0.1 }; h[0] = { x: nx, y: ny + 0.3 }; h[4] = { x: nx + 0.2, y: ny };
         return h;
     };
     const track = createHandTracker();
     let t = 0, p;
+    const move = (from, to, seconds) => {
+        const n = Math.round(seconds * 30), start = p ? p.x : null;
+        for (let i = 1; i <= n; i++) p = track(handAt(from + ((to - from) * i) / n, 400), (t += 1 / 30), W, H);
+        for (let i = 0; i < 15; i++) p = track(handAt(to, 400), (t += 1 / 30), W, H); // stop and settle
+        return p.x - start;
+    };
     for (let i = 0; i < 30; i++) p = track(handAt(300, 400), (t += 1 / 30), W, H);
-    let worst = 0;
-    for (let i = 1; i <= 9; i++) {                                                  // 300 px in 0.3 s
-        const finger = 300 + (300 * i) / 9;
-        p = track(handAt(finger, 400), (t += 1 / 30), W, H);
-        worst = Math.max(worst, finger - p.x);
-    }
-    assert.ok(worst < 15, `pointer trails the finger by up to ${worst.toFixed(1)} px while moving`);
-    assert.ok(600 - p.x < 6, `pointer is ${(600 - p.x).toFixed(1)} px behind when the finger stops`);
+    assert.ok(Math.abs(p.x - 300) < 1, 'starts where the hand points');
+    const slow = move(300, 360, 1);                                                 // 60 px/s
+    assert.ok(slow > 25 && slow < 40, `slow 60 px hand move -> ${slow.toFixed(1)} px pointer move`);
+    const fast = move(360, 660, 0.2);                                               // 1500 px/s
+    assert.ok(fast > 330, `fast 300 px hand move -> ${fast.toFixed(1)} px pointer move`);
     let seed = 3, min = Infinity, max = -Infinity;
     const noise = () => { seed = (seed * 16807) % 2147483647; return (seed / 2147483647 - 0.5) * 6; }; // ±3 px of tracking noise
     for (let i = 0; i < 60; i++) {
-        p = track(handAt(600 + noise(), 400 + noise()), (t += 1 / 30), W, H);
+        p = track(handAt(660 + noise(), 400 + noise()), (t += 1 / 30), W, H);
         if (i > 20) { min = Math.min(min, p.x); max = Math.max(max, p.x); }
     }
-    assert.ok(max - min < 4, `resting pointer wobbles ${(max - min).toFixed(1)} px`);
+    assert.ok(max - min < 3, `resting pointer wobbles ${(max - min).toFixed(1)} px`);
+});
+
+test('a camera stall never makes the pointer jump by the movement it missed', () => {
+    const { createHandTracker, createGesture } = require('../public/head-pointer.js');
+    const W = 1000, H = 800;
+    const handAt = sx => {
+        const nx = 1 - (0.2 + (sx / (W - 1)) * 0.6), ny = 0.5;
+        const h = Array.from({ length: 21 }, () => ({ x: nx, y: ny + 0.1 }));
+        h[5] = h[8] = { x: nx, y: ny }; h[9] = { x: nx, y: ny + 0.1 }; h[0] = { x: nx, y: ny + 0.3 }; h[4] = { x: nx + 0.2, y: ny };
+        return h;
+    };
+    const gesture = createGesture();
+    const before = createHandTracker(gesture);
+    let p, t = 0;
+    for (let i = 0; i < 10; i++) p = before(handAt(100), (t += 1 / 30), W, H);
+    const after = createHandTracker(gesture);                       // 300 ms stall: tracker restarted
+    p = after(handAt(700), (t += 0.3), W, H);                       // the hand moved 600 px meanwhile
+    assert.ok(Math.abs(p.x - 100) < 1, `pointer carries on from where it was (${p.x.toFixed(1)}), no jump`);
+    p = after(handAt(710), (t += 1 / 30), W, H);
+    assert.ok(p.x > 100 && p.x < 120, `then follows the hand's new movement (${p.x.toFixed(1)})`);
 });

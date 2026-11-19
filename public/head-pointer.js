@@ -162,17 +162,32 @@
   const createGesture = () => ({ pinch: createPinch(), held: null, previous: null });
 
   // One hand frame -> { x, y, click } in screen pixels, or null when no hand is in view.
+  // Moves like a trackpad with pointer acceleration (as OS mice do): slow hand movement moves the
+  // pointer less, for small targets; fast movement moves it further, to cross the screen. It points
+  // from the index knuckle, which shakes less than the fingertip and stays put while you pinch.
   function createHandTracker(gesture = createGesture()) {
-    // Tuned for pixels: steady when the finger rests, little trailing when it moves.
+    // Tuned for pixels: steady when the hand rests, little trailing when it moves.
     const sx = createSmoother({ minCutoff: 1.5, beta: 0.05 }), sy = createSmoother({ minCutoff: 1.5, beta: 0.05 });
+    let first = true, anchor = null; // the hand's last smoothed spot, for this tracker's movement deltas
     return (hand, t, width, height, aspect = 4 / 3, world = null) => {
       if (!hand) return null;
-      const tip = fingerToScreen(hand[8].x, hand[8].y, width, height);
-      const at = { x: sx(tip.x, t), y: sy(tip.y, t), t };
+      const knuckle = fingerToScreen(hand[5].x, hand[5].y, width, height);
+      const a = { x: sx(knuckle.x, t), y: sy(knuckle.y, t) };
+      const recent = gesture.previous && t - gesture.previous.t < 0.5 ? gesture.previous : null;
+      let at;
+      if (!recent) at = { ...a, t }; // fresh start or a long gap: the pointer goes where the hand is
+      else if (first) at = { x: recent.x, y: recent.y, t }; // restarted after a stall: carry on from here, not from where the hand was before it
+      else {
+        const dx = a.x - anchor.x, dy = a.y - anchor.y, dt = Math.max(1e-3, t - recent.t);
+        const gain = 0.5 + Math.min(1, Math.hypot(dx, dy) / dt / 1500); // 0.5x when slow, up to 1.5x from 1500 px/s
+        const clamp = (v, max) => Math.max(0, Math.min(max, v));
+        at = { x: clamp(recent.x + dx * gain, width - 1), y: clamp(recent.y + dy * gain, height - 1), t };
+      }
+      anchor = a;
+      first = false;
       const ratio = pinchRatio(hand, aspect, world), p = gesture.pinch(ratio);
       // Freeze at the spot from just before the fingers started closing (if that was recent), so
-      // the click lands where you were pointing, not where the pinch pulled the fingertip.
-      const recent = gesture.previous && t - gesture.previous.t < 0.5 ? gesture.previous : null;
+      // the click lands where you were pointing, not where the pinch pulled the hand.
       if (!p.hold) gesture.held = null;
       else if (!gesture.held) gesture.held = recent || at;
       gesture.previous = at;
@@ -285,7 +300,7 @@
   const CAMERA_MODES = {
     hand: {
       label: 'Hand (webcam)',
-      ready: 'Point with your index finger; pinch thumb and finger to click.',
+      ready: 'Move your hand to move the pointer; pinch thumb and finger to click.',
       missing: 'Show your hand to the camera.',
       model: async (vision, files) => {
         const options = delegate => ({
@@ -305,7 +320,7 @@
         return (result, ms, id, video, preview) => {
           const hand = result.landmarks?.[0];
           const point = track(hand, ms / 1000, ...viewport(), (video.videoWidth || 4) / (video.videoHeight || 3), result.worldLandmarks?.[0]);
-          preview.mark(hand?.[8], point);
+          preview.mark(hand?.[5], point);
           diag.pinch = point ? point.ratio : null;
           if (!point) return false;
           emitPoint(id, point);
@@ -337,7 +352,7 @@
     dot.style.cssText = 'position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;' +
       'background:#a855f7;border:2px solid #fff;display:none';
     let dotFlashUntil = 0;
-    preview.mark = (tip, point) => { // fingertip in camera coordinates, drawn mirrored like the video
+    preview.mark = (tip, point) => { // tracked knuckle in camera coordinates, drawn mirrored like the video
       dot.style.display = tip ? 'block' : 'none';
       if (!tip) return;
       dot.style.left = `${(1 - tip.x) * 100}%`;
