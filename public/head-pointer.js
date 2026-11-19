@@ -147,7 +147,7 @@
   // Pinch with hysteresis: `click` fires once when the fingers close, and not again until they
   // open past `open`. `hold` is true while closing, so the pointer can freeze and the click lands
   // where you were pointing, not where the pinch pulled the fingertip.
-  function createPinch({ close = 0.35, open = 0.55, hold = 0.45 } = {}) {
+  function createPinch({ close = 0.42, open = 0.6, hold = 0.5 } = {}) {
     let down = false;
     return ratio => {
       const click = !down && ratio < close;
@@ -402,7 +402,7 @@
           frameTimes.push(started);
           while (frameTimes[0] < started - 1000) frameTimes.shift();
           readout.textContent = `${frameTimes.length} fps · model ${diag.ms.toFixed(0)} ms (${diag.device})\n` +
-            `pinch ${diag.pinch == null ? '-' : diag.pinch.toFixed(2)} (clicks below 0.35)\nlast click: ${diag.last}`;
+            `pinch ${diag.pinch == null ? '-' : diag.pinch.toFixed(2)} (clicks below 0.42)\nlast click: ${diag.last}`;
         }
         if (!tracking) track = mode.start(session); // fresh filters and baseline after any loss
         if (track(result, ms, id, video, preview)) { tracking = true; hint(mode.ready); }
