@@ -15,8 +15,9 @@
         const keep = Math.max(1, Math.round(floorWindowMs / dtMs));
         while (recent.length > keep) recent.shift();
         // Until the window has filled, assume a fairly quiet start so a soft first phrase is not swallowed.
-        const cap = recent.length >= keep ? 0.05 : 0.02;
-        const voiced = level > Math.max(0.015, Math.min(cap, Math.min(...recent)) * 3);
+        // The cap keeps sustained loud speech from being mistaken for noise (threshold never above 0.075).
+        const cap = recent.length >= keep ? 0.03 : 0.02;
+        const voiced = level > Math.max(0.015, Math.min(cap, Math.min(...recent)) * 2.5);
         elapsed += dtMs;
         if (voiced) { speech += dtMs; silent = 0; } else silent += dtMs;
         if (speech >= minSpeechMs && (silent >= pauseMs || elapsed >= maxMs)) return 'cut';

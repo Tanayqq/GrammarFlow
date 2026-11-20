@@ -35,7 +35,9 @@ const ENGLISH_WORDS = new Set(['the', 'and', 'is', 'are', 'were', 'that', 'with'
 const HINGLISH_WORDS = new Set(['hai', 'hain', 'hoon', 'tha', 'thi', 'nahi', 'nahin', 'aur', 'mein', 'mujhe', 'mera', 'meri', 'tum', 'aap', 'kya', 'kal', 'bhi', 'toh', 'ki', 'ke', 'ko', 'jana', 'raha', 'rahi', 'kuch', 'bahut', 'abhi', 'lekin', 'yeh', 'woh', 'hum', 'tumhe']);
 const looksEnglish = text => {
     const words = String(text || '').toLowerCase().split(/[^a-z']+/);
-    return words.some(word => ENGLISH_WORDS.has(word)) && !words.some(word => HINGLISH_WORDS.has(word));
+    // Two distinct English words, since a single one can be shared ("has" is also Spanish).
+    const english = new Set(words.filter(word => ENGLISH_WORDS.has(word)));
+    return english.size >= 2 && !words.some(word => HINGLISH_WORDS.has(word));
 };
 const hasContext = context => letters(context) >= MIN_CONTEXT_LETTERS;
 

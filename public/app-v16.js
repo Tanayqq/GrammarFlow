@@ -748,7 +748,7 @@ document.addEventListener("DOMContentLoaded", () => {
             audio.createMediaStreamSource(stream).connect(analyser);
             const samples = new Float32Array(analyser.fftSize), seg = GFDictation.createSegmenter(), step = 50;
             const queue = [];
-            let rec = null, pendingStops = 0, pumping = false, stopping = false, finished = false;
+            let rec = null, pendingStops = 0, pumping = false, stopping = false, finished = false, micReleased = false;
             let inserted = false, first = true, missed = 0, failedInARow = 0, lastError = null;
             let pos = el.selectionStart, known = el.value; // known: the draft as we last left it
             const replaceEnd = el.selectionEnd;
@@ -807,7 +807,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     } catch (e) {
                         lastError = e;
                         // A busy or rate-limited service says how long to wait; other failures retry soon.
-                        wait = e.status === 429 || e.status === 503 ? Math.min(e.retryAfter || 5, 20) * 1000 : 1500 * (attempt + 1);
+                        wait = e.status === 429 || e.status === 503 ? Math.min(e.retryAfter || 5, 90) * 1000 : 1500 * (attempt + 1);
                     }
                 }
                 return null;
@@ -829,10 +829,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 maybeFinish();
             };
             const maybeFinish = () => {
+                // The microphone is released as soon as recording has ended; queued clips keep uploading after that.
+                if (stopping && !rec && !pendingStops && !micReleased) {
+                    micReleased = true;
+                    stream.getTracks().forEach(t => t.stop());
+                    audio.close().catch(() => {});
+                }
                 if (!stopping || finished || rec || pendingStops || pumping || queue.length) return;
                 finished = true;
-                stream.getTracks().forEach(t => t.stop());
-                audio.close().catch(() => {});
                 dictation = null;
                 setDictate("Dictate", false);
                 if (missed) renderResults([`Error: ${missed} spoken phrase${missed > 1 ? "s were" : " was"} not written (${lastError?.message || "the service was unavailable"}). Your text was not checked; please dictate that part again.`]);

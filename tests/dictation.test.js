@@ -163,3 +163,22 @@ test('a language label that disagrees with the script is not trusted', () => {
     assert.equal(d.needsConversion({ target: 'English', context: '', detected: 'english', text: 'క్నిలి రింతా్నింండి' }), true);
     assert.equal(d.needsConversion({ target: 'English', context: TELUGU_STORY, detected: 'telugu', text: 'తర్వాత మేము సరస్సు దగ్గరకు వెళ్ళాము.' }), false);
 });
+
+test('sustained speech is not mistaken for noise, across the window filling and a phrase reset', () => {
+    const s = createSegmenter();
+    const verdicts = [];
+    for (let i = 0; i < 60; i++) verdicts.push(s.feed(0.08, 50));   // 3 s of steady speech: past the 1.5 s window
+    for (let i = 0; i < 14; i++) verdicts.push(s.feed(0.002, 50));  // then a pause
+    assert.equal(verdicts.at(-1), 'cut', 'the phrase ends at the pause');
+    assert.equal(s.heard(), true, 'and it counted as speech');
+    s.reset();
+    const next = [];
+    for (let i = 0; i < 20; i++) next.push(s.feed(0.08, 50));       // the next phrase starts right away
+    for (let i = 0; i < 14; i++) next.push(s.feed(0.002, 50));
+    assert.equal(next.at(-1), 'cut', 'the following phrase is also heard');
+});
+
+test('a single shared word does not make a Spanish draft look English', () => {
+    const spanish = '¿Has preparado los documentos para la próxima reunión?';
+    assert.equal(d.needsConversion({ target: 'English', context: spanish, detected: 'english', text: 'We will meet tomorrow.' }), true);
+});
