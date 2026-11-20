@@ -105,12 +105,11 @@ test('a Telugu story continued by a friend who speaks another language is conver
     assert.match(user, /<context-[0-9a-f]+>నా స్నేహితుడు రవి/);
 });
 
-test('Telugu and Kannada conversion uses the stronger model, English and Hindi the lighter one', () => {
-    assert.equal(d.needsStrongModel({ target: 'English', context: TELUGU_STORY }), true);
-    assert.equal(d.needsStrongModel({ target: 'English', context: 'ಇದು ಕನ್ನಡದಲ್ಲಿ ಬರೆದ ಒಂದು ವಾಕ್ಯ ಮತ್ತು ಇನ್ನೊಂದು.' }), true);
-    assert.equal(d.needsStrongModel({ target: 'Telugu', context: '' }), true);
-    assert.equal(d.needsStrongModel({ target: 'English', context: ENGLISH_DRAFT }), false);
-    assert.equal(d.needsStrongModel({ target: 'Hindi', context: '' }), false);
+test('the conversion prompt tells the model to translate idioms and exclamations by meaning', () => {
+    const { system } = d.buildPrompt({ spoken: 'No way!', context: '', target: 'Hindi' });
+    assert.match(system, /idioms, slang and exclamations by what the speaker means/);
+    assert.match(system, /"No way!"/);
+    assert.match(system, /Do not assume the speaker's gender/);
 });
 
 test('inherited object keys are never treated as a language target', () => {

@@ -63,6 +63,8 @@ function buildPrompt({ spoken, context, target, nonce = require('node:crypto').r
         'Rules:',
         '- Meaning is sacred. Translate faithfully. Never add, remove, soften, summarize, explain or answer anything.',
         "- Keep the speaker's emotion, tone and register: intensity, emphasis, exclamations, questions, politeness, sarcasm, hesitation, humour. Use natural equivalents of slang and idioms.",
+        '- Translate idioms, slang and exclamations by what the speaker means, never word for word. Use the rest of the sentence to decide the emotion. Example: "No way!" said in surprise or delight means astonishment, not refusal and not distress; "That killed me" about a joke means it was very funny.',
+        "- Do not assume the speaker's gender. Where the language marks it, follow the context or use a neutral form.",
         '- Keep the same people, places, numbers and brands. Write names in the script of the target language (transliterate them), never translate them. Drop only meaningless filler sounds such as "um" or "uh".',
         '- If a context tag is present, write in its language, script and spelling style, and continue it naturally without repeating it: keep its narrative voice and tense (for example third person, past tense). If it ends mid-sentence, continue the sentence.',
         '- Otherwise write in the TARGET language.',
@@ -86,10 +88,4 @@ function acceptable(output, spoken) {
     return text.length <= String(spoken || '').length * 4 + 80;
 }
 
-// The small model is fine for English and Hindi; Telugu and Kannada need the larger one.
-function needsStrongModel({ target, context }) {
-    const written = hasContext(context) ? scriptOf(context) : null;
-    return written === 'Telugu' || written === 'Kannada' || (!written && (target === 'Telugu' || target === 'Kannada'));
-}
-
-module.exports = { parseTarget, scriptOf, hasContext, needsConversion, needsStrongModel, buildPrompt, acceptable };
+module.exports = { parseTarget, scriptOf, hasContext, needsConversion, buildPrompt, acceptable };

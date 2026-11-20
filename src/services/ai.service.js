@@ -159,7 +159,7 @@ async function convertDictation({ spoken, context, target }) {
     const { system, user } = dictation.buildPrompt({ spoken, context, target });
     try {
         const result = await callGroqAPI(system, user, 0.2, {
-            model: dictation.needsStrongModel({ target, context }) ? 'openai/gpt-oss-120b' : 'openai/gpt-oss-20b',
+            model: 'openai/gpt-oss-120b', // meaning is the core principle: always the strongest model
             reasoningEffort: 'low', maxTokens: 512, timeoutMs: 10000,
             validate: output => dictation.acceptable(output, spoken)
         });
