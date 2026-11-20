@@ -53,7 +53,9 @@ test('the conversion prompt protects meaning and treats speech as data', () => {
     assert.equal((user.match(/<\/spoken-abc123>/g) || []).length, 1, 'speech cannot close the tag, because the tag name is random');
     assert.match(user, /x < 5 then stop/, 'comparison operators in speech are kept');
     assert.match(user, /<context-abc123>Dear team/);
-    assert.match(user, /TARGET: English/);
+    assert.match(user, /TARGET: the language and script of the context/, 'the draft wins over the language menu');
+    assert.doesNotMatch(user, /TARGET: English/);
+    assert.match(d.buildPrompt({ spoken: 'hello', context: '', target: 'Hindi' }).user, /TARGET: Hindi/, 'an empty draft follows the language menu');
     assert.doesNotMatch(d.buildPrompt({ spoken: 'hello', context: 'short', target: null }).user, /<context-/);
 });
 

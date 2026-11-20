@@ -72,7 +72,9 @@ function buildPrompt({ spoken, context, target, nonce = require('node:crypto').r
         '- Output only the converted text, with no quotes, notes or labels.'
     ].join('\n');
     const ctx = hasContext(context) ? `<context-${nonce}>${plain(context)}</context-${nonce}>\n` : '';
-    const user = `${ctx}TARGET: ${target || 'same as the context'}\n<spoken-${nonce}>${plain(spoken)}</spoken-${nonce}>`;
+    // With text already written, its language wins over the language menu: the menu only matters for an empty draft.
+    const goal = hasContext(context) ? 'the language and script of the context' : (target || 'same as the spoken text');
+    const user = `${ctx}TARGET: ${goal}\n<spoken-${nonce}>${plain(spoken)}</spoken-${nonce}>`;
     return { system, user };
 }
 
