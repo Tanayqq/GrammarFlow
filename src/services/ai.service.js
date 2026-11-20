@@ -122,8 +122,9 @@ const TRANSCRIBE_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 const WHISPER_MODELS = ['whisper-large-v3-turbo', 'whisper-large-v3'];
 const AUDIO_TYPES = { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav' };
 
-// prompt: the text already written. Whisper uses it to match names, punctuation and script.
-async function transcribeDetailed(audio, mimeType, { prompt = '' } = {}) {
+// No text hint is given to Whisper: a hint in one language makes it write other languages in that script
+// (English speech came back as Telugu-looking gibberish when the draft was Telugu). It must hear what was said.
+async function transcribeDetailed(audio, mimeType) {
     const apiKey = (process.env.GROQ_API_KEY || '').split(',')[0].trim();
     if (!apiKey || Date.now() < providerDisabledUntil) throw unavailable();
     // One budget for all attempts, well inside the browser's 55 s request timeout.
@@ -136,7 +137,6 @@ async function transcribeDetailed(audio, mimeType, { prompt = '' } = {}) {
         form.append('model', model);
         form.append('response_format', 'verbose_json'); // adds the detected language
         form.append('temperature', '0');
-        if (prompt) form.append('prompt', String(prompt).slice(-160));
         const response = await fetch(TRANSCRIBE_URL, {
             method: 'POST', headers: { Authorization: `Bearer ${apiKey}` }, body: form, signal: AbortSignal.timeout(remaining)
         }).catch(() => null);

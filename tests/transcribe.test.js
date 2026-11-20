@@ -112,14 +112,14 @@ const STORY = 'నా స్నేహితుడు రవి ఒక రోజ�
 test('/transcribe converts a friend English speech into the language of the Telugu draft', async t => {
     const seen = {};
     const post = await dictationApp(t, {
-        transcribeDetailed: async (buf, type, opts) => { seen.prompt = opts.prompt; return { text: 'Then Ravi smiled and hugged me.', language: 'english' }; },
+        transcribeDetailed: async (buf, type, ...extra) => { seen.extra = extra; return { text: 'Then Ravi smiled and hugged me.', language: 'english' }; },
         convertDictation: async args => { seen.convert = args; return 'ఆ తర్వాత రవి నవ్వి నన్ను కౌగిలించుకున్నాడు.'; }
     });
     const body = await post({ 'x-dictation-context': encodeURIComponent(STORY), 'x-dictation-target': 'English' });
     assert.equal(body.data.text, 'ఆ తర్వాత రవి నవ్వి నన్ను కౌగిలించుకున్నాడు.');
     assert.equal(body.data.spoken, 'Then Ravi smiled and hugged me.');
     assert.equal(body.data.converted, true);
-    assert.equal(seen.prompt, STORY, 'Whisper is given the written text as context');
+    assert.deepEqual(seen.extra, [], 'Whisper hears the speech alone: a hint in another language would corrupt the transcript');
     assert.equal(seen.convert.context, STORY);
 });
 

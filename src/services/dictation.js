@@ -3,7 +3,7 @@
 
 const TARGETS = { English: 'English', Hinglish: 'Hinglish', Hindi: 'Hindi', Telugu: 'Telugu', Kannada: 'Kannada' };
 const SAME_LANGUAGE = { English: 'english', Hindi: 'hindi', Telugu: 'telugu', Kannada: 'kannada' };
-const KEEPS_AS_IS = new Set(['english', 'hindi', 'telugu', 'kannada']);
+const LANGUAGE_SCRIPT = { english: 'Latin', hindi: 'Devanagari', telugu: 'Telugu', kannada: 'Kannada' };
 const MIN_CONTEXT_LETTERS = 12;
 
 const parseTarget = value => { // 'Auto' and anything unknown: no fixed target
@@ -43,9 +43,10 @@ const hasContext = context => letters(context) >= MIN_CONTEXT_LETTERS;
 // it; otherwise follow the language menu ('Auto' leaves the speech as spoken).
 function needsConversion({ target, context, detected, text }) {
     const lang = String(detected || '').trim().toLowerCase();
+    // A language label that disagrees with the script actually written is not to be trusted: convert.
+    if (LANGUAGE_SCRIPT[lang] && LANGUAGE_SCRIPT[lang] !== scriptOf(text)) return true;
     if (hasContext(context)) {
-        const sameScript = scriptOf(text) === scriptOf(context);
-        if (!(sameScript && KEEPS_AS_IS.has(lang))) return true;
+        if (!LANGUAGE_SCRIPT[lang] || scriptOf(text) !== scriptOf(context)) return true;
         return lang === 'english' && scriptOf(context) === 'Latin' && !looksEnglish(context);
     }
     if (!target) return false;

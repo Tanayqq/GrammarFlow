@@ -155,3 +155,10 @@ test('a Hinglish draft with English words is not mistaken for English', () => {
     const mixed = 'Kal office mein meeting hai and you bhi aa jana.';
     assert.equal(d.needsConversion({ target: 'English', context: mixed, detected: 'english', text: 'I will be late.' }), true);
 });
+
+test('a language label that disagrees with the script is not trusted', () => {
+    // English speech that came back as Telugu-looking letters must be converted, not passed through
+    assert.equal(d.needsConversion({ target: 'English', context: TELUGU_STORY, detected: 'english', text: 'క్నిలి రింతా్నింండి' }), true);
+    assert.equal(d.needsConversion({ target: 'English', context: '', detected: 'english', text: 'క్నిలి రింతా్నింండి' }), true);
+    assert.equal(d.needsConversion({ target: 'English', context: TELUGU_STORY, detected: 'telugu', text: 'తర్వాత మేము సరస్సు దగ్గరకు వెళ్ళాము.' }), false);
+});
