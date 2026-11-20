@@ -1,4 +1,5 @@
 const aiService = require('../services/ai.service');
+const dictation = require('../services/dictation');
 const prompts = require('../config/prompts');
 const { aiQueue, redisConnection } = require('../queue');
 const { aiHistoryQueue } = require('../historyQueue');
@@ -628,8 +629,17 @@ const transcribe = async (req, res) => {
     const type = String(req.headers['content-type'] || '').split(';')[0].trim().toLowerCase();
     if (!aiService.AUDIO_TYPES[type]) return res.status(415).json({ success: false, error: { message: 'Send audio as webm, ogg, mp4, mp3 or wav.', code: 'UNSUPPORTED_AUDIO' } });
     if (!Buffer.isBuffer(req.body) || req.body.length === 0) return res.status(400).json({ success: false, error: { message: 'No audio was received.', code: 'MISSING_INPUT' } });
+    // What is already written and the language menu choice arrive as headers, since the body is audio.
+    const header = name => { try { return decodeURIComponent(String(req.headers[name] || '')).slice(0, 400); } catch { return ''; } };
+    const context = header('x-dictation-context'), target = dictation.parseTarget(header('x-dictation-target'));
     try {
-        sendResponse(res, true, { text: await aiService.transcribe(req.body, type) });
+        const heard = await aiService.transcribeDetailed(req.body, type, { prompt: context });
+        let text = heard.text, converted = false;
+        if (text && dictation.needsConversion({ target, context, detected: heard.language, text })) {
+            const result = await aiService.convertDictation({ spoken: text, context, target });
+            if (result) { text = result; converted = true; }
+        }
+        sendResponse(res, true, { text, spoken: heard.text, language: heard.language, converted });
     } catch (error) {
         sendAIError(res, error);
     }

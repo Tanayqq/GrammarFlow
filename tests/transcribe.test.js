@@ -33,7 +33,7 @@ test('transcribe reports rate limits as temporarily unavailable', async t => {
 
 test('/transcribe route validates audio type, emptiness and size', async t => {
     const controller = load('src/controllers/ai.controller.js', {
-        '../services/ai.service': { AUDIO_TYPES: aiService.AUDIO_TYPES, transcribe: async (buf, type) => `${buf.length} bytes of ${type}` },
+        '../services/ai.service': { AUDIO_TYPES: aiService.AUDIO_TYPES, transcribeDetailed: async (buf, type) => ({ text: `${buf.length} bytes of ${type}`, language: 'english' }) },
         '../queue': { aiQueue: {}, redisConnection: { status: 'end' } },
         '../historyQueue': { aiHistoryQueue: {} },
         '../historyWorker': { logHistoryRecord() {} },
@@ -88,4 +88,56 @@ test('dictation gate refuses a 4th upload before its body is read, and frees slo
     } finally {
         [...open.slice(1), replacement].forEach(r => r.emit('close')); // leave the shared gate empty
     }
+});
+
+function dictationApp(t, service) {
+    const controller = load('src/controllers/ai.controller.js', {
+        '../services/ai.service': { AUDIO_TYPES: aiService.AUDIO_TYPES, ...service },
+        '../queue': { aiQueue: {}, redisConnection: { status: 'end' } },
+        '../historyQueue': { aiHistoryQueue: {} },
+        '../historyWorker': { logHistoryRecord() {} },
+        '../db': {}
+    }, { console: { log() {}, error() {}, warn() {} } });
+    const app = express();
+    app.post('/transcribe', express.raw({ type: 'audio/*', limit: '5mb' }), controller.transcribe);
+    const server = app.listen(0, '127.0.0.1');
+    return new Promise(r => server.once('listening', r)).then(() => {
+        t.after(() => new Promise(r => server.close(r)));
+        return (headers = {}) => fetch(`http://127.0.0.1:${server.address().port}/transcribe`, { method: 'POST', headers: { 'Content-Type': 'audio/webm', ...headers }, body: Buffer.alloc(500) }).then(r => r.json());
+    });
+}
+
+const STORY = 'నా స్నేహితుడు రవి ఒక రోజు ఉదయం నన్ను కలవడానికి మా ఊరికి వచ్చాడు.';
+
+test('/transcribe converts a friend English speech into the language of the Telugu draft', async t => {
+    const seen = {};
+    const post = await dictationApp(t, {
+        transcribeDetailed: async (buf, type, opts) => { seen.prompt = opts.prompt; return { text: 'Then Ravi smiled and hugged me.', language: 'english' }; },
+        convertDictation: async args => { seen.convert = args; return 'ఆ తర్వాత రవి నవ్వి నన్ను కౌగిలించుకున్నాడు.'; }
+    });
+    const body = await post({ 'x-dictation-context': encodeURIComponent(STORY), 'x-dictation-target': 'English' });
+    assert.equal(body.data.text, 'ఆ తర్వాత రవి నవ్వి నన్ను కౌగిలించుకున్నాడు.');
+    assert.equal(body.data.spoken, 'Then Ravi smiled and hugged me.');
+    assert.equal(body.data.converted, true);
+    assert.equal(seen.prompt, STORY, 'Whisper is given the written text as context');
+    assert.equal(seen.convert.context, STORY);
+});
+
+test('/transcribe keeps the raw words when conversion is unavailable, and skips it when the language already matches', async t => {
+    let converts = 0;
+    const post = await dictationApp(t, {
+        transcribeDetailed: async () => ({ text: 'Then Ravi smiled.', language: 'english' }),
+        convertDictation: async () => { converts++; return null; }
+    });
+    const failed = await post({ 'x-dictation-context': encodeURIComponent(STORY) });
+    assert.equal(failed.data.text, 'Then Ravi smiled.', 'never lose what was said');
+    assert.equal(failed.data.converted, false);
+    assert.equal(converts, 1);
+
+    const same = await post({ 'x-dictation-context': encodeURIComponent('Dear team, I am writing about the schedule.') });
+    assert.equal(same.data.converted, false);
+    assert.equal(converts, 1, 'English speech into an English draft needs no conversion');
+
+    const broken = await post({ 'x-dictation-context': '%E0%A4%A' }); // malformed header must not crash the request
+    assert.equal(broken.success, true);
 });

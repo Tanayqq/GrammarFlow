@@ -1,6 +1,7 @@
 // The standalone local Dev Editor has no background queues or shared Redis.
 const redisConnection = process.env.GRAMMARFLOW_LOCAL_DEMO === 'true' ? null : require('../queue').redisConnection;
 const { generateCacheKey } = require('../utils/cacheKey');
+const dictation = require('./dictation');
 
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
@@ -121,7 +122,8 @@ const TRANSCRIBE_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 const WHISPER_MODELS = ['whisper-large-v3-turbo', 'whisper-large-v3'];
 const AUDIO_TYPES = { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav' };
 
-async function transcribe(audio, mimeType) {
+// prompt: the text already written. Whisper uses it to match names, punctuation and script.
+async function transcribeDetailed(audio, mimeType, { prompt = '' } = {}) {
     const apiKey = (process.env.GROQ_API_KEY || '').split(',')[0].trim();
     if (!apiKey || Date.now() < providerDisabledUntil) throw unavailable();
     // One budget for all attempts, well inside the browser's 55 s request timeout.
@@ -132,11 +134,16 @@ async function transcribe(audio, mimeType) {
         const form = new FormData();
         form.append('file', new Blob([audio], { type: mimeType }), `speech.${AUDIO_TYPES[mimeType]}`);
         form.append('model', model);
-        form.append('response_format', 'json');
+        form.append('response_format', 'verbose_json'); // adds the detected language
+        form.append('temperature', '0');
+        if (prompt) form.append('prompt', String(prompt).slice(-160));
         const response = await fetch(TRANSCRIBE_URL, {
             method: 'POST', headers: { Authorization: `Bearer ${apiKey}` }, body: form, signal: AbortSignal.timeout(remaining)
         }).catch(() => null);
-        if (response?.ok) return String((await response.json()).text || '').trim();
+        if (response?.ok) {
+            const body = await response.json();
+            return { text: String(body.text || '').trim(), language: String(body.language || '').toLowerCase() };
+        }
         await response?.body?.cancel().catch(() => {}); // free the connection
         if (response?.status === 429) throw unavailable(Number(response.headers.get('retry-after')) || 30);
         // Any other failure (e.g. a retired model): try the next model.
@@ -144,4 +151,22 @@ async function transcribe(audio, mimeType) {
     throw unavailable();
 }
 
-module.exports = { callGroqAPI, transcribe, AUDIO_TYPES };
+const transcribe = async (audio, mimeType) => (await transcribeDetailed(audio, mimeType)).text;
+
+// Converts dictated text into the writer's language, keeping meaning and tone. Returns null when
+// the model is unavailable or its answer fails the sanity checks, so the caller keeps the raw words.
+async function convertDictation({ spoken, context, target }) {
+    const { system, user } = dictation.buildPrompt({ spoken, context, target });
+    try {
+        const result = await callGroqAPI(system, user, 0.2, {
+            model: dictation.needsStrongModel({ target, context }) ? 'openai/gpt-oss-120b' : 'openai/gpt-oss-20b',
+            reasoningEffort: 'low', maxTokens: 512, timeoutMs: 10000,
+            validate: output => dictation.acceptable(output, spoken)
+        });
+        return dictation.acceptable(result.text, spoken) ? result.text.trim() : null;
+    } catch {
+        return null;
+    }
+}
+
+module.exports = { callGroqAPI, transcribe, transcribeDetailed, convertDictation, AUDIO_TYPES };
