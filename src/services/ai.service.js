@@ -42,7 +42,8 @@ async function generate(systemPrompt, userText, temperature, opts, key) {
             continue;
         }
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), Math.min(12000, deadline - Date.now()));
+        const modelTimeout = Number.isFinite(opts.timeoutMs) ? Math.min(opts.timeoutMs, deadline - Date.now()) : Math.min(15000, deadline - Date.now());
+        const timeout = setTimeout(() => controller.abort(), modelTimeout);
         try {
             const response = await fetch(GROQ_API_URL, {
                 method: 'POST',
