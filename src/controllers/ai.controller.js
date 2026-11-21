@@ -653,6 +653,228 @@ const transcribe = async (req, res) => {
     }
 };
 
+
+const HUMANIZER_AI_TELLS = [
+    'delve','delves','delved','delving','pivotal','tapestry','testament',
+    'multifaceted','in conclusion,','furthermore,','moreover,','in summary,',
+    'it is important to note','it is worth noting','it is crucial to',
+    'plays a crucial role','plays a pivotal role','stands as a testament',
+    'underscores','showcases','embodies','aligns with','rapidly evolving',
+    'ever-evolving','robust framework','innovative approach','cutting-edge',
+    'paradigm shift','seamlessly','holistic','synergize','leverage',
+];
+
+function buildHumanizePrompt(text, style, intensity, stages) {
+    const styleGuide = {
+        academic: 'formal academic prose, precise terminology, third-person perspective',
+        conversational: 'warm conversational tone, natural speech patterns',
+        casual: 'relaxed casual language, contractions, everyday vocabulary',
+        technical: 'precise technical language, active voice, direct statements',
+    }[style] || 'natural human prose';
+
+    const intensityDesc = intensity >= 85 ? 'AGGRESSIVE — rewrite extensively, restructure freely'
+        : intensity >= 60 ? 'MODERATE — transform clearly but preserve key phrasing'
+        : 'SUBTLE — light touch, minimal structural changes';
+
+    const stageLines = [
+        stages.synonyms && '• Stage 1: SYNONYM SUBSTITUTION — Replace predictable words with less common but equivalent alternatives',
+        stages.phrase_rewrite && '• Stage 2: PHRASE REWRITING — Replace formulaic AI phrases. NEVER use: ' + HUMANIZER_AI_TELLS.join(', '),
+        stages.determiner_swap && '• Stage 3: DETERMINER SWAPPING — Rotate demonstratives and articles contextually',
+        stages.voice_transform && '• Stage 4: VOICE TRANSFORMATION — Alternate between active and passive voice',
+        stages.sentence_fusion && '• Stage 5: SENTENCE FUSION — Naturally fuse adjacent short sentences',
+        stages.transition_inject && '• Stage 6: TRANSITION INJECTION — Inject varied natural discourse markers',
+        stages.clause_reorder && '• Stage 7: CLAUSE REORDERING — Reorder dependent clauses for natural emphasis',
+        stages.nominalization && '• Stage 8: NOMINALIZATION — Convert between verb phrases and abstract nouns',
+        stages.appositive && '• Stage 9: APPOSITIVE INSERTION — Add informative parentheticals where natural',
+        stages.discourse_rotate && '• Stage 10: DISCOURSE ROTATION — Vary paragraph transitions and rhetorical flow',
+        stages.contraction && ('• Stage 11: CONTRACTION HANDLING — ' + (style === 'academic' ? 'Expand contractions for formal register' : 'Use natural contractions')),
+        stages.ngram_audit && '• Stage 12: N-GRAM AUDIT — Disrupt surviving 5-gram AI sequences by restructuring sentences',
+        stages.info_reorder && '• Stage 13: INFO REORDERING — Reorder information within sentences for human authenticity',
+        stages.split_compound && '• Stage 14: COMPOUND SPLITTING — Split overly complex compound sentences naturally',
+        stages.ai_tell_scrubber && '• Stage 15: AI-TELL SCRUBBER — Remove ALL AI markers listed above and replace every instance',
+    ].filter(Boolean).join('\n');
+
+    return `You are TURNITOUT, a 15-stage deterministic linguistic humanization engine. Transform the text so it reads as authentic human writing undetectable by AI detectors (Turnitin, GPTZero, CopyLeaks, ZeroGPT).
+
+TRANSFORMATION INTENSITY: ${intensity}% — ${intensityDesc}
+TARGET REGISTER: ${styleGuide}
+
+MANDATORY TRANSFORMATION STAGES (apply ALL):
+${stageLines}
+
+ABSOLUTE RULES:
+1. NEVER use these AI-tell words/phrases: ${HUMANIZER_AI_TELLS.join(', ')}
+2. Vary sentence length deliberately — mix short punchy sentences with longer ones (burstiness/rhythm)
+3. Preserve ALL factual content, numerical data, citations, and technical terminology exactly
+4. Output ONLY the transformed text — no explanations, no preamble, no meta-commentary
+5. Do not add new facts or change the meaning — only the linguistic surface
+
+INPUT TEXT:
+${text}`;
+}
+
+const humanizeText = async (req, res, next) => {
+    const startTime = Date.now();
+    try {
+        const {
+            text,
+            intensity = 70,
+            style = 'academic',
+            protected_terms = [],
+            seed = null,
+            enable_synonyms = true,
+            enable_phrase_rewrite = true,
+            enable_determiner_swap = true,
+            enable_voice_transform = true,
+            enable_sentence_fusion = true,
+            enable_transition_inject = true,
+            enable_clause_reorder = true,
+            enable_nominalization = true,
+            enable_appositive = true,
+            enable_discourse_rotate = true,
+            enable_contraction = false,
+            enable_ngram_audit = true,
+            enable_info_reorder = true,
+            enable_split_compound = true,
+            enable_ai_tell_scrubber = true,
+            enable_citations = false,
+            max_citations = 2,
+            citation_format = 'IEEE [1]',
+            citation_discipline = 'computer_science',
+        } = req.body;
+
+        if (!text || !text.trim()) {
+            return res.status(400).json({ success: false, error: { message: 'Text is required', code: 'MISSING_INPUT' } });
+        }
+
+        const turnitoutUrl = process.env.TURNITOUT_API_URL;
+        const turnitoutKey = process.env.TURNITOUT_API_KEY;
+
+        // --- TURNITOUT ENTERPRISE PATH ---
+        if (turnitoutUrl && turnitoutKey) {
+            const payload = {
+                text: text.trim(),
+                intensity: parseFloat(intensity),
+                style,
+                protected_terms: Array.isArray(protected_terms) ? protected_terms : [],
+                enable_synonyms: Boolean(enable_synonyms),
+                enable_phrase_rewrite: Boolean(enable_phrase_rewrite),
+                enable_determiner_swap: Boolean(enable_determiner_swap),
+                enable_voice_transform: Boolean(enable_voice_transform),
+                enable_sentence_fusion: Boolean(enable_sentence_fusion),
+                enable_transition_inject: Boolean(enable_transition_inject),
+                enable_clause_reorder: Boolean(enable_clause_reorder),
+                enable_nominalization: Boolean(enable_nominalization),
+                enable_appositive: Boolean(enable_appositive),
+                enable_discourse_rotate: Boolean(enable_discourse_rotate),
+                enable_contraction: Boolean(enable_contraction),
+                enable_ngram_audit: Boolean(enable_ngram_audit),
+                enable_info_reorder: Boolean(enable_info_reorder),
+                enable_split_compound: Boolean(enable_split_compound),
+                enable_ai_tell_scrubber: Boolean(enable_ai_tell_scrubber),
+                enable_citations: Boolean(enable_citations),
+                max_citations: parseInt(max_citations, 10) || 0,
+                citation_format, citation_discipline,
+            };
+            const tRes = await fetch(`${turnitoutUrl}/v1/humanize`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-API-Key': turnitoutKey },
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(30000),
+            });
+            if (!tRes.ok) {
+                const errBody = await tRes.text();
+                console.error('[Humanizer] Turnitout API error:', tRes.status, errBody);
+                return res.status(502).json({ success: false, error: { message: `Turnitout API error: ${tRes.status}` } });
+            }
+            const data = await tRes.json();
+            return res.json({ ...data, source: 'turnitout' });
+        }
+
+        // --- GROQ FALLBACK PATH ---
+        const stages = {
+            synonyms: enable_synonyms, phrase_rewrite: enable_phrase_rewrite,
+            determiner_swap: enable_determiner_swap, voice_transform: enable_voice_transform,
+            sentence_fusion: enable_sentence_fusion, transition_inject: enable_transition_inject,
+            clause_reorder: enable_clause_reorder, nominalization: enable_nominalization,
+            appositive: enable_appositive, discourse_rotate: enable_discourse_rotate,
+            contraction: enable_contraction, ngram_audit: enable_ngram_audit,
+            info_reorder: enable_info_reorder, split_compound: enable_split_compound,
+            ai_tell_scrubber: enable_ai_tell_scrubber,
+        };
+
+        const systemPrompt = buildHumanizePrompt(text.trim(), style, parseFloat(intensity), stages);
+        const groqResponse = await aiService.callGroqAPI(systemPrompt, text.trim(), Math.min(0.5 + (parseFloat(intensity) / 100) * 0.5, 1.0));
+        const humanizedText = (groqResponse.text || '').trim();
+        const latencyMs = Date.now() - startTime;
+
+        const originalWords = text.trim().split(/\s+/);
+        const humanizedWords = humanizedText.split(/\s+/);
+        let modificationsCount = 0;
+        const minLen = Math.min(originalWords.length, humanizedWords.length);
+        for (let i = 0; i < minLen; i++) {
+            if (originalWords[i].toLowerCase() !== humanizedWords[i].toLowerCase()) modificationsCount++;
+        }
+        modificationsCount += Math.abs(originalWords.length - humanizedWords.length);
+
+        return res.json({
+            success: true,
+            humanized_text: humanizedText,
+            words_processed: originalWords.length,
+            modifications_count: modificationsCount,
+            latency_ms: latencyMs,
+            citation_count: 0,
+            bib_text: null,
+            source: 'groq',
+        });
+    } catch (err) {
+        next(err);
+    }
+};
+
+const humanizeFile = async (req, res, next) => {
+    try {
+        const turnitoutUrl = process.env.TURNITOUT_API_URL;
+        const turnitoutKey = process.env.TURNITOUT_API_KEY;
+        if (!turnitoutUrl || !turnitoutKey) {
+            return res.status(503).json({
+                success: false,
+                error: { message: 'File humanization requires Turnitout Enterprise API. Set TURNITOUT_API_URL and TURNITOUT_API_KEY in .env.' },
+                link: 'https://github.com/AhmadHassan-BTed/Turnitout-Humanizer/blob/main/ENTERPRISE_API.md',
+            });
+        }
+        if (!req.file) return res.status(400).json({ success: false, error: { message: 'No file uploaded.' } });
+        const { intensity = '70.0', style = 'academic', format_selection = 'Auto-Detect' } = req.body;
+        const form = new FormData();
+        form.append('file', new Blob([req.file.buffer], { type: req.file.mimetype }), req.file.originalname);
+        form.append('intensity', intensity);
+        form.append('style', style);
+        form.append('format_selection', format_selection);
+        const tRes = await fetch(`${turnitoutUrl}/v1/humanize/file`, {
+            method: 'POST', headers: { 'X-API-Key': turnitoutKey },
+            body: form, signal: AbortSignal.timeout(60000),
+        });
+        if (!tRes.ok) {
+            const errBody = await tRes.text();
+            return res.status(502).json({ success: false, error: { message: `Turnitout file API error: ${tRes.status}` }, detail: errBody });
+        }
+        const contentType = tRes.headers.get('content-type') || 'application/octet-stream';
+        const contentDisposition = tRes.headers.get('content-disposition') || `attachment; filename="humanized_${req.file.originalname}"`;
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Content-Disposition', contentDisposition);
+        ['X-Turnitout-Words-Charged','X-Turnitout-Words-Remaining','X-Turnitout-File-Fee-USD','X-Turnitout-Detected-Format'].forEach(h => {
+            const v = tRes.headers.get(h); if (v) res.setHeader(h, v);
+        });
+        const arrayBuffer = await tRes.arrayBuffer();
+        res.send(Buffer.from(arrayBuffer));
+    } catch (err) {
+        next(err);
+    }
+};
+
+// ============================================================
+// 2) In `module.exports = { ... }`, add humanizeText and humanizeFile:
+
 module.exports = {
     transcribe,
     rewrite,
@@ -665,5 +887,7 @@ module.exports = {
     checkJobStatus,
     getHistory,
     getHistoryDetail,
-    deleteHistory
+    deleteHistory,
+    humanizeText,
+    humanizeFile
 };

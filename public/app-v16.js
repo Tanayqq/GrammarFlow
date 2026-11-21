@@ -3019,3 +3019,233 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+
+
+
+// ============================================================
+// AI HUMANIZER — Turnitout-Humanizer Integration
+// Patches DocumentProcessor to handle "Humanize" mode
+// Routes: POST /api/v1/humanize  (Groq fallback built-in)
+// ============================================================
+(function HumanizerModule() {
+    'use strict';
+
+    // ── Wait for documentProcessor to be initialized ──
+    function patchWhenReady(attempts) {
+        if (typeof window === 'undefined') return;
+        if (window.documentProcessor && window.documentProcessor.processDocument) {
+            applyPatch(window.documentProcessor);
+        } else if (attempts < 50) {
+            setTimeout(function() { patchWhenReady(attempts + 1); }, 200);
+        }
+    }
+
+    function applyPatch(dp) {
+        var _origProcessDocument = dp.processDocument.bind(dp);
+
+        dp.processDocument = async function() {
+            var modeEl = document.getElementById('documentModeSelect');
+            var mode   = modeEl ? modeEl.value : '';
+
+            if (mode !== 'Humanize') {
+                return _origProcessDocument();
+            }
+
+            // ── HUMANIZE MODE ──
+            if (this.files.length === 0) return;
+
+            // Show loading
+            var docLoadingIndicator = document.getElementById('docLoadingIndicator');
+            var docOutputSection    = document.getElementById('docOutputSection');
+            var docResultsList      = document.getElementById('docResultsList');
+            var exportControls      = document.getElementById('exportControls');
+            var modeLabelEl         = document.getElementById('docResultModeLabel');
+            var cancelBtn           = document.getElementById('docCancelProcessBtn');
+
+            if (docLoadingIndicator) docLoadingIndicator.classList.remove('hidden');
+            if (docOutputSection)    docOutputSection.classList.remove('hidden');
+            if (docResultsList)      docResultsList.innerHTML = '';
+            if (exportControls)      exportControls.classList.add('hidden');
+
+            this.isCanceled = false;
+            if (cancelBtn) {
+                cancelBtn.classList.remove('hidden');
+                cancelBtn.onclick = function() {
+                    dp.isCanceled = true;
+                    cancelBtn.textContent = 'Stopping...';
+                };
+            }
+
+            try {
+                // 1) Extract text from uploaded documents
+                if (docResultsList) docResultsList.innerHTML = '<p class="text-purple-400 text-sm animate-pulse">Extracting text from documents...</p>';
+                var extractedText = await this.extractAll();
+
+                if (!extractedText || !extractedText.trim()) {
+                    throw new Error('No readable text could be extracted from the document.');
+                }
+
+                if (this.isCanceled) throw new Error('Canceled by user.');
+
+                if (docResultsList) docResultsList.innerHTML = '<p class="text-purple-400 text-sm animate-pulse">Running AI Humanizer... This may take a moment.</p>';
+
+                // 2) Call /api/v1/humanize
+                var payload = {
+                    text:     extractedText.trim(),
+                    intensity: 70,
+                    style:    'academic',
+                    enable_synonyms:        true,
+                    enable_phrase_rewrite:  true,
+                    enable_determiner_swap: true,
+                    enable_voice_transform: true,
+                    enable_sentence_fusion: true,
+                    enable_transition_inject: true,
+                    enable_clause_reorder:  true,
+                    enable_nominalization:  true,
+                    enable_appositive:      true,
+                    enable_discourse_rotate: true,
+                    enable_contraction:     false,
+                    enable_ngram_audit:     true,
+                    enable_info_reorder:    true,
+                    enable_split_compound:  true,
+                    enable_ai_tell_scrubber: true,
+                    enable_citations: false,
+                };
+
+                var humanizedText = '';
+                var statsWords = 0, statsMods = 0, statsLatency = 0, statsSource = 'groq';
+
+                try {
+                    // Try GrammarFlowAPI first (handles auth headers)
+                    var result = await GrammarFlowAPI.request('/humanize', payload);
+                    var data = (result && result.data) ? result.data : result;
+                    if (!data.humanized_text && result.humanized_text) data = result;
+                    humanizedText = data.humanized_text || '';
+                    statsWords    = data.words_processed  || 0;
+                    statsMods     = data.modifications_count || 0;
+                    statsLatency  = data.latency_ms != null ? Math.round(data.latency_ms) : 0;
+                    statsSource   = data.source || 'groq';
+                } catch (apiErr) {
+                    // Fallback: direct fetch
+                    var baseUrl = (typeof getBaseUrl === 'function') ? getBaseUrl() : '/api/v1';
+                    var res = await fetch(baseUrl + '/humanize', {
+                        method:  'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'x-guest-session-id': localStorage.getItem('guest_session_id') || '',
+                        },
+                        body: JSON.stringify(payload),
+                    });
+                    var data2 = await res.json();
+                    if (!res.ok) throw new Error((data2.error && data2.error.message) || 'Humanize failed');
+                    if (data2.data && data2.data.humanized_text) data2 = data2.data;
+                    humanizedText = data2.humanized_text || '';
+                    statsWords    = data2.words_processed  || 0;
+                    statsMods     = data2.modifications_count || 0;
+                    statsLatency  = data2.latency_ms != null ? Math.round(data2.latency_ms) : 0;
+                    statsSource   = data2.source || 'groq';
+                }
+
+                if (!humanizedText.trim()) throw new Error('Humanizer returned empty output.');
+
+                this.finalOutput = humanizedText;
+
+                // 3) Render result card
+                var engineBadge = statsSource === 'turnitout'
+                    ? '<span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/25 text-green-300 font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Turnitout Engine</span>'
+                    : '<span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/25 text-purple-300 font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse inline-block"></span>Groq Fallback</span>';
+
+                var card = document.createElement('div');
+                card.className = 'result-card';
+                var escapedText = humanizedText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                card.innerHTML = [
+                    '<div class="flex flex-wrap items-center justify-between gap-2 mb-3">',
+                    '  <span class="text-xs font-bold text-purple-400 uppercase tracking-widest">&#128737; Humanized Output</span>',
+                    '  ' + engineBadge,
+                    '</div>',
+                    '<div class="flex gap-4 text-xs text-gray-400 mb-3">',
+                    '  <span>&#128196; <strong class="text-gray-200">' + statsWords.toLocaleString() + '</strong> words</span>',
+                    '  <span>&#9999; <strong class="text-gray-200">' + statsMods.toLocaleString() + '</strong> changes</span>',
+                    '  <span>&#9201; <strong class="text-gray-200">' + statsLatency + 'ms</strong></span>',
+                    '</div>',
+                    '<div class="result-text text-gray-200 text-sm md:text-base leading-relaxed select-all" id="humDocOutput" style="white-space:pre-wrap;">' + escapedText + '</div>',
+                    '<button class="copy-btn-mini mt-3" id="humDocCopyBtn">',
+                    '  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>',
+                    '</button>',
+                ].join('\n');
+
+                if (docResultsList) {
+                    docResultsList.innerHTML = '';
+                    docResultsList.appendChild(card);
+                }
+
+                // Wire copy button
+                setTimeout(function() {
+                    var copyBtn = document.getElementById('humDocCopyBtn');
+                    if (copyBtn) {
+                        copyBtn.onclick = async function() {
+                            try {
+                                await navigator.clipboard.writeText(humanizedText);
+                                copyBtn.textContent = '✓';
+                                setTimeout(function() {
+                                    copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+                                }, 2000);
+                            } catch(e) {}
+                        };
+                    }
+                }, 100);
+
+                // Show export controls
+                if (modeLabelEl) modeLabelEl.textContent = 'Humanized Text Ready';
+                if (exportControls) exportControls.classList.remove('hidden');
+
+            } catch (err) {
+                if (docResultsList) {
+                    docResultsList.innerHTML = '<p class="text-red-400 text-sm p-4">\u274C Error: ' + (err.message || 'Unknown error') + '</p>';
+                }
+                if (docOutputSection) docOutputSection.classList.remove('hidden');
+            } finally {
+                if (docLoadingIndicator) docLoadingIndicator.classList.add('hidden');
+                if (cancelBtn) {
+                    cancelBtn.classList.add('hidden');
+                    cancelBtn.textContent = 'Stop Process';
+                }
+            }
+        };
+    }
+
+    // Also patch updateOCRMode to treat Humanize like non-OCR modes
+    function patchOCRMode(dp) {
+        var _origUpdateOCR = dp.updateOCRMode.bind(dp);
+        dp.updateOCRMode = function() {
+            var modeEl = document.getElementById('documentModeSelect');
+            if (modeEl && modeEl.value === 'Humanize') {
+                // Humanize is NOT OCR — show global controls, hide OCR banner
+                var controls = document.getElementById('globalControls');
+                var banner   = document.getElementById('ocrModeBanner');
+                if (controls) controls.style.display = '';
+                if (banner)   banner.style.display = 'none';
+                return;
+            }
+            _origUpdateOCR();
+        };
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        patchWhenReady(0);
+        // Also patch updateOCRMode after a short delay
+        setTimeout(function() {
+            if (window.documentProcessor) {
+                patchOCRMode(window.documentProcessor);
+                // Listen for mode change to call updateOCRMode
+                var modeEl = document.getElementById('documentModeSelect');
+                if (modeEl) {
+                    modeEl.addEventListener('change', function() {
+                        if (window.documentProcessor) window.documentProcessor.updateOCRMode();
+                    });
+                }
+            }
+        }, 1000);
+    });
+
+})();

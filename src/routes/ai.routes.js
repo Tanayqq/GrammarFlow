@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const router = express.Router();
 const aiController = require('../controllers/ai.controller');
 const { aiLimiter, docLimiter, readLimiter, executionLimiter, dictationLimiter } = require('../middlewares/rateLimiter');
@@ -40,6 +40,7 @@ router.post('/autocomplete',     passiveAuth, validateAIInput, aiLimiter, aiCont
 router.post('/analyze-realtime', passiveAuth, validateAIInput, aiLimiter, aiController.analyzeRealtime);       // Phase 3 (sentence-level)
 router.post('/analyze-smart',    passiveAuth, validateAIInput, aiLimiter, aiController.analyzeSmartSuggestions);  // Phase 4 (paragraph-level)
 router.post('/process-document', passiveAuth, validateAIInput, docLimiter, aiController.processDocument);       // Phase 6 (Document/Image)
+router.post('/humanize',         passiveAuth, validateAIInput, aiLimiter, aiController.humanizeText);          // AI Humanizer (Turnitout-Humanizer)
 
 router.get('/job/:jobId',    passiveAuth, readLimiter, aiController.checkJobStatus);   // Poll job status (GET)
 router.post('/job/:jobId',   passiveAuth, readLimiter, aiController.checkJobStatus);   // Poll job status (POST - extension support)
