@@ -61,6 +61,23 @@ const detectLanguage = (text) => {
     return 'English';
 };
 
+// Fix Grammar follows the language the draft is written in, not the menu. The menu only breaks ties
+// the text cannot settle: romanized Telugu/Kannada, and a short Latin draft when Hinglish is selected.
+const SCRIPTS = { Hindi: /[ऀ-ॿ]/g, Telugu: /[ఀ-౿]/g, Kannada: /[ಀ-೿]/g };
+const draftLanguage = (text, menu) => {
+    const letters = [...String(text || '')].filter(ch => /\p{L}/u.test(ch)); // digits and marks do not count
+    if (!letters.length) return menu;
+    const [name, count] = Object.entries(SCRIPTS)
+        .map(([language, pattern]) => [language, letters.filter(ch => ch.match(pattern)).length])
+        .sort((a, b) => b[1] - a[1])[0];
+    if (count / letters.length >= 0.3) return name; // mixed with English words is still that language
+    const value = String(text);
+    const short = value.trim().split(/\s+/).length <= 12;
+    if (detectLanguage(value) === 'Hinglish' || (menu === 'Hinglish' && short)) return 'Hinglish';
+    return /^(Telugu|Kannada)$/.test(menu) && /-English$/.test(detectLanguage(value)) ? menu : 'English';
+};
+
 module.exports = {
-    detectLanguage
+    detectLanguage,
+    draftLanguage
 };

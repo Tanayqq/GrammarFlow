@@ -5,7 +5,7 @@ const { aiQueue, redisConnection } = require('../queue');
 const { aiHistoryQueue } = require('../historyQueue');
 const { logHistoryRecord } = require('../historyWorker');
 const prisma = require('../db');
-const { detectLanguage } = require('../utils/language');
+const { detectLanguage, draftLanguage } = require('../utils/language');
 const { sendAIError } = require('../utils/publicError');
 const { isRomanHinglish } = require('../utils/documentLanguage');
 
@@ -125,10 +125,12 @@ const rewrite = async (req, res, next) => {
 
 const grammarFix = async (req, res, next) => {
     try {
-        const { text, language = "English", style = "Standard", tone = "Neutral", humanize = false, learningMode = false } = req.body;
+        const { text, style = "Standard", tone = "Neutral", humanize = false, learningMode = false } = req.body;
         const guestSessionId = req.headers['x-guest-session-id'] || null;
         const userId = req.userId || null;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required" } });
+        const language = draftLanguage(text, req.body.language || "English");
+        req.body.language = language; // the prompt below reads it from the body
 
         // The system prompt is always chosen server-side; clients may only pick an extension action.
         const prompt = prompts.getGrammarFixRoutePrompt(req.body);
