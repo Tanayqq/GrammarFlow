@@ -3136,8 +3136,10 @@ document.addEventListener('DOMContentLoaded', () => {
                         docResultsList.innerHTML = '<p class="text-purple-400 text-sm animate-pulse">' + progressMsg + '</p>';
                     }
 
-                    var currentDocMode = (UI.documentModeSelect && UI.documentModeSelect.value) || 'Humanize';
-                    var currentStyle = (currentDocMode === 'Explain') ? 'simple' : ((UI.styleSelect && UI.styleSelect.value) || 'Casual');
+                    var docModeEl = document.getElementById('documentModeSelect');
+                    var styleEl = document.getElementById('styleSelect');
+                    var currentDocMode = (docModeEl && docModeEl.value) || 'Humanize';
+                    var currentStyle = (currentDocMode === 'Explain') ? 'simple' : ((styleEl && styleEl.value) || 'Casual');
                     var payload = {
                         text:     chunks[i].trim(),
                         intensity: 70,
