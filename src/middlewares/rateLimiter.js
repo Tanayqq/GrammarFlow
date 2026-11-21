@@ -269,11 +269,6 @@ module.exports = {
         keyGenerator: req => `gf:limiter:auth:${ipKeyGenerator(req.ip || '127.0.0.1')}`,
         handler: limitReachedHandler
     }),
-    // Dictation sends one short clip per spoken phrase, so it needs more headroom than a typed request.
-    dictationLimiter: rateLimit({
-        windowMs: 60 * 1000, limit: 60, standardHeaders: true, legacyHeaders: false,
-        store: new SlidingWindowStore(60 * 1000), keyGenerator: req => getRateLimitKey(req, 'dictation'), handler: limitReachedHandler
-    }),
     aiLimiter,
     docLimiter,
     readLimiter,

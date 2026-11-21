@@ -51,7 +51,7 @@ test('execution HTTP route validates before provider calls and uses its own limi
     const service={validate(body){if(!body?.code)throw Error('bad');},async execute(){calls++;return {status:200,body:{success:true,data:{stdout:'42\n'}}};}};
     const router=load('src/routes/ai.routes.js',{
         '../controllers/ai.controller':new Proxy({},{get:()=>pass}),
-        '../middlewares/rateLimiter':{aiLimiter:pass,docLimiter:pass,readLimiter:pass,dictationLimiter:pass,executionLimiter:(req,res,next)=>{limits++;next();}},
+        '../middlewares/rateLimiter':{aiLimiter:pass,docLimiter:pass,readLimiter:pass,executionLimiter:(req,res,next)=>{limits++;next();}},
         '../middlewares/auth':{passiveAuth:pass},'./auth.routes':express.Router(),'../middlewares/validateAIInput':pass,
         '../services/execution.service':service
     },{AbortController});

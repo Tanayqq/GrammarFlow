@@ -1,10 +1,10 @@
 # GrammarFlow
 
-GrammarFlow is a web writing assistant with grammar correction, rewriting, suggestions, document processing, voice dictation, and writing history. The active application is the root Express backend and the frontend in `public/`.
+GrammarFlow is a web writing assistant with grammar correction, rewriting, suggestions, document processing, and writing history. The active application is the root Express backend and the frontend in `public/`.
 
 ## Project layout
 
-- `server.js`, `src/`: API, authentication, PostgreSQL access, Redis queues and workers. AI calls (including Whisper dictation via `/api/v1/transcribe`) use Groq with `GROQ_API_KEY`.
+- `server.js`, `src/`: API, authentication, PostgreSQL access, Redis queues and workers. AI calls use Groq with `GROQ_API_KEY`.
 - `public/index.html`, `public/app-v16.js`: currently served browser application.
 - `public/editor.html`, `public/head-pointer.js`: Flow-State Editor with the hands-free head pointer (Android-standard earbuds via WebHID, or the helpers below).
 - `helpers/head_bridge.py`: relays OpenTrack head tracking (e.g. GalaxyBudsClient for Galaxy Buds) to the editor. `helpers/airpods/`: AirPods head tracking for macOS 14+.

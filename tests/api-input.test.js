@@ -18,7 +18,7 @@ test('AI routes reject malformed inputs before calling providers or queues', asy
     const pass = (req, res, next) => next();
     const router = load('src/routes/ai.routes.js', {
         '../controllers/ai.controller': controller,
-        '../middlewares/rateLimiter': { aiLimiter: pass, docLimiter: pass, readLimiter: pass, executionLimiter:pass, dictationLimiter: pass },
+        '../middlewares/rateLimiter': { aiLimiter: pass, docLimiter: pass, readLimiter: pass, executionLimiter:pass },
         '../middlewares/auth': { passiveAuth: pass },
         './auth.routes': express.Router()
     });
