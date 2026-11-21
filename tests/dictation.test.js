@@ -182,3 +182,23 @@ test('a single shared word does not make a Spanish draft look English', () => {
     const spanish = '¿Has preparado los documentos para la próxima reunión?';
     assert.equal(d.needsConversion({ target: 'English', context: spanish, detected: 'english', text: 'We will meet tomorrow.' }), true);
 });
+
+test('hintFor: the draft\'s script wins, otherwise the language menu, never English', () => {
+    const { hintFor } = require('../src/services/dictation');
+    assert.equal(hintFor({ target: 'English', context: 'ನಾನು ನಿನ್ನೆ ನನ್ನ ಸ್ನೇಹಿತನ ಜೊತೆ ಮಾರುಕಟ್ಟೆಗೆ ಹೋದೆ' }), 'kn');
+    assert.equal(hintFor({ target: 'English', context: 'నా స్నేహితుడు రవి ఒక రోజు ఉదయం వచ్చాడు' }), 'te');
+    assert.equal(hintFor({ target: 'Telugu', context: 'Dear team, I am writing about the schedule.' }), null, 'an English draft means no hint');
+    assert.equal(hintFor({ target: 'Kannada', context: '' }), 'kn');
+    assert.equal(hintFor({ target: 'English', context: '' }), null);
+    assert.equal(hintFor({ target: 'Auto', context: '' }), null);
+});
+
+test('acceptable rejects output that copies the draft instead of converting the speech', () => {
+    const { acceptable } = require('../src/services/dictation');
+    const draft = 'ನಾನು ನಿನ್ನೆ ನನ್ನ ಸ್ನೇಹಿತನ ಜೊತೆ ಮಾರುಕಟ್ಟೆಗೆ ಹೋದೆ ಮತ್ತು ಹಣ್ಣು ತಂದೆವು.';
+    assert.equal(acceptable(draft, 'நன்ன ச்னேகித்தரவி', draft), false);
+    assert.equal(acceptable('ನನ್ನ ಸ್ನೇಹಿತ ರವಿ ಇಂದು ಬಂದನು.', 'நன்ன ச்னேகித்தரவி', draft), true);
+    assert.equal(acceptable('Then Ravi smiled.', 'Then Ravi smiled.', ''), true, 'no draft, nothing to copy');
+    const brand = 'The customer is International Business Machines Corporation.';
+    assert.equal(acceptable('I will call International Business Machines Corporation.', 'Llamaré a International Business Machines Corporation.', brand), true, 'a name the speech itself contains is not a copy');
+});

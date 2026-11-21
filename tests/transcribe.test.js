@@ -119,7 +119,7 @@ test('/transcribe converts a friend English speech into the language of the Telu
     assert.equal(body.data.text, 'ఆ తర్వాత రవి నవ్వి నన్ను కౌగిలించుకున్నాడు.');
     assert.equal(body.data.spoken, 'Then Ravi smiled and hugged me.');
     assert.equal(body.data.converted, true);
-    assert.deepEqual(seen.extra, [], 'Whisper hears the speech alone: a hint in another language would corrupt the transcript');
+    assert.deepEqual(seen.extra, ['te'], "the draft's language is passed only as a retry hint; the first pass never forces it");
     assert.equal(seen.convert.context, STORY);
 });
 
@@ -140,4 +140,33 @@ test('/transcribe keeps the raw words when conversion is unavailable, and skips 
 
     const broken = await post({ 'x-dictation-context': '%E0%A4%A' }); // malformed header must not crash the request
     assert.equal(broken.success, true);
+});
+
+test('a clip Whisper labels as an unsupported language is redone in the writer\'s language', async t => {
+    const realFetch = global.fetch;
+    t.after(() => { global.fetch = realFetch; });
+    const sent = [];
+    global.fetch = async (url, init) => {
+        sent.push(init.body.get('language'));
+        return new Response(JSON.stringify(sent.length === 1 ? { text: 'தமிழ்', language: 'tamil' } : { text: 'ಕನ್ನಡ', language: 'kannada' }), { status: 200 });
+    };
+    const heard = await aiService.transcribeDetailed(Buffer.from('x'), 'audio/webm', 'kn');
+    assert.deepEqual(sent, [null, 'kn'], 'first pass auto-detects, second is told the language');
+    assert.deepEqual(heard, { text: 'ಕನ್ನಡ', language: 'kannada' });
+});
+
+test('no retry when the language is supported, when there is no hint, or when the redo fails', async t => {
+    const realFetch = global.fetch;
+    t.after(() => { global.fetch = realFetch; });
+    let calls = 0;
+    global.fetch = async () => { calls++; return new Response(JSON.stringify({ text: 'hello', language: 'english' }), { status: 200 }); };
+    await aiService.transcribeDetailed(Buffer.from('x'), 'audio/webm', 'kn');
+    assert.equal(calls, 1, 'an English clip is never redone as Kannada');
+    calls = 0;
+    global.fetch = async () => { calls++; return new Response(JSON.stringify({ text: 'தமிழ்', language: 'tamil' }), { status: 200 }); };
+    assert.equal((await aiService.transcribeDetailed(Buffer.from('x'), 'audio/webm', null)).language, 'tamil');
+    assert.equal(calls, 1, 'without a hint there is nothing to redo');
+    calls = 0;
+    global.fetch = async () => { calls++; return calls === 1 ? new Response(JSON.stringify({ text: 'தமிழ்', language: 'tamil' }), { status: 200 }) : new Response('{}', { status: 500 }); };
+    assert.equal((await aiService.transcribeDetailed(Buffer.from('x'), 'audio/webm', 'kn')).text, 'தமிழ்', 'a failed redo keeps the first pass');
 });

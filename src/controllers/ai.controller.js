@@ -636,7 +636,7 @@ const transcribe = async (req, res) => {
     const header = name => { try { return decodeURIComponent(String(req.headers[name] || '')).slice(0, 400); } catch { return ''; } };
     const context = header('x-dictation-context'), target = dictation.parseTarget(header('x-dictation-target'));
     try {
-        const heard = await aiService.transcribeDetailed(req.body, type);
+        const heard = await aiService.transcribeDetailed(req.body, type, dictation.hintFor({ target, context }));
         let text = heard.text, converted = false;
         if (text && dictation.needsConversion({ target, context, detected: heard.language, text })) {
             const result = await aiService.convertDictation({ spoken: text, context, target });

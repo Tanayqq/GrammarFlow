@@ -122,13 +122,11 @@ const TRANSCRIBE_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 const WHISPER_MODELS = ['whisper-large-v3-turbo', 'whisper-large-v3'];
 const AUDIO_TYPES = { 'audio/webm': 'webm', 'audio/ogg': 'ogg', 'audio/mp4': 'mp4', 'audio/mpeg': 'mp3', 'audio/wav': 'wav', 'audio/x-wav': 'wav' };
 
-// No text hint is given to Whisper: a hint in one language makes it write other languages in that script
+// No text prompt is given to Whisper: a prompt in one language makes it write other languages in that script
 // (English speech came back as Telugu-looking gibberish when the draft was Telugu). It must hear what was said.
-async function transcribeDetailed(audio, mimeType) {
+async function whisper(audio, mimeType, language, deadline) {
     const apiKey = (process.env.GROQ_API_KEY || '').split(',')[0].trim();
     if (!apiKey || Date.now() < providerDisabledUntil) throw unavailable();
-    // One budget for all attempts, well inside the browser's 55 s request timeout.
-    const deadline = Date.now() + 40000;
     for (const model of WHISPER_MODELS) {
         const remaining = deadline - Date.now();
         if (remaining < 1000) break;
@@ -137,6 +135,7 @@ async function transcribeDetailed(audio, mimeType) {
         form.append('model', model);
         form.append('response_format', 'verbose_json'); // adds the detected language
         form.append('temperature', '0');
+        if (language) form.append('language', language);
         const response = await fetch(TRANSCRIBE_URL, {
             method: 'POST', headers: { Authorization: `Bearer ${apiKey}` }, body: form, signal: AbortSignal.timeout(remaining)
         }).catch(() => null);
@@ -153,7 +152,20 @@ async function transcribeDetailed(audio, mimeType) {
     throw unavailable();
 }
 
-const transcribe = async (audio, mimeType) => (await transcribeDetailed(audio, mimeType)).text;
+// hint: the writer's language as a Whisper code. It is used only to redo a clip that Whisper labelled as a
+// language GrammarFlow does not offer (Kannada is often heard as Tamil), never to force the first pass.
+async function transcribeDetailed(audio, mimeType, hint = null) {
+    const deadline = Date.now() + 40000; // one budget for every attempt, well inside the browser's 55 s timeout
+    const first = await whisper(audio, mimeType, null, deadline);
+    if (!hint || !dictation.MISHEARD.has(first.language)) return first;
+    try {
+        const second = await whisper(audio, mimeType, hint, deadline);
+        if (second.text) return { text: second.text, language: dictation.WHISPER_LANGUAGES[hint] };
+    } catch { /* keep the first pass */ }
+    return first;
+}
+
+const transcribe = async (audio, mimeType, hint) => (await transcribeDetailed(audio, mimeType, hint)).text;
 
 // Converts dictated text into the writer's language, keeping meaning and tone. Returns null when
 // the model is unavailable or its answer fails the sanity checks, so the caller keeps the raw words.
@@ -163,9 +175,9 @@ async function convertDictation({ spoken, context, target }) {
         const result = await callGroqAPI(system, user, 0.2, {
             model: 'openai/gpt-oss-120b', // meaning is the core principle: always the strongest model
             reasoningEffort: 'low', maxTokens: 512, timeoutMs: 10000,
-            validate: output => dictation.acceptable(output, spoken)
+            validate: output => dictation.acceptable(output, spoken, context)
         });
-        return dictation.acceptable(result.text, spoken) ? result.text.trim() : null;
+        return dictation.acceptable(result.text, spoken, context) ? result.text.trim() : null;
     } catch {
         return null;
     }
