@@ -828,7 +828,8 @@ const humanizeText = async (req, res, next) => {
             source: 'groq',
         });
     } catch (err) {
-        next(err);
+        console.error('[HUMANIZE ERROR]', err.message);
+        sendAIError(res, err);
     }
 };
 

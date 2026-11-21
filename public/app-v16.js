@@ -3017,20 +3017,15 @@ document.addEventListener('DOMContentLoaded', () => {
     closeBtn.addEventListener('click', closeOverlay);
 });
 
-
-
-
-
-
 // ============================================================
 // AI HUMANIZER — Turnitout-Humanizer Integration
-// Patches DocumentProcessor to handle "Humanize" mode
+// Patches DocumentProcessor to handle "Humanize" mode with
+// automatic chunking for documents of any size.
 // Routes: POST /api/v1/humanize  (Groq fallback built-in)
 // ============================================================
 (function HumanizerModule() {
     'use strict';
 
-    // ── Wait for documentProcessor to be initialized ──
     function patchWhenReady(attempts) {
         if (typeof window === 'undefined') return;
         if (window.documentProcessor && window.documentProcessor.processDocument) {
@@ -3054,7 +3049,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // ── HUMANIZE MODE ──
             if (this.files.length === 0) return;
 
-            // Show loading
             var docLoadingIndicator = document.getElementById('docLoadingIndicator');
             var docOutputSection    = document.getElementById('docOutputSection');
             var docResultsList      = document.getElementById('docResultsList');
@@ -3078,7 +3072,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 // 1) Extract text from uploaded documents
-                if (docResultsList) docResultsList.innerHTML = '<p class="text-purple-400 text-sm animate-pulse">Extracting text from documents...</p>';
+                if (docResultsList) docResultsList.innerHTML = '<p class="text-purple-400 text-sm animate-pulse">Extracting text from document...</p>';
                 var extractedText = await this.extractAll();
 
                 if (!extractedText || !extractedText.trim()) {
@@ -3087,68 +3081,85 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (this.isCanceled) throw new Error('Canceled by user.');
 
-                if (docResultsList) docResultsList.innerHTML = '<p class="text-purple-400 text-sm animate-pulse">Running AI Humanizer... This may take a moment.</p>';
+                // 2) Chunk text if document is long (safe limit: 3500 chars per chunk)
+                var chunks = (typeof this.chunkText === 'function') 
+                    ? this.chunkText(extractedText.trim(), 'English', 'Humanize') 
+                    : [extractedText.trim()];
 
-                // 2) Call /api/v1/humanize
-                var payload = {
-                    text:     extractedText.trim(),
-                    intensity: 70,
-                    style:    'academic',
-                    enable_synonyms:        true,
-                    enable_phrase_rewrite:  true,
-                    enable_determiner_swap: true,
-                    enable_voice_transform: true,
-                    enable_sentence_fusion: true,
-                    enable_transition_inject: true,
-                    enable_clause_reorder:  true,
-                    enable_nominalization:  true,
-                    enable_appositive:      true,
-                    enable_discourse_rotate: true,
-                    enable_contraction:     false,
-                    enable_ngram_audit:     true,
-                    enable_info_reorder:    true,
-                    enable_split_compound:  true,
-                    enable_ai_tell_scrubber: true,
-                    enable_citations: false,
-                };
+                var humanizedChunks = [];
+                var totalWords = 0, totalMods = 0, totalLatency = 0;
+                var statsSource = 'groq';
 
-                var humanizedText = '';
-                var statsWords = 0, statsMods = 0, statsLatency = 0, statsSource = 'groq';
+                for (var i = 0; i < chunks.length; i++) {
+                    if (this.isCanceled) throw new Error('Canceled by user.');
 
-                try {
-                    // Try GrammarFlowAPI first (handles auth headers)
-                    var result = await GrammarFlowAPI.request('/humanize', payload);
-                    var data = (result && result.data) ? result.data : result;
-                    if (!data.humanized_text && result.humanized_text) data = result;
-                    humanizedText = data.humanized_text || '';
-                    statsWords    = data.words_processed  || 0;
-                    statsMods     = data.modifications_count || 0;
-                    statsLatency  = data.latency_ms != null ? Math.round(data.latency_ms) : 0;
-                    statsSource   = data.source || 'groq';
-                } catch (apiErr) {
-                    // Fallback: direct fetch
-                    var baseUrl = (typeof getBaseUrl === 'function') ? getBaseUrl() : '/api/v1';
-                    var res = await fetch(baseUrl + '/humanize', {
-                        method:  'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'x-guest-session-id': localStorage.getItem('guest_session_id') || '',
-                        },
-                        body: JSON.stringify(payload),
-                    });
-                    var data2 = await res.json();
-                    if (!res.ok) throw new Error((data2.error && data2.error.message) || 'Humanize failed');
-                    if (data2.data && data2.data.humanized_text) data2 = data2.data;
-                    humanizedText = data2.humanized_text || '';
-                    statsWords    = data2.words_processed  || 0;
-                    statsMods     = data2.modifications_count || 0;
-                    statsLatency  = data2.latency_ms != null ? Math.round(data2.latency_ms) : 0;
-                    statsSource   = data2.source || 'groq';
+                    var progressMsg = chunks.length > 1 
+                        ? 'Humanizing part ' + (i + 1) + ' of ' + chunks.length + '...' 
+                        : 'Running AI Humanizer... This may take a moment.';
+                    if (docResultsList) {
+                        docResultsList.innerHTML = '<p class="text-purple-400 text-sm animate-pulse">' + progressMsg + '</p>';
+                    }
+
+                    var payload = {
+                        text:     chunks[i].trim(),
+                        intensity: 70,
+                        style:    'academic',
+                        enable_synonyms:        true,
+                        enable_phrase_rewrite:  true,
+                        enable_determiner_swap: true,
+                        enable_voice_transform: true,
+                        enable_sentence_fusion: true,
+                        enable_transition_inject: true,
+                        enable_clause_reorder:  true,
+                        enable_nominalization:  true,
+                        enable_appositive:      true,
+                        enable_discourse_rotate: true,
+                        enable_contraction:     false,
+                        enable_ngram_audit:     true,
+                        enable_info_reorder:    true,
+                        enable_split_compound:  true,
+                        enable_ai_tell_scrubber: true,
+                        enable_citations: false,
+                    };
+
+                    var data;
+                    try {
+                        var result = await GrammarFlowAPI.request('/humanize', payload);
+                        data = (result && result.data) ? result.data : result;
+                        if (!data.humanized_text && result.humanized_text) data = result;
+                    } catch (apiErr) {
+                        var baseUrl = (typeof getBaseUrl === 'function') ? getBaseUrl() : '/api/v1';
+                        var res = await fetch(baseUrl + '/humanize', {
+                            method:  'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'x-guest-session-id': localStorage.getItem('guest_session_id') || '',
+                            },
+                            body: JSON.stringify(payload),
+                        });
+                        var data2 = await res.json().catch(function() { return {}; });
+                        if (!res.ok || !data2.success) {
+                            var errMsg = (data2.error && data2.error.message) || apiErr.message || 'Humanize failed';
+                            throw new Error(errMsg);
+                        }
+                        data = (data2.data && data2.data.humanized_text) ? data2.data : data2;
+                    }
+
+                    humanizedChunks.push(data.humanized_text || chunks[i]);
+                    totalWords   += (data.words_processed || 0);
+                    totalMods    += (data.modifications_count || 0);
+                    totalLatency += (data.latency_ms || 0);
+                    if (data.source) statsSource = data.source;
+
+                    if (i < chunks.length - 1) {
+                        await new Promise(function(resolve) { setTimeout(resolve, 800); });
+                    }
                 }
 
-                if (!humanizedText.trim()) throw new Error('Humanizer returned empty output.');
+                var fullHumanizedText = humanizedChunks.join('\n\n');
+                if (!fullHumanizedText.trim()) throw new Error('Humanizer returned empty output.');
 
-                this.finalOutput = humanizedText;
+                this.finalOutput = fullHumanizedText;
 
                 // 3) Render result card
                 var engineBadge = statsSource === 'turnitout'
@@ -3157,16 +3168,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 var card = document.createElement('div');
                 card.className = 'result-card';
-                var escapedText = humanizedText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+                var escapedText = fullHumanizedText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                 card.innerHTML = [
                     '<div class="flex flex-wrap items-center justify-between gap-2 mb-3">',
                     '  <span class="text-xs font-bold text-purple-400 uppercase tracking-widest">&#128737; Humanized Output</span>',
                     '  ' + engineBadge,
                     '</div>',
                     '<div class="flex gap-4 text-xs text-gray-400 mb-3">',
-                    '  <span>&#128196; <strong class="text-gray-200">' + statsWords.toLocaleString() + '</strong> words</span>',
-                    '  <span>&#9999; <strong class="text-gray-200">' + statsMods.toLocaleString() + '</strong> changes</span>',
-                    '  <span>&#9201; <strong class="text-gray-200">' + statsLatency + 'ms</strong></span>',
+                    '  <span>&#128196; <strong class="text-gray-200">' + totalWords.toLocaleString() + '</strong> words</span>',
+                    '  <span>&#9999; <strong class="text-gray-200">' + totalMods.toLocaleString() + '</strong> changes</span>',
+                    '  <span>&#9201; <strong class="text-gray-200">' + Math.round(totalLatency) + 'ms</strong></span>',
                     '</div>',
                     '<div class="result-text text-gray-200 text-sm md:text-base leading-relaxed select-all" id="humDocOutput" style="white-space:pre-wrap;">' + escapedText + '</div>',
                     '<button class="copy-btn-mini mt-3" id="humDocCopyBtn">',
@@ -3179,13 +3190,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     docResultsList.appendChild(card);
                 }
 
-                // Wire copy button
                 setTimeout(function() {
                     var copyBtn = document.getElementById('humDocCopyBtn');
                     if (copyBtn) {
                         copyBtn.onclick = async function() {
                             try {
-                                await navigator.clipboard.writeText(humanizedText);
+                                await navigator.clipboard.writeText(fullHumanizedText);
                                 copyBtn.textContent = '✓';
                                 setTimeout(function() {
                                     copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
@@ -3195,7 +3205,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }, 100);
 
-                // Show export controls
                 if (modeLabelEl) modeLabelEl.textContent = 'Humanized Text Ready';
                 if (exportControls) exportControls.classList.remove('hidden');
 
@@ -3214,13 +3223,11 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    // Also patch updateOCRMode to treat Humanize like non-OCR modes
     function patchOCRMode(dp) {
         var _origUpdateOCR = dp.updateOCRMode.bind(dp);
         dp.updateOCRMode = function() {
             var modeEl = document.getElementById('documentModeSelect');
             if (modeEl && modeEl.value === 'Humanize') {
-                // Humanize is NOT OCR — show global controls, hide OCR banner
                 var controls = document.getElementById('globalControls');
                 var banner   = document.getElementById('ocrModeBanner');
                 if (controls) controls.style.display = '';
@@ -3233,11 +3240,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener('DOMContentLoaded', function() {
         patchWhenReady(0);
-        // Also patch updateOCRMode after a short delay
         setTimeout(function() {
             if (window.documentProcessor) {
                 patchOCRMode(window.documentProcessor);
-                // Listen for mode change to call updateOCRMode
                 var modeEl = document.getElementById('documentModeSelect');
                 if (modeEl) {
                     modeEl.addEventListener('change', function() {
