@@ -804,7 +804,16 @@ const humanizeText = async (req, res, next) => {
         };
 
         const systemPrompt = buildHumanizePrompt(text.trim(), style, parseFloat(intensity), stages);
-        const groqResponse = await aiService.callGroqAPI(systemPrompt, text.trim(), Math.min(0.5 + (parseFloat(intensity) / 100) * 0.5, 1.0));
+        const groqResponse = await aiService.callGroqAPI(
+            systemPrompt,
+            text.trim(),
+            Math.min(0.5 + (parseFloat(intensity) / 100) * 0.5, 1.0),
+            {
+                model: 'openai/gpt-oss-20b',
+                reasoningEffort: 'low',
+                timeoutMs: 25000
+            }
+        );
         const humanizedText = (groqResponse.text || '').trim();
         const latencyMs = Date.now() - startTime;
 
