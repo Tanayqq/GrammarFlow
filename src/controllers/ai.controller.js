@@ -637,6 +637,11 @@ const transcribe = async (req, res) => {
     const context = header('x-dictation-context'), target = dictation.parseTarget(header('x-dictation-target'));
     try {
         const heard = await aiService.transcribeDetailed(req.body, type, dictation.hintFor({ target, context }));
+        // Still labelled as a language GrammarFlow does not offer (and no hint could redo it): the transcript is a
+        // guess, and converting a guess would invent sentences. Say so instead.
+        if (heard.text && dictation.MISHEARD.has(heard.language)) {
+            return res.status(422).json({ success: false, error: { message: 'Could not tell which language was spoken. Choose Kannada, Telugu or Hindi in the language menu and try again.', code: 'LANGUAGE_UNCLEAR' } });
+        }
         let text = heard.text, converted = false;
         if (text && dictation.needsConversion({ target, context, detected: heard.language, text })) {
             const result = await aiService.convertDictation({ spoken: text, context, target });

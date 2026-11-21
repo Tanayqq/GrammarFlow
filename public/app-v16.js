@@ -806,6 +806,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         return (res.data?.text || "").trim();
                     } catch (e) {
                         lastError = e;
+                        if (e.status === 422) return false; // language unclear: retrying the same audio cannot help, and the service is fine
                         // A busy or rate-limited service says how long to wait; other failures retry soon.
                         wait = e.status === 429 || e.status === 503 ? Math.min(e.retryAfter || 5, 90) * 1000 : 1500 * (attempt + 1);
                     }
@@ -817,7 +818,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 pumping = true;
                 while (queue.length) {
                     const spoken = await transcribe(queue.shift());
-                    if (spoken === null) {
+                    if (spoken === false) {
+                        missed++; // this phrase is lost, but the service is healthy: keep taking the next ones
+                    } else if (spoken === null) {
                         missed++;
                         if (++failedInARow >= 2) { missed += queue.length; queue.length = 0; stop(); } // the service is struggling: stop, and say how many were lost
                     } else {

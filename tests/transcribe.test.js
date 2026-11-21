@@ -170,3 +170,15 @@ test('no retry when the language is supported, when there is no hint, or when th
     global.fetch = async () => { calls++; return calls === 1 ? new Response(JSON.stringify({ text: 'தமிழ்', language: 'tamil' }), { status: 200 }) : new Response('{}', { status: 500 }); };
     assert.equal((await aiService.transcribeDetailed(Buffer.from('x'), 'audio/webm', 'kn')).text, 'தமிழ்', 'a failed redo keeps the first pass');
 });
+
+test('/transcribe refuses a clip whose language is still unclear instead of converting a guess', async t => {
+    let converts = 0;
+    const post = await dictationApp(t, {
+        transcribeDetailed: async () => ({ text: 'நன்ன ச்னேகித்தரவி', language: 'tamil' }),
+        convertDictation: async () => { converts++; return 'Dear friend, this is good.'; }
+    });
+    const body = await post({ 'x-dictation-context': encodeURIComponent('Dear team, I am writing about the schedule.'), 'x-dictation-target': 'English' });
+    assert.equal(body.success, false);
+    assert.equal(body.error.code, 'LANGUAGE_UNCLEAR');
+    assert.equal(converts, 0, 'nothing is invented from a mis-heard transcript');
+});
