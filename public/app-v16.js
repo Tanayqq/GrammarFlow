@@ -40,8 +40,17 @@ const getOrCreateGuestSessionId = () => {
     return sessionId;
 };
 
+// "My voice": a sample of the user's own writing, kept in this browser and sent only with Rewrite requests.
+const VOICE_KEY = "gf_voice_sample", MIN_VOICE = 200;
+let activeVoice = ""; // what Rewrite sends: held in memory, so a browser that cannot save still uses what the box shows
+const getVoiceSample = () => activeVoice.length >= MIN_VOICE ? activeVoice : "";
+
 const GrammarFlowAPI = {
     async request(endpoint, payload, method = "POST", extraHeaders = {}) {
+        if (endpoint === "/rewrite" && method === "POST") {
+            const voiceSample = getVoiceSample();
+            if (voiceSample) payload = { ...payload, voiceSample };
+        }
         const headers = {
             "x-guest-session-id": getOrCreateGuestSessionId(),
             "Cache-Control": "no-cache",
@@ -414,7 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
         UI.fixGrammarBtn.disabled = busy;
         UI.processDocumentBtn.disabled = busy || !window.documentProcessor?.files.length;
         [UI.tabText, UI.tabDocument, UI.documentModeSelect, UI.fileInput, UI.languageSelect, UI.styleSelect, UI.toneSelect, UI.humanizeToggle,
-            document.getElementById('ocrLanguageSelect')].forEach(control => { if (control) control.disabled = busy; });
+            document.getElementById('ocrLanguageSelect'), document.getElementById('voiceSample'), document.getElementById('voiceClear')].forEach(control => { if (control) control.disabled = busy; });
         
         const tab = (window.documentProcessor && window.documentProcessor.currentTab) || 'text';
         const loadingIndicator = tab === 'text' ? document.getElementById("loadingIndicator") : document.getElementById("docLoadingIndicator");
@@ -709,6 +718,23 @@ document.addEventListener("DOMContentLoaded", () => {
             return mergedRewrites.map(arr => arr.join("\n\n")).filter(s => s.trim().length > 0);
         }
     };
+
+    let voiceSaved = true;
+    const voiceBox = document.getElementById("voiceSample"), voiceState = document.getElementById("voiceState"), voiceCount = document.getElementById("voiceCount");
+    const showVoice = () => {
+        const n = voiceBox.value.trim().length;
+        voiceCount.textContent = `${n} / 3000`;
+        voiceState.textContent = n >= MIN_VOICE ? (voiceSaved ? "On" : "On (not saved in this browser)") : n ? `Needs ${MIN_VOICE - n} more characters` : "Off";
+    };
+    try { voiceBox.value = localStorage.getItem(VOICE_KEY) || ""; } catch { /* private window: starts empty */ }
+    activeVoice = voiceBox.value.trim();
+    const saveVoice = () => {
+        activeVoice = voiceBox.value.trim();
+        try { voiceBox.value ? localStorage.setItem(VOICE_KEY, voiceBox.value) : localStorage.removeItem(VOICE_KEY); voiceSaved = true; } catch { voiceSaved = false; }
+        showVoice();
+    };
+    voiceBox.addEventListener("input", saveVoice);
+    document.getElementById("voiceClear").onclick = () => { voiceBox.value = ""; saveVoice(); };
 
     UI.rewriteBtn.onclick = async () => {
         const text = UI.inputText.value.trim();

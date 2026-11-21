@@ -11,6 +11,9 @@ module.exports = function validateAIInput(req, res, next) {
     if (!['/analyze-realtime', '/analyze-smart'].includes(req.path) && !body[field].trim()) {
         return fail(`${field} is required`);
     }
+    if (body.voiceSample !== undefined && (typeof body.voiceSample !== 'string' || body.voiceSample.length > 3000)) {
+        return fail('voiceSample must be a string of at most 3,000 characters');
+    }
     for (const key of ['language', 'style', 'tone', 'mode', 'partial_word']) {
         if (body[key] !== undefined && (typeof body[key] !== 'string' || body[key].length > 20000)) {
             return fail(`${key} must be a string of at most 20,000 characters`);

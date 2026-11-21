@@ -47,7 +47,7 @@ const rewrite = async (req, res, next) => {
         } else {
             let attempts = 0;
             while (attempts < 2) {
-                let prompt = prompts.getRewritePrompt(style, tone, language, humanize, isLongText);
+                let prompt = prompts.getRewritePrompt(style, tone, language, humanize, isLongText, req.body.voiceSample);
                 if (attempts > 0 && !isLongText) {
                     prompt = `CRITICAL: Previous response was invalid. Provide exactly 3 rewrites separated by ===REWRITE_SEPARATOR=== in ${language} now.\n\n${prompt}`;
                 }

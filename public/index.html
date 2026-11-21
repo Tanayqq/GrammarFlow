@@ -550,7 +550,8 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
                     Flow Focus
                 </button>
             </div></div>
-            <p class="privacy-note">Your text is sent to our AI provider (Groq) to make suggestions, and saved in your History so you can revisit it. You can delete any entry or clear History at any time. Voice dictation sends short audio clips, in any language, to our speech provider Sarvam (with Groq as backup) to turn them into text; GrammarFlow does not save the audio.</p>
+            <details class="voice-box" id="voiceBox"><summary>My voice <span id="voiceState">Off</span></summary><p>Paste a few paragraphs you wrote yourself (200 characters or more). Rewrite will then match your sentence length, vocabulary and tone. It is saved only in this browser and sent only with Rewrite requests.</p><textarea id="voiceSample" maxlength="3000" rows="5" aria-label="A sample of your own writing" placeholder="Paste something you wrote, like an old email or an essay paragraph."></textarea><div class="voice-foot"><span id="voiceCount">0 / 3000</span><button type="button" id="voiceClear">Clear</button></div></details>
+            <p class="privacy-note">Your text is sent to our AI provider (Groq) to make suggestions, and saved in your History so you can revisit it. You can delete any entry or clear History at any time. Voice dictation sends short audio clips, in any language, to our speech provider Sarvam (with Groq as backup) to turn them into text; GrammarFlow does not save the audio. A voice sample you add under My voice stays in your browser and is sent with Rewrite requests.</p>
 
 
             <!-- TEXT EDITOR LOADING INDICATOR & OUTPUT CONTAINER -->
