@@ -80,8 +80,9 @@ const GrammarFlowAPI = {
             headers
         };
         if (method !== "GET" && method !== "HEAD" && payload !== undefined) {
-            headers["Content-Type"] = "application/json";
-            options.body = JSON.stringify(payload);
+            const raw = typeof Blob !== "undefined" && payload instanceof Blob; // audio for /transcribe
+            headers["Content-Type"] = raw ? payload.type : "application/json";
+            options.body = raw ? payload : JSON.stringify(payload);
         }
         
         let url = `${getBaseUrl()}${endpoint}`;
@@ -727,6 +728,166 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (e) { renderResults([`Error: ${e.message}`]); }
         finally { setBusy(false); }
+    };
+
+    // Voice dictation: speech is cut at natural pauses and every phrase is transcribed as soon as it
+    // ends, so text appears while you are still talking. Speech in another language is converted into
+    // the language of what is already written (or the language menu), keeping its meaning and tone.
+    // Fix Grammar runs once when dictation stops, so the user reviews corrections instead of silent edits.
+    const dictateBtn = document.getElementById("dictateBtn");
+    let dictation = null, starting = false;
+    const setDictate = (label, busy) => { dictateBtn.textContent = label; dictateBtn.disabled = busy; dictateBtn.setAttribute("aria-pressed", String(label === "Stop")); };
+    const startDictation = async () => {
+        const el = UI.inputText;
+        let stream, audio, timer, limit;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+            audio = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audio.createAnalyser();
+            analyser.fftSize = 1024;
+            audio.createMediaStreamSource(stream).connect(analyser);
+            const samples = new Float32Array(analyser.fftSize), seg = GFDictation.createSegmenter(), step = 50;
+            const queue = [];
+            let rec = null, pendingStops = 0, pumping = false, stopping = false, finished = false, micReleased = false;
+            let inserted = false, first = true, missed = 0, failedInARow = 0, lastError = null;
+            let pos = el.selectionStart, known = el.value; // known: the draft as we last left it
+            const replaceEnd = el.selectionEnd;
+
+            const begin = () => {
+                const entry = { recorder: new MediaRecorder(stream, { audioBitsPerSecond: 32000 }), mine: [], send: true, cutting: false };
+                entry.recorder.ondataavailable = e => { if (e.data.size) entry.mine.push(e.data); };
+                // Registered up front, so a recorder that stops by itself (microphone unplugged) is handled too.
+                entry.recorder.onstop = () => {
+                    const endedByItself = !entry.cutting;
+                    if (entry.cutting) pendingStops--;
+                    else if (rec === entry) { rec = null; entry.send = seg.heard(); }
+                    if (entry.send && entry.mine.length) {
+                        queue.push(new Blob(entry.mine, { type: entry.mine[0].type || entry.recorder.mimeType }));
+                        pump();
+                    }
+                    if (endedByItself) stop(); // after the last clip is queued, so it is still written and checked
+                    maybeFinish();
+                };
+                entry.recorder.start();
+                rec = entry;
+            };
+            const cut = send => { // one clip per phrase; each is a complete, separately decodable file
+                const entry = rec;
+                rec = null;
+                entry.send = send;
+                entry.cutting = true;
+                pendingStops++;
+                if (entry.recorder.state !== "inactive") entry.recorder.stop();
+            };
+            const put = spoken => {
+                if (el.value !== known) { // the user edited meanwhile: follow their caret, not offsets from before the edit
+                    pos = document.activeElement === el ? el.selectionStart : el.value.length;
+                    first = false;
+                }
+                const at = Math.min(pos, el.value.length);
+                const next = GFDictation.insertAt(el.value, at, spoken, first ? Math.min(replaceEnd, el.value.length) : at);
+                first = false;
+                el.value = known = next.value;
+                pos = next.pos;
+                inserted = true;
+                el.dispatchEvent(new Event("input"));
+            };
+            const transcribe = async clip => { // a failed clip is retried a couple of times before it counts as missed
+                let wait = 0;
+                for (let attempt = 0; attempt < 3; attempt++) {
+                    try {
+                        if (wait) await new Promise(r => setTimeout(r, wait));
+                        const written = [...el.value.slice(0, Math.min(pos, el.value.length))]; // by character, never inside an emoji
+                        const context = written.slice(-300).join("").trim();
+                        const res = await GrammarFlowAPI.request("/transcribe", clip, "POST", {
+                            "x-dictation-target": document.getElementById("languageSelect").value,
+                            "x-dictation-context": encodeURIComponent(context)
+                        });
+                        return (res.data?.text || "").trim();
+                    } catch (e) {
+                        lastError = e;
+                        // A busy or rate-limited service says how long to wait; other failures retry soon.
+                        wait = e.status === 429 || e.status === 503 ? Math.min(e.retryAfter || 5, 90) * 1000 : 1500 * (attempt + 1);
+                    }
+                }
+                return null;
+            };
+            const pump = async () => { // clips go up one at a time, so phrases stay in order
+                if (pumping) return;
+                pumping = true;
+                while (queue.length) {
+                    const spoken = await transcribe(queue.shift());
+                    if (spoken === null) {
+                        missed++;
+                        if (++failedInARow >= 2) { missed += queue.length; queue.length = 0; stop(); } // the service is struggling: stop, and say how many were lost
+                    } else {
+                        failedInARow = 0;
+                        if (spoken) put(spoken);
+                    }
+                }
+                pumping = false;
+                maybeFinish();
+            };
+            const maybeFinish = () => {
+                // The microphone is released as soon as recording has ended; queued clips keep uploading after that.
+                if (stopping && !rec && !pendingStops && !micReleased) {
+                    micReleased = true;
+                    stream.getTracks().forEach(t => t.stop());
+                    audio.close().catch(() => {});
+                }
+                if (!stopping || finished || rec || pendingStops || pumping || queue.length) return;
+                finished = true;
+                dictation = null;
+                setDictate("Dictate", false);
+                if (missed) renderResults([`Error: ${missed} spoken phrase${missed > 1 ? "s were" : " was"} not written (${lastError?.message || "the service was unavailable"}). Your text was not checked; please dictate that part again.`]);
+                else if (inserted) { // a disabled button ignores click(), so wait for a request already in progress
+                    const check = () => UI.fixGrammarBtn.disabled ? setTimeout(check, 500) : UI.fixGrammarBtn.click();
+                    check();
+                }
+            };
+            const stop = () => {
+                if (stopping) return;
+                stopping = true;
+                clearInterval(timer);
+                clearTimeout(limit);
+                setDictate("Finishing…", true);
+                if (rec) cut(seg.heard()); else maybeFinish();
+            };
+            begin(); // before the timers, so a failed start leaves nothing running
+            timer = setInterval(() => {
+                analyser.getFloatTimeDomainData(samples);
+                let sum = 0;
+                for (const s of samples) sum += s * s;
+                const verdict = seg.feed(Math.sqrt(sum / samples.length), step);
+                if (!verdict || !rec) return;
+                cut(verdict === "cut");
+                seg.reset();
+                try { begin(); } catch { stop(); } // the microphone went away between phrases: finish with what was heard
+            }, step);
+            limit = setTimeout(stop, 10 * 60 * 1000);
+            setDictate("Stop", false);
+            return { stop };
+        } catch (e) {
+            clearInterval(timer);
+            clearTimeout(limit);
+            stream?.getTracks().forEach(t => t.stop());
+            audio?.close().catch(() => {});
+            throw e;
+        }
+    };
+    dictateBtn.onclick = async () => {
+        if (dictation) { dictation.stop(); return; }
+        if (starting) return; // a second click while the mic permission prompt is open
+        starting = true;
+        try {
+            dictation = await startDictation();
+        } catch (e) {
+            renderResults([e.name === "NotAllowedError" || e.name === "NotFoundError"
+                ? "Error: Microphone access was blocked. Allow it in your browser to dictate."
+                : "Error: Recording could not start in this browser."]);
+        } finally {
+            starting = false;
+        }
     };
 
     UI.fixGrammarBtn.onclick = async () => {

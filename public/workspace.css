@@ -49,7 +49,7 @@ body.editorial{background:var(--paper);color:var(--ink);font-family:Inter,system
 #humanizeToggle:checked+div{background:var(--accent)}#humanizeToggle:focus-visible+div{outline:3px solid #7b9677;outline-offset:3px}
 #textActionContainer,#documentActionContainer{margin-left:auto}#textActionButtons{gap:9px}
 .editorial :is(#dictateBtn,#fixGrammarBtn,#rewriteBtn,#processDocumentBtn,#downloadPdfBtn,#exploreDocumentBtn){padding:12px 20px;border-radius:8px;font-size:12px;line-height:1.5;background:var(--accent);color:white;border:1px solid var(--accent);font-weight:600;box-shadow:none;white-space:nowrap}
-.editorial :is(#rewriteBtn,#dictateBtn){background:white;color:var(--accent);text-decoration:none}.editorial
+.editorial :is(#rewriteBtn,#dictateBtn){background:white;color:var(--accent)}.editorial #dictateBtn[aria-pressed="true"]{background:#b42318;border-color:#b42318;color:white}
 .editorial :is(#fixGrammarBtn,#processDocumentBtn,#downloadPdfBtn,#exploreDocumentBtn):hover{background:#244b36}
 .editorial :is(#rewriteBtn,#dictateBtn[aria-pressed="false"]):hover{background:var(--wash)}
 .document-feature{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:26px 30px;background:#e9efe4;border:1px solid #dfe6d8;border-radius:12px}
