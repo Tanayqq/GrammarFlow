@@ -654,60 +654,49 @@ const transcribe = async (req, res) => {
 };
 
 
-const HUMANIZER_AI_TELLS = [
-    'delve','delves','delved','delving','pivotal','tapestry','testament',
-    'multifaceted','in conclusion,','furthermore,','moreover,','in summary,',
-    'it is important to note','it is worth noting','it is crucial to',
-    'plays a crucial role','plays a pivotal role','stands as a testament',
-    'underscores','showcases','embodies','aligns with','rapidly evolving',
-    'ever-evolving','robust framework','innovative approach','cutting-edge',
-    'paradigm shift','seamlessly','holistic','synergize','leverage',
+// AI HUMANIZER — Turnitout-Humanizer Integration
+// Repo: https://github.com/AhmadHassan-BTed/Turnitout-Humanizer
+
+const BANNED_AI_WORDS = [
+    'additionally', 'thereby', 'furthermore', 'moreover', 'in conclusion', 'in summary',
+    'pertinent illustration', 'ancillary advantages', 'communal engagement', 'delve', 'delves',
+    'delving', 'pivotal', 'tapestry', 'testament', 'multifaceted', 'it is important to note',
+    'it is worth noting', 'it is crucial to', 'plays a crucial role', 'plays a pivotal role',
+    'stands as a testament', 'underscores', 'showcases', 'embodies', 'aligns with',
+    'rapidly evolving', 'ever-evolving', 'robust framework', 'innovative approach',
+    'cutting-edge', 'paradigm shift', 'seamlessly', 'holistic', 'synergize', 'leverage',
+    'fosters', 'fostering', 'notwithstanding', 'heretofore', 'henceforth'
 ];
 
-function buildHumanizePrompt(text, style, intensity, stages) {
-    const styleGuide = {
-        academic: 'formal academic prose, precise terminology, third-person perspective',
-        conversational: 'warm conversational tone, natural speech patterns',
-        casual: 'relaxed casual language, contractions, everyday vocabulary',
-        technical: 'precise technical language, active voice, direct statements',
-    }[style] || 'natural human prose';
+function buildHumanizePrompt(text, style, intensity, mode = 'Humanize') {
+    const isExplainMode = (mode === 'Explain' || style === 'simple' || style === 'Casual');
 
-    const intensityDesc = intensity >= 85 ? 'AGGRESSIVE — rewrite extensively, restructure freely'
-        : intensity >= 60 ? 'MODERATE — transform clearly but preserve key phrasing'
-        : 'SUBTLE — light touch, minimal structural changes';
+    const registerInstruction = isExplainMode
+        ? `REGISTER: CLEAR, GROUNDED, ACCESSIBLE HUMAN EXPLANATION (Explain in plain words).
+- Write like a knowledgeable human explaining clearly to a curious reader (around an 8th-grade reading level).
+- NEVER use high-sounding thesaurus words where a common word works best. Use "roads" not "thoroughfares", "cools down" not "relinquishes heat", "city areas" not "metropolitan sectors", "public spaces" not "public realms".
+- Keep vocabulary simple, direct, and unpretentious.`
+        : `REGISTER: NATURAL, COGENT HUMAN WRITING.
+- Write with authentic human flow and directness. Avoid hyper-inflated, faux-academic jargon or artificial vocabulary.
+- Never substitute common words with obscure thesaurus synonyms.`;
 
-    const stageLines = [
-        stages.synonyms && '• Stage 1: SYNONYM SUBSTITUTION — Replace predictable words with less common but equivalent alternatives',
-        stages.phrase_rewrite && '• Stage 2: PHRASE REWRITING — Replace formulaic AI phrases. NEVER use: ' + HUMANIZER_AI_TELLS.join(', '),
-        stages.determiner_swap && '• Stage 3: DETERMINER SWAPPING — Rotate demonstratives and articles contextually',
-        stages.voice_transform && '• Stage 4: VOICE TRANSFORMATION — Alternate between active and passive voice',
-        stages.sentence_fusion && '• Stage 5: SENTENCE FUSION — Naturally fuse adjacent short sentences',
-        stages.transition_inject && '• Stage 6: TRANSITION INJECTION — Inject varied natural discourse markers',
-        stages.clause_reorder && '• Stage 7: CLAUSE REORDERING — Reorder dependent clauses for natural emphasis',
-        stages.nominalization && '• Stage 8: NOMINALIZATION — Convert between verb phrases and abstract nouns',
-        stages.appositive && '• Stage 9: APPOSITIVE INSERTION — Add informative parentheticals where natural',
-        stages.discourse_rotate && '• Stage 10: DISCOURSE ROTATION — Vary paragraph transitions and rhetorical flow',
-        stages.contraction && ('• Stage 11: CONTRACTION HANDLING — ' + (style === 'academic' ? 'Expand contractions for formal register' : 'Use natural contractions')),
-        stages.ngram_audit && '• Stage 12: N-GRAM AUDIT — Disrupt surviving 5-gram AI sequences by restructuring sentences',
-        stages.info_reorder && '• Stage 13: INFO REORDERING — Reorder information within sentences for human authenticity',
-        stages.split_compound && '• Stage 14: COMPOUND SPLITTING — Split overly complex compound sentences naturally',
-        stages.ai_tell_scrubber && '• Stage 15: AI-TELL SCRUBBER — Remove ALL AI markers listed above and replace every instance',
-    ].filter(Boolean).join('\n');
+    return `You are an experienced human editor completely rewriting this draft. Your goal is to make it read as if written by a clear, natural human author — NOT an AI paraphraser.
 
-    return `You are TURNITOUT, a 15-stage deterministic linguistic humanization engine. Transform the text so it reads as authentic human writing undetectable by AI detectors (Turnitin, GPTZero, CopyLeaks, ZeroGPT).
+${registerInstruction}
 
-TRANSFORMATION INTENSITY: ${intensity}% — ${intensityDesc}
-TARGET REGISTER: ${styleGuide}
-
-MANDATORY TRANSFORMATION STAGES (apply ALL):
-${stageLines}
-
-ABSOLUTE RULES:
-1. NEVER use these AI-tell words/phrases: ${HUMANIZER_AI_TELLS.join(', ')}
-2. Vary sentence length deliberately — mix short punchy sentences with longer ones (burstiness/rhythm)
-3. Preserve ALL factual content, numerical data, citations, and technical terminology exactly
-4. Output ONLY the transformed text — no explanations, no preamble, no meta-commentary
-5. Do not add new facts or change the meaning — only the linguistic surface
+MANDATORY RULES:
+1. RESTRUCTURE IDEAS — DO NOT REPLACE WORD-BY-WORD:
+   - Do NOT simply follow the original text sentence-by-sentence swapping out words.
+   - Absorb the meaning of the paragraph, then write it freshly. Merge related sentences. Split long thoughts. Reorder ideas so the sentence structure does NOT mirror the original.
+2. NATURAL BURSTINESS:
+   - Mix short, punchy sentences (4-7 words) with longer, descriptive ones.
+3. ABSOLUTELY BANNED WORDS & CONNECTORS (NEVER USE ANY OF THESE):
+   ${BANNED_AI_WORDS.join(', ')}
+   - Do NOT use formal transitions like "Moreover", "Furthermore", "Additionally", "Thereby".
+   - Do NOT scatter em-dashes (—) through every sentence.
+4. PRESERVE FACTUAL INTEGRITY:
+   - Keep all core facts, data, numbers, dates, equations, code, and necessary technical names intact.
+5. Output ONLY the rewritten text without preambles, introductory commentary, or conversational sign-offs.
 
 INPUT TEXT:
 ${text}`;
@@ -720,6 +709,7 @@ const humanizeText = async (req, res, next) => {
             text,
             intensity = 70,
             style = 'academic',
+            mode = 'Humanize',
             protected_terms = [],
             seed = null,
             enable_synonyms = true,
@@ -791,19 +781,8 @@ const humanizeText = async (req, res, next) => {
             return res.json({ ...data, source: 'turnitout' });
         }
 
-        // --- GROQ FALLBACK PATH ---
-        const stages = {
-            synonyms: enable_synonyms, phrase_rewrite: enable_phrase_rewrite,
-            determiner_swap: enable_determiner_swap, voice_transform: enable_voice_transform,
-            sentence_fusion: enable_sentence_fusion, transition_inject: enable_transition_inject,
-            clause_reorder: enable_clause_reorder, nominalization: enable_nominalization,
-            appositive: enable_appositive, discourse_rotate: enable_discourse_rotate,
-            contraction: enable_contraction, ngram_audit: enable_ngram_audit,
-            info_reorder: enable_info_reorder, split_compound: enable_split_compound,
-            ai_tell_scrubber: enable_ai_tell_scrubber,
-        };
-
-        const systemPrompt = buildHumanizePrompt(text.trim(), style, parseFloat(intensity), stages);
+        // --- FAST GROQ PATH (Low reasoning effort, natural restructuring) ---
+        const systemPrompt = buildHumanizePrompt(text.trim(), style, parseFloat(intensity), mode);
         const groqResponse = await aiService.callGroqAPI(
             systemPrompt,
             text.trim(),
