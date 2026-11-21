@@ -27,10 +27,11 @@ const sendResponse = (res, success, data = null, error = null, metadata = {}) =>
 const rewrite = async (req, res, next) => {
     const startTime = Date.now();
     try {
-        const { text, style = "Casual", tone = "Friendly", language = "English", humanize = false } = req.body;
+        const { text, style = "Casual", tone = "Friendly", humanize = false } = req.body;
         const guestSessionId = req.headers['x-guest-session-id'] || null;
         const userId = req.userId || null;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required", code: "MISSING_INPUT" } });
+        const language = draftLanguage(text, req.body.language || "English"); // follow the draft, not the menu
 
         console.log(`[API v1] /rewrite. Lang: ${language}, Humanize: ${humanize}`);
 
