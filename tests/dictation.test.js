@@ -71,7 +71,7 @@ test('segmenter cuts a phrase at a pause, caps long phrases and drops long silen
     const run = (levels, opts) => { const s = createSegmenter(opts); return levels.map(l => s.feed(l, 50)); };
     const quiet = Array(8).fill(0.002), loud = Array(8).fill(0.2);
     assert.ok(!run(quiet).includes('cut'), 'silence alone never cuts');
-    const phrase = run([...loud, ...Array(14).fill(0.002)]); // 400 ms of speech, then 700 ms of quiet
+    const phrase = run([...Array(24).fill(0.2), ...Array(14).fill(0.002)]); // 1.2 s of speech, then 700 ms of quiet
     assert.equal(phrase.at(-1), 'cut');
     assert.ok(!run([...Array(3).fill(0.2), ...Array(20).fill(0.002)]).includes('cut'), 'a click shorter than 350 ms is not speech');
     assert.equal(run(Array(200).fill(0.2)).includes('cut'), true, 'unbroken speech is cut at the maximum length');
@@ -134,9 +134,9 @@ test('insertAt does not put a space before punctuation that already follows', ()
 test('steady background noise is not speech, but speech above it still is', () => {
     const run = levels => { const s = createSegmenter(); return levels.map(l => s.feed(l, 50)); };
     assert.ok(!run(Array(400).fill(0.04)).includes('cut'), 'a constant hum never uploads a clip');
-    const phrase = run([...Array(30).fill(0.04), ...Array(8).fill(0.3), ...Array(14).fill(0.04)]);
+    const phrase = run([...Array(30).fill(0.04), ...Array(24).fill(0.3), ...Array(14).fill(0.04)]);
     assert.equal(phrase.at(-1), 'cut', 'speech over the hum ends in a cut at the pause');
-    assert.equal(run([...Array(8).fill(0.3), ...Array(14).fill(0.002)]).at(-1), 'cut', 'speech that starts at once is heard');
+    assert.equal(run([...Array(24).fill(0.3), ...Array(14).fill(0.002)]).at(-1), 'cut', 'speech that starts at once is heard');
 });
 
 test('one English word inside a Hinglish draft does not make it English', () => {
@@ -201,4 +201,16 @@ test('acceptable rejects output that copies the draft instead of converting the 
     assert.equal(acceptable('Then Ravi smiled.', 'Then Ravi smiled.', ''), true, 'no draft, nothing to copy');
     const brand = 'The customer is International Business Machines Corporation.';
     assert.equal(acceptable('I will call International Business Machines Corporation.', 'Llamaré a International Business Machines Corporation.', brand), true, 'a name the speech itself contains is not a copy');
+});
+
+test('a one-word exclamation stays attached to the sentence that follows it', () => {
+    const run = levels => { const s = createSegmenter(); return levels.map(l => s.feed(l, 50)); };
+    const wow = Array(14).fill(0.2), sentence = Array(30).fill(0.2), quiet = n => Array(n).fill(0.002);
+    // "Wow!" (700 ms), a 700 ms pause, then a whole sentence: one phrase, cut only after the sentence
+    const together = run([...wow, ...quiet(14), ...sentence, ...quiet(14)]);
+    assert.equal(together.indexOf('cut'), 14 + 14 + 30 + 13 - 1, 'one cut, 650 ms into the pause after the sentence, none after "Wow!"');
+    // "Wow!" and then nothing: still sent, after a longer wait
+    const alone = run([...wow, ...quiet(40)]);
+    assert.equal(alone.indexOf('cut'), 14 + 35, 'cut after 1.8 s of silence, not 650 ms');
+    assert.ok(!run([...wow, ...quiet(20)]).includes('cut'), 'not yet at 1 s of silence');
 });

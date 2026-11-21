@@ -4,7 +4,7 @@
   // Feed it the loudness of the microphone at regular steps. It answers 'cut' when a phrase has
   // ended (a pause after speech, or the phrase got too long) and 'drop' when a stretch of silence
   // should be thrown away unsent. The noise floor adapts, so a fan or a quiet room both work.
-  function createSegmenter({ minSpeechMs = 350, pauseMs = 650, maxMs = 8000, idleMs = 15000, floorWindowMs = 1500 } = {}) {
+  function createSegmenter({ minSpeechMs = 350, pauseMs = 650, shortSpeechMs = 1000, shortPauseMs = 1800, maxMs = 8000, idleMs = 15000, floorWindowMs = 1500 } = {}) {
     const recent = [];
     let elapsed = 0, speech = 0, silent = 0;
     return {
@@ -20,7 +20,10 @@
         const voiced = level > Math.max(0.015, Math.min(cap, Math.min(...recent)) * 2.5);
         elapsed += dtMs;
         if (voiced) { speech += dtMs; silent = 0; } else silent += dtMs;
-        if (speech >= minSpeechMs && (silent >= pauseMs || elapsed >= maxMs)) return 'cut';
+        // A very short utterance ("Wow!", "Abba!") waits longer for what follows: sent alone, a one-word clip is
+        // often mis-detected as another language, and it reads better attached to its sentence.
+        const pause = speech < shortSpeechMs ? shortPauseMs : pauseMs;
+        if (speech >= minSpeechMs && (silent >= pause || elapsed >= maxMs)) return 'cut';
         if (speech < minSpeechMs && elapsed >= idleMs) return 'drop';
         return null;
       },
