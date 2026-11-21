@@ -182,3 +182,34 @@ test('/transcribe refuses a clip whose language is still unclear instead of conv
     assert.equal(body.error.code, 'LANGUAGE_UNCLEAR');
     assert.equal(converts, 0, 'nothing is invented from a mis-heard transcript');
 });
+
+test('with SARVAM_API_KEY set, Sarvam hears the clip first and names the language it detected', async t => {
+    const realFetch = global.fetch;
+    process.env.SARVAM_API_KEY = ' sarvam-test ';
+    t.after(() => { global.fetch = realFetch; delete process.env.SARVAM_API_KEY; });
+    const calls = [];
+    global.fetch = async (url, init) => {
+        calls.push({ url, key: init.headers['api-subscription-key'], model: init.body.get('model'), mode: init.body.get('mode'), language: init.body.get('language_code'), file: init.body.get('file').name });
+        return new Response(JSON.stringify({ transcript: ' ನಮಸ್ಕಾರ ', language_code: 'kn-IN' }), { status: 200 });
+    };
+    const heard = await aiService.transcribeDetailed(Buffer.from('x'), 'audio/webm', 'kn');
+    assert.deepEqual(heard, { text: 'ನಮಸ್ಕಾರ', language: 'kannada' });
+    assert.equal(calls.length, 1, 'no Whisper call when Sarvam answered');
+    assert.deepEqual(calls[0], { url: 'https://api.sarvam.ai/speech-to-text', key: 'sarvam-test', model: 'saaras:v4', mode: 'transcribe', language: 'unknown', file: 'speech.webm' });
+});
+
+test('Sarvam mis-labelling a clip is redone with the hint, and a Sarvam failure falls back to Whisper', async t => {
+    const realFetch = global.fetch;
+    process.env.SARVAM_API_KEY = 'sarvam-test';
+    t.after(() => { global.fetch = realFetch; delete process.env.SARVAM_API_KEY; });
+    const sent = [];
+    global.fetch = async (url, init) => {
+        sent.push(String(url).includes('sarvam') ? `sarvam:${init.body.get('language_code')}` : `groq:${init.body.get('language')}`);
+        if (sent.length === 1) return new Response(JSON.stringify({ transcript: 'தமிழ்', language_code: 'ta-IN' }), { status: 200 });
+        if (sent.length === 2) return new Response('{}', { status: 429 }); // Sarvam quota used up
+        return new Response(JSON.stringify({ text: 'ಕನ್ನಡ', language: 'kannada' }), { status: 200 });
+    };
+    const heard = await aiService.transcribeDetailed(Buffer.from('x'), 'audio/webm', 'kn');
+    assert.deepEqual(sent, ['sarvam:unknown', 'sarvam:kn-IN', 'groq:kn'], 'redo with the hint, then Whisper once Sarvam fails');
+    assert.deepEqual(heard, { text: 'ಕನ್ನಡ', language: 'kannada' });
+});

@@ -152,14 +152,44 @@ async function whisper(audio, mimeType, language, deadline) {
     throw unavailable();
 }
 
+// Sarvam (built for Indian languages) is tried first when SARVAM_API_KEY is set; Whisper on Groq is the fallback.
+const SARVAM_URL = 'https://api.sarvam.ai/speech-to-text';
+const SARVAM_NAMES = {
+    'en-IN': 'english', 'hi-IN': 'hindi', 'kn-IN': 'kannada', 'te-IN': 'telugu', 'ta-IN': 'tamil', 'ml-IN': 'malayalam',
+    'mr-IN': 'marathi', 'bn-IN': 'bengali', 'pa-IN': 'punjabi', 'gu-IN': 'gujarati', 'ur-IN': 'urdu', 'ne-IN': 'nepali',
+    'od-IN': 'odia', 'as-IN': 'assamese'
+};
+async function sarvam(audio, mimeType, language, deadline) {
+    const form = new FormData();
+    form.append('file', new Blob([audio], { type: mimeType }), `speech.${AUDIO_TYPES[mimeType]}`);
+    form.append('model', 'saaras:v4');
+    form.append('mode', 'transcribe'); // the words as spoken, in the script of the spoken language
+    form.append('language_code', language ? `${language}-IN` : 'unknown'); // unknown = detect it
+    const response = await fetch(SARVAM_URL, {
+        method: 'POST', headers: { 'api-subscription-key': process.env.SARVAM_API_KEY.trim() }, body: form,
+        signal: AbortSignal.timeout(Math.min(deadline - Date.now(), 15000)) // leave time for the Whisper fallback
+    });
+    if (!response.ok) { await response.body?.cancel().catch(() => {}); throw new Error(`Sarvam ${response.status}`); }
+    const body = await response.json();
+    return { text: String(body.transcript || '').trim(), language: SARVAM_NAMES[body.language_code] || '' };
+}
+
+// One transcription pass: Sarvam when configured, falling back to Whisper on any Sarvam failure.
+async function listen(audio, mimeType, language, deadline) {
+    if ((process.env.SARVAM_API_KEY || '').trim()) {
+        try { return await sarvam(audio, mimeType, language, deadline); } catch { /* fall back to Whisper */ }
+    }
+    return whisper(audio, mimeType, language, deadline);
+}
+
 // hint: the writer's language as a Whisper code. It is used only to redo a clip that Whisper labelled as a
 // language GrammarFlow does not offer (Kannada is often heard as Tamil), never to force the first pass.
 async function transcribeDetailed(audio, mimeType, hint = null) {
     const deadline = Date.now() + 40000; // one budget for every attempt, well inside the browser's 55 s timeout
-    const first = await whisper(audio, mimeType, null, deadline);
+    const first = await listen(audio, mimeType, null, deadline);
     if (!hint || !dictation.MISHEARD.has(first.language)) return first;
     try {
-        const second = await whisper(audio, mimeType, hint, deadline);
+        const second = await listen(audio, mimeType, hint, deadline);
         if (second.text) return { text: second.text, language: dictation.WHISPER_LANGUAGES[hint] };
     } catch { /* keep the first pass */ }
     return first;
