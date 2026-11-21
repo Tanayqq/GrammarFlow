@@ -15,6 +15,8 @@ test('a long enough voice sample adds a WRITER\'S VOICE block to the Rewrite pro
     assert.ok(prompt.includes(SAMPLE), 'the sample is passed through unchanged');
     assert.match(prompt, /Never copy phrases or sentences from the sample/);
     assert.match(prompt, /Keep the meaning, facts, names, numbers, quotes and citations/);
+    assert.match(prompt, /written register and an everyday spoken one/, 'Telugu, Kannada and Hindi samples set the register');
+    assert.match(prompt, /All three versions must clearly show the voice/);
 });
 
 test('no sample, or one too short to learn from, leaves the prompt exactly as before', () => {
