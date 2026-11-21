@@ -728,6 +728,7 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     try { voiceBox.value = localStorage.getItem(VOICE_KEY) || ""; } catch { /* private window: starts empty */ }
     activeVoice = voiceBox.value.trim();
+    showVoice(); // a sample restored from an earlier visit must show as On
     const saveVoice = () => {
         activeVoice = voiceBox.value.trim();
         try { voiceBox.value ? localStorage.setItem(VOICE_KEY, voiceBox.value) : localStorage.removeItem(VOICE_KEY); voiceSaved = true; } catch { voiceSaved = false; }
