@@ -1553,7 +1553,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                 });
 
-                // 5. Dedicated styled container for crisp PDF rendering (No offscreen negative offset coordinates)
+                // 5. Dedicated styled container for crisp PDF rendering
                 const container = document.createElement("div");
                 container.className = "grammarflow-pdf-export";
                 container.style.cssText = `
@@ -1563,8 +1563,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     color: #1f2937;
                     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif;
                     font-size: 13px;
-                    line-height: 1.65;
-                    padding: 24px 32px;
+                    line-height: 1.6;
+                    padding: 0;
+                    margin: 0;
                     box-sizing: border-box;
                 `;
 
@@ -1606,6 +1607,14 @@ document.addEventListener("DOMContentLoaded", () => {
                     </div>
                 `;
 
+                // Apply explicit heading hierarchy styles directly to DOM nodes so Tailwind resets cannot flatten them
+                container.querySelectorAll('h1').forEach(el => { el.style.fontSize = '22px'; el.style.fontWeight = '700'; el.style.color = '#4c1d95'; el.style.margin = '16px 0 8px'; el.style.lineHeight = '1.3'; });
+                container.querySelectorAll('h2').forEach(el => { el.style.fontSize = '17px'; el.style.fontWeight = '700'; el.style.color = '#5b21b6'; el.style.margin = '14px 0 6px'; el.style.borderBottom = '1.5px solid #e5e7eb'; el.style.paddingBottom = '4px'; el.style.lineHeight = '1.3'; });
+                container.querySelectorAll('h3').forEach(el => { el.style.fontSize = '14px'; el.style.fontWeight = '600'; el.style.color = '#6d28d9'; el.style.margin = '12px 0 4px'; });
+                container.querySelectorAll('strong, b').forEach(el => { el.style.fontWeight = '700'; el.style.color = '#111827'; });
+                const lastEl = container.querySelector('.grammarflow-pdf-body')?.lastElementChild;
+                if (lastEl) lastEl.style.marginBottom = '0';
+
                 const cleanDate = new Date().toISOString().slice(0, 10);
                 const filename = `${filenamePrefix}_${cleanDate}.pdf`;
 
@@ -1619,7 +1628,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     }
 
                     const opt = {
-                        margin: [12, 12, 12, 12],
+                        margin: [10, 10, 10, 10],
                         filename: filename,
                         image: { type: 'jpeg', quality: 0.98 },
                         html2canvas: {
@@ -3127,10 +3136,13 @@ document.addEventListener('DOMContentLoaded', () => {
                         docResultsList.innerHTML = '<p class="text-purple-400 text-sm animate-pulse">' + progressMsg + '</p>';
                     }
 
+                    var currentDocMode = (UI.documentModeSelect && UI.documentModeSelect.value) || 'Humanize';
+                    var currentStyle = (currentDocMode === 'Explain') ? 'simple' : ((UI.styleSelect && UI.styleSelect.value) || 'Casual');
                     var payload = {
                         text:     chunks[i].trim(),
                         intensity: 70,
-                        style:    'academic',
+                        mode:     currentDocMode,
+                        style:    currentStyle,
                         enable_synonyms:        true,
                         enable_phrase_rewrite:  true,
                         enable_determiner_swap: true,
