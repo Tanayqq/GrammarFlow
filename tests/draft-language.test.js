@@ -131,3 +131,38 @@ test('లభ్యత swap covers a named person (గారి) but not our stoc
     assert.equal(casualizeTelugu('రావు గారి లభ్యతను చెప్పండి.', CASUAL_TE, 'Telugu'), 'రావు గారి వీలును చెప్పండి.');
     assert.equal(casualizeTelugu('బియ్యం స్టాక్: మా లభ్యత 100 కిలోలు', CASUAL_TE, 'Telugu'), 'బియ్యం స్టాక్: మా లభ్యత 100 కిలోలు');
 });
+
+const CASUAL_KN = 'ಹಾಯ್ - ಸಣ್ಣ ಮಾತು. ನಾನು ಚಿಕ್ಕದಾಗಿ ಬರೀತೀನಿ, ದೊಡ್ಡ ಪೀಠಿಕೆ ಇಲ್ಲ. ಹೇಳೋದನ್ನ ಹೇಳಿ ಮುಗಿಸ್ತೀನಿ. ಕಾಮಾ ಕಡಿಮೆ, ಡ್ಯಾಶ್ ಜಾಸ್ತಿ. '
+    + 'ಒಂದೊಂದ್ಸಲ ಸಣ್ಣ ಜೋಕ್ - ಹೊಂದಿದ್ರೆ ಮಾತ್ರ. ಓದಿದ್ದಕ್ಕೆ ಥ್ಯಾಂಕ್ಸ್, ಸ್ವಲ್ಪ ನೇರವಾಗಿದ್ರೆ ಸಾರಿ.';
+
+test('a casual Kannada sample gets formal Kannada words swapped, meaning kept', () => {
+    const { casualizeKannada, isConversationalKannada } = require('../src/utils/language');
+    assert.equal(isConversationalKannada(CASUAL_KN), true);
+    const out = casualizeKannada('ಗೌರವಾನ್ವಿತ ರಾವ್ ಅವರಿಗೆ, ಸಭೆ ಗುರುವಾರಕ್ಕೆ ಮುಂದೂಡಲಾಗಿದೆ ಎಂದು ತಿಳಿಸಲು ಬರೆಯುತ್ತಿದ್ದೇನೆ. ನಿಮ್ಮ ಲಭ್ಯತೆಯನ್ನು ಶೀಘ್ರದಲ್ಲೇ ದೃಢೀಕರಿಸಿ.', CASUAL_KN, 'Kannada');
+    assert.equal(out, 'ರಾವ್ ಅವರಿಗೆ, ಸಭೆ ಗುರುವಾರಕ್ಕೆ ಮುಂದೂಡಲಾಗಿದೆ ಅಂತ ಹೇಳ್ತಿದ್ದೀನಿ. ನಿಮ್ಮ ಸಮಯವನ್ನು ಬೇಗ ಕನ್ಫರ್ಮ್ ಮಾಡಿ.');
+});
+
+test('no Kannada swap for a formal or Telugu sample, other languages, quotes, or non-person availability', () => {
+    const { casualizeKannada, isConversationalKannada } = require('../src/utils/language');
+    const text = 'ನಿಮ್ಮ ಲಭ್ಯತೆಯನ್ನು ದೃಢೀಕರಿಸಿ.';
+    assert.equal(isConversationalKannada('ಗೌರವಾನ್ವಿತ ಅಧಿಕಾರಿಗಳಿಗೆ, ತಿಳಿಸಲು ಬರೆಯುತ್ತಿದ್ದೇನೆ. '.repeat(6)), false);
+    assert.equal(isConversationalKannada(CASUAL_TE), false, 'a Telugu sample says nothing about Kannada register');
+    assert.equal(casualizeKannada(text, 'ಗೌರವಾನ್ವಿತ ಅಧಿಕಾರಿಗಳಿಗೆ, ತಿಳಿಸಲು ಬರೆಯುತ್ತಿದ್ದೇನೆ. '.repeat(6), 'Kannada'), text);
+    assert.equal(casualizeKannada(text, CASUAL_KN, 'Telugu'), text);
+    assert.equal(casualizeKannada('ಅವರು "ದೃಢೀಕರಿಸಿ" ಎಂದರು. ದೃಢೀಕರಿಸಿ.', CASUAL_KN, 'Kannada'), 'ಅವರು "ದೃಢೀಕರಿಸಿ" ಎಂದರು. ಕನ್ಫರ್ಮ್ ಮಾಡಿ.');
+    assert.equal(casualizeKannada('ನೀರಿನ ಲಭ್ಯತೆ ಕಡಿಮೆ.', CASUAL_KN, 'Kannada'), 'ನೀರಿನ ಲಭ್ಯತೆ ಕಡಿಮೆ.');
+});
+
+test('any stray foreign script (Hebrew, Arabic, Thai...) is removed, Latin and Indian scripts stay', () => {
+    const { stripStrayScripts } = require('../src/utils/language');
+    assert.equal(stripStrayScripts('ನಿಮ್ಮ ಸಮಯ ככל ಸಾಧ್ಯ ಬೇಗ', 'ನಿಮ್ಮ', 'Kannada'), 'ನಿಮ್ಮ ಸಮಯ ಸಾಧ್ಯ ಬೇಗ');
+    assert.equal(stripStrayScripts('మీ café టీ مرحبا ప్లీజ్', 'మీ', 'Telugu'), 'మీ café టీ ప్లీజ్');
+    assert.equal(stripStrayScripts('ನನ್ನ OK ಹೌದು ಹಿಂದಿ हिंदी', 'x', 'Kannada'), 'ನನ್ನ OK ಹೌದು ಹಿಂದಿ हिंदी');
+});
+
+test('single-quoted text is preserved in both languages, and passive verbs are not swapped blindly', () => {
+    const { casualizeKannada, casualizeTelugu } = require('../src/utils/language');
+    assert.equal(casualizeKannada('ಅವರು ‘ದೃಢೀಕರಿಸಿ’ ಎಂದರು. ದೃಢೀಕರಿಸಿ.', CASUAL_KN, 'Kannada'), 'ಅವರು ‘ದೃಢೀಕರಿಸಿ’ ಎಂದರು. ಕನ್ಫರ್ಮ್ ಮಾಡಿ.');
+    assert.equal(casualizeTelugu('అతను ‘తెలియజేయండి’ అన్నాడు. తెలియజేయండి.', CASUAL_TE, 'Telugu'), 'అతను ‘తెలియజేయండి’ అన్నాడు. చెప్పండి.');
+    assert.equal(casualizeKannada('ಸಭೆಯನ್ನು ಮುಂದೂಡಲಾಗಿದೆ.', CASUAL_KN, 'Kannada'), 'ಸಭೆಯನ್ನು ಮುಂದೂಡಲಾಗಿದೆ.');
+});

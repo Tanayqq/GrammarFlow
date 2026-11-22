@@ -61,6 +61,11 @@ test('Telugu output gets register examples; other languages and no-sample prompt
     assert.match(telugu, /మీటింగ్ వాయిదా పడింది/);
     assert.match(telugu, /never copy them/);
     assert.match(telugu, /ALL THREE versions/);
+    const kannada = prompts.getRewritePrompt('Casual', 'Friendly', 'Kannada', false, false, SAMPLE);
+    assert.match(kannada, /Register examples for Kannada/);
+    assert.match(kannada, /ದೃಢೀಕರಿಸು/);
+    assert.doesNotMatch(kannada, /Register examples for Telugu/);
+    assert.match(prompts.getRewritePrompt('Casual', 'Friendly', 'Kannada', false, false), /Never put a word from any other script/);
     assert.match(telugu, /ధృవీకరించు/);
     assert.ok(telugu.indexOf('Register examples') < telugu.indexOf('<voice-sample>'), 'examples come before the sample block');
     assert.doesNotMatch(rewrite(SAMPLE), /Register examples for Telugu/, 'English output is unchanged');

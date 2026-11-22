@@ -5,7 +5,7 @@ const { aiQueue, redisConnection } = require('../queue');
 const { aiHistoryQueue } = require('../historyQueue');
 const { logHistoryRecord } = require('../historyWorker');
 const prisma = require('../db');
-const { detectLanguage, draftLanguage, stripStrayScripts, casualizeTelugu, fixTeluguNames } = require('../utils/language');
+const { detectLanguage, draftLanguage, stripStrayScripts, casualizeTelugu, casualizeKannada, fixTeluguNames } = require('../utils/language');
 const { sendAIError } = require('../utils/publicError');
 const { isRomanHinglish } = require('../utils/documentLanguage');
 
@@ -96,7 +96,7 @@ const rewrite = async (req, res, next) => {
         }
 
         // The model sometimes drops a stray Greek/Cyrillic word into Indian-language output; remove it per rewrite.
-        rewrites = rewrites.map(r => fixTeluguNames(casualizeTelugu(stripStrayScripts(r, text, language), req.body.voiceSample, language), text, language));
+        rewrites = rewrites.map(r => fixTeluguNames(casualizeKannada(casualizeTelugu(stripStrayScripts(r, text, language), req.body.voiceSample, language), req.body.voiceSample, language), text, language));
 
         const processingTime = Date.now() - startTime;
         sendResponse(res, true, rewrites.slice(0, 3), null, { language, humanize, source });

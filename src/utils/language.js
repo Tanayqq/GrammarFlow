@@ -77,15 +77,19 @@ const draftLanguage = (text, menu) => {
     return /^(Telugu|Kannada)$/.test(menu) && /-English$/.test(detectLanguage(value)) ? menu : 'English';
 };
 
-// The model sometimes drops a stray Greek or Cyrillic word into Telugu/Kannada/Hindi output. Remove it, unless the draft had it.
+// The model sometimes drops a stray word from another script (Greek, Cyrillic, Hebrew...) into Telugu/Kannada/Hindi output.
+// Remove it, unless the draft had it. Latin (names, English words) and the three Indian scripts used here are kept.
+const KEPT_SCRIPTS = String.raw`\p{Script=Latin}\p{Script=Kannada}\p{Script=Telugu}\p{Script=Devanagari}`;
+const STRAY_RUN = new RegExp(String.raw`[ 	]*(?![${KEPT_SCRIPTS}])\p{L}(?:(?![${KEPT_SCRIPTS}])[\p{L}\p{M}])*`, 'gu');
 const stripStrayScripts = (output, draft, language) => {
     if (!/^(Telugu|Kannada|Hindi)$/.test(language)) return output;
     const keep = String(draft).normalize('NFC');
-    // Greek, Greek Extended and Cyrillic letters plus their combining marks.
-    const stripped = output.replace(/[ \t]*[Ͱ-Ͽἀ-῿Ѐ-ӿ][̀-ͯͰ-Ͽἀ-῿Ѐ-ӿ]*/g,
-        m => keep.includes(m.trim().normalize('NFC')) ? m : '');
+    const stripped = output.replace(STRAY_RUN, m => keep.includes(m.trim().normalize('NFC')) ? m : '');
     return /[\p{L}\p{N}]/u.test(stripped) ? stripped : output; // never leave a result with no words
 };
+
+// Quoted text (straight double, curly double, curly single) is left exactly as written.
+const QUOTED = /("[^"]*"|“[^”]*”|‘[^’]*’)/;
 
 // Formal Telugu words that have a plain everyday equivalent with the same meaning. Order matters: longer forms first.
 const TELUGU_CASUAL_SWAPS = [
@@ -112,8 +116,31 @@ const isConversationalTelugu = sample => {
 // With a conversational sample, replace formal Telugu words in a rewrite. Text inside quote marks is left as written.
 const casualizeTelugu = (output, sample, language) => {
     if (language !== 'Telugu' || !isConversationalTelugu(sample)) return output;
-    return output.split(/("[^"]*"|“[^”]*”)/).map((part, i) =>
+    return output.split(QUOTED).map((part, i) =>
         i % 2 ? part : TELUGU_CASUAL_SWAPS.reduce((t, [re, to]) => t.replace(new RegExp('(?<![\u0C00-\u0C7F])' + re.source, 'g'), to), part)).join('');
+};
+
+// Kannada: the same idea. Each swap keeps the meaning; a person's availability only (after a possessive).
+const KANNADA_CASUAL_SWAPS = [
+    [/ಎಂದು ತಿಳಿಸಲು ಬರೆಯುತ್ತಿದ್ದೇನೆ/g, 'ಅಂತ ಹೇಳ್ತಿದ್ದೀನಿ'],
+    [/ದೃಢೀಕರಿಸಬಹುದೇ/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡ್ತೀರಾ'],
+    [/(?:ದೃಢೀಕರಿಸಿರಿ|ದೃಢೀಕರಿಸಿ|ದೃಢಪಡಿಸಿ)/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡಿ'],
+    [/(?:ಶೀಘ್ರದಲ್ಲೇ|ಶೀಘ್ರವೇ|ತ್ವರಿತವಾಗಿ)/g, 'ಬೇಗ'],
+    [/(?<=(?:ನಿಮ್ಮ|ನಿನ್ನ|ನನ್ನ|ಅವರ|ಅವನ|ಅವಳ)\s+)ಲಭ್ಯತೆಯನ್ನು/g, 'ಸಮಯವನ್ನು'],
+    [/(?<=(?:ನಿಮ್ಮ|ನಿನ್ನ|ನನ್ನ|ಅವರ|ಅವನ|ಅವಳ)\s+)ಲಭ್ಯತೆ(?![ಀ-೿])/g, 'ಸಮಯ'],
+    [/ಗೌರವಾನ್ವಿತ\s+/g, '']
+];
+const FORMAL_KANNADA = /ಲಾಗಿದೆ|ಲಾಯಿತು|ಗೌರವಾನ್ವಿತ|ದೃಢೀಕರಿಸ|ದೃಢಪಡಿಸ|ಲಭ್ಯತೆ|ತಿಳಿಸಲು|ವಿನಂತಿ|ಶೀಘ್ರ/;
+const isConversationalKannada = sample => {
+    const s = String(sample || '');
+    const kannada = (s.match(/\p{Script=Kannada}/gu) || []).filter(c => /\p{L}/u.test(c)).length;
+    const letters = (s.match(/\p{L}/gu) || []).length;
+    return letters > 0 && kannada / letters >= 0.6 && !FORMAL_KANNADA.test(s);
+};
+const casualizeKannada = (output, sample, language) => {
+    if (language !== 'Kannada' || !isConversationalKannada(sample)) return output;
+    return output.split(QUOTED).map((part, i) =>
+        i % 2 ? part : KANNADA_CASUAL_SWAPS.reduce((t, [re, to]) => t.replace(new RegExp('(?<![\u0C80-\u0CFF])' + re.source, 'g'), to), part)).join('');
 };
 
 // The model sometimes drops or adds one letter in a Telugu name (రావు -> రవు). Names are found before the honorific
@@ -147,5 +174,7 @@ module.exports = {
     draftLanguage,
     stripStrayScripts,
     casualizeTelugu,
+    casualizeKannada,
+    isConversationalKannada,
     isConversationalTelugu
 };
