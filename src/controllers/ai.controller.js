@@ -685,18 +685,22 @@ function buildHumanizePrompt(text, style, intensity, mode = 'Humanize') {
 ${registerInstruction}
 
 MANDATORY RULES:
-1. RESTRUCTURE IDEAS — DO NOT REPLACE WORD-BY-WORD:
-   - Do NOT simply follow the original text sentence-by-sentence swapping out words.
-   - Absorb the meaning of the paragraph, then write it freshly. Merge related sentences. Split long thoughts. Reorder ideas so the sentence structure does NOT mirror the original.
-2. NATURAL BURSTINESS:
-   - Mix short, punchy sentences (4-7 words) with longer, descriptive ones.
-3. ABSOLUTELY BANNED WORDS & CONNECTORS (NEVER USE ANY OF THESE):
+1. REORDER POINTS & RESTRUCTURE COMPLETELY (DO NOT FOLLOW ORIGINAL OUTLINE):
+   - Do NOT follow the source text sentence-by-sentence. Invert and reorder supporting points.
+   - Recast any near-copied sentences completely from scratch with different sentence openings and varied grammatical structures.
+2. ADD A GROUNDED DETAIL OR EDITORIAL PERSPECTIVE:
+   - Write with the authentic voice of a human writer.
+   - Seamlessly integrate a specific practical observation, real-world context, or subtle editorial detail that humanizes the narrative.
+3. NATURAL BURSTINESS & HUMAN RHYTHM:
+   - Vary sentence lengths aggressively: punchy short statements (3-7 words) paired with detailed conversational explanations.
+4. ABSOLUTELY BANNED WORDS & TRANSITIONS (NEVER USE ANY OF THESE):
    ${BANNED_AI_WORDS.join(', ')}
-   - Do NOT use formal transitions like "Moreover", "Furthermore", "Additionally", "Thereby".
-   - Do NOT scatter em-dashes (—) through every sentence.
-4. PRESERVE FACTUAL INTEGRITY:
-   - Keep all core facts, data, numbers, dates, equations, code, and necessary technical names intact.
-5. Output ONLY the rewritten text without preambles, introductory commentary, or conversational sign-offs.
+   - Never use mechanical transitions like "Moreover", "Furthermore", "Additionally", "Thereby", "In conclusion".
+   - Never use fake academic synonyms ("thoroughfares", "relinquishes heat", "metropolitan sectors").
+   - Do NOT scatter em-dashes (—) across the paragraphs.
+5. PRESERVE FACTUAL INTEGRITY:
+   - Keep all core facts, numbers, dates, locations, and essential technical terms intact while telling the story freshly.
+6. Output ONLY the final rewritten text without intros, preambles, or meta-comments.
 
 INPUT TEXT:
 ${text}`;
