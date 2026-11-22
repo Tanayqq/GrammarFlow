@@ -56,6 +56,8 @@ OUTPUT LANGUAGE: Telugu.
 - If the input uses Telugu script (తెలుగు), output in Telugu script.
 - Do NOT convert Telugu content into English or Hindi.
 - If the input is in another language, TRANSLATE it fully into Telugu.
+- Use only Telugu script (or Latin script when the input is romanized). Never put a word from any other script (Greek, Cyrillic, Arabic, Chinese and so on) inside the text. Exceptions: names, numbers, dates and quoted text copied from the input, which stay exactly as the input has them, in their own script and untranslated.
+- Copy every name exactly as the input spells it. Never drop, add or change a letter or vowel sign (for example "రావు" must not become "రవు").
 - This rule OVERRIDES all other instructions. Non-compliant output = FAILURE.`;
     }
 

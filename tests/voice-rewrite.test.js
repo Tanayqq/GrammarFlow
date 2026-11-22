@@ -64,3 +64,10 @@ test('Telugu output gets register examples; other languages and no-sample prompt
     assert.doesNotMatch(rewrite(SAMPLE), /Register examples for Telugu/, 'English output is unchanged');
     assert.doesNotMatch(prompts.getRewritePrompt('Casual', 'Friendly', 'Telugu', false, false, ''), /Register examples/, 'no sample, no voice block');
 });
+
+test('Telugu prompts forbid foreign-script words and require names copied exactly', () => {
+    const telugu = prompts.getRewritePrompt('Casual', 'Friendly', 'Telugu', false, false);
+    assert.match(telugu, /Never put a word from any other script/);
+    assert.match(telugu, /Copy every name exactly/);
+    assert.doesNotMatch(prompts.getRewritePrompt('Casual', 'Friendly', 'English', false, false), /Copy every name exactly/);
+});
