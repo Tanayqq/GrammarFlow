@@ -237,7 +237,11 @@ Register examples for Telugu (written, formal -> everyday, conversational). They
 - దయచేసి మీ లభ్యతను త్వరగా ధృవీకరించగలరు. -> మీకు వీలవుతుందో లేదో త్వరగా చెప్పండి.
 - మీకు తెలియజేయడానికి వ్రాస్తున్నాను. -> మీకు ఒక విషయం చెప్పాలి.
 - ఈ విషయంలో మీ సహకారం అవసరం. -> ఇందులో మీ సాయం కావాలి.
-Use the conversational form only when the voice sample is conversational. If it is formal, keep the formal register.
+Formal words and their everyday replacements (again: the difference only, never copy the sentences above):
+- passive -బడింది / -బడిన -> active or ప-forms (వేయబడింది -> వాయిదా పడింది); never invent a doer the text does not name
+- Replace formal verbs with everyday ones that keep the same action (confirm stays confirm, e.g. ధృవీకరించు / నిర్ధారించు -> ఖాయం చేయి or, when the text asks for availability, వీలవుతుందో చెప్పు; inform: తెలియజేయు -> చెప్పు); లభ్యత -> వీలు; సహకారం -> సాయం; వలన / కారణంగా -> వల్ల; అనివార్య కారణాలు -> తప్పని కారణాలు (keep the meaning: unavoidable stays unavoidable)
+- openers such as గౌరవనీయులైన ... గారికి and the polite request ending -గలరు (not when it truly means ability) -> a short plain greeting or none; no letter-style formulas
+If the voice sample is conversational, do this in ALL THREE versions, and before answering check each one: any -బడ- passive, any word from the formal list, or a formal opener means that version must be rewritten (names and quoted text stay exactly as they are). If the sample is formal, keep the formal register.
 `;
 const getVoiceBlock = (voiceSample, language) => {
     // The sample is data: strip any tag that could close the block around it.

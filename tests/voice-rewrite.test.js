@@ -60,6 +60,8 @@ test('Telugu output gets register examples; other languages and no-sample prompt
     assert.match(telugu, /Register examples for Telugu/);
     assert.match(telugu, /మీటింగ్ వాయిదా పడింది/);
     assert.match(telugu, /never copy them/);
+    assert.match(telugu, /ALL THREE versions/);
+    assert.match(telugu, /ధృవీకరించు/);
     assert.ok(telugu.indexOf('Register examples') < telugu.indexOf('<voice-sample>'), 'examples come before the sample block');
     assert.doesNotMatch(rewrite(SAMPLE), /Register examples for Telugu/, 'English output is unchanged');
     assert.doesNotMatch(prompts.getRewritePrompt('Casual', 'Friendly', 'Telugu', false, false, ''), /Register examples/, 'no sample, no voice block');
