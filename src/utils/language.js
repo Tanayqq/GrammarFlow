@@ -87,8 +87,38 @@ const stripStrayScripts = (output, draft, language) => {
     return /[\p{L}\p{N}]/u.test(stripped) ? stripped : output; // never leave a result with no words
 };
 
+// Formal Telugu words that have a plain everyday equivalent with the same meaning. Order matters: longer forms first.
+const TELUGU_CASUAL_SWAPS = [
+    [/వాయిదా వేయబడింది/g, 'వాయిదా పడింది'],
+    [/వాయిదా వేయబడిందని/g, 'వాయిదా పడిందని'],
+    [/(?:ధృవీకరించగలరా|నిర్ధారించగలరా)/g, 'కన్ఫర్మ్ చేస్తారా'],
+    [/(?:ధృవీకరించగలరు|ధృవీకరించండి|నిర్ధారించగలరు|నిర్ధారించండి)/g, 'కన్ఫర్మ్ చేయండి'],
+    [/(?:తెలియజేయగలరు|తెలియజేయండి)/g, 'చెప్పండి'],
+    [/లభ్యతను/g, 'వీలును'],
+    [/(?:వలన|కారణంగా)/g, 'వల్ల'],
+    [/గౌరవనీయ(?:ులైన)?\s+/g, '']
+];
+const FORMAL_TELUGU = /బడ[ిా]|గౌరవనీయ|ధృవీకరించ|నిర్ధారించ|తెలియజేయ|లభ్యత|గలరు|వలన|కారణంగా/;
+
+// A sample counts as conversational when it is mostly Telugu and uses none of the formal words above.
+const isConversationalTelugu = sample => {
+    const s = String(sample || '');
+    const telugu = (s.match(/[ఀ-౿]/g) || []).length;
+    const letters = (s.match(/\p{L}/gu) || []).length;
+    return letters > 0 && telugu / letters >= 0.6 && !FORMAL_TELUGU.test(s);
+};
+
+// With a conversational sample, replace formal Telugu words in a rewrite. Text inside quote marks is left as written.
+const casualizeTelugu = (output, sample, language) => {
+    if (language !== 'Telugu' || !isConversationalTelugu(sample)) return output;
+    return output.split(/("[^"]*"|“[^”]*”)/).map((part, i) =>
+        i % 2 ? part : TELUGU_CASUAL_SWAPS.reduce((t, [re, to]) => t.replace(re, to), part)).join('');
+};
+
 module.exports = {
     detectLanguage,
     draftLanguage,
-    stripStrayScripts
+    stripStrayScripts,
+    casualizeTelugu,
+    isConversationalTelugu
 };

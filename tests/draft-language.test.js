@@ -50,3 +50,25 @@ test('stray-script removal also takes attached marks, and never empties a result
     assert.equal(stripStrayScripts('слово', 'తెలుగు', 'Telugu'), 'слово');
     assert.equal(stripStrayScripts('слово.', 'తెలుగు', 'Telugu'), 'слово.');
 });
+
+const CASUAL_TE = 'హాయ్ - చిన్న మాట. నేను చిన్నగా రాస్తాను, పెద్ద పరిచయాలు ఉండవు. చెప్పాల్సింది చెప్పేసి ఆపేస్తాను. '
+    + 'కామాలు తక్కువ, డాష్‌లు ఎక్కువ. కొన్నిసార్లు చిన్న జోక్ - సరిపోతేనే. చదివినందుకు థాంక్స్, కొంచెం సూటిగా ఉంటే సారీ.';
+
+test('a casual Telugu sample gets formal words swapped for everyday ones, meaning kept', () => {
+    const { casualizeTelugu } = require('../src/utils/language');
+    const out = casualizeTelugu('గౌరవనీయులైన రావు గారికి, సమావేశం కారణంగా వాయిదా వేయబడింది. మీ లభ్యతను తెలియజేయండి. దయచేసి ధృవీకరించగలరా?', CASUAL_TE, 'Telugu');
+    assert.equal(out, 'రావు గారికి, సమావేశం వల్ల వాయిదా పడింది. మీ వీలును చెప్పండి. దయచేసి కన్ఫర్మ్ చేస్తారా?');
+});
+
+test('no swap for formal samples, other languages, no sample, or quoted text', () => {
+    const { casualizeTelugu, isConversationalTelugu } = require('../src/utils/language');
+    const formal = 'గౌరవనీయులైన అధికారులకు, తెలియజేయడానికి వ్రాస్తున్నాను. '.repeat(6);
+    const text = 'మీ లభ్యతను తెలియజేయండి.';
+    assert.equal(isConversationalTelugu(formal), false);
+    assert.equal(isConversationalTelugu('I write short and plain, no long intros at all. '.repeat(6)), false, 'English sample says nothing about Telugu register');
+    assert.equal(casualizeTelugu(text, formal, 'Telugu'), text);
+    assert.equal(casualizeTelugu(text, CASUAL_TE, 'English'), text);
+    assert.equal(casualizeTelugu(text, '', 'Telugu'), text);
+    assert.equal(casualizeTelugu('అతను "మీ లభ్యతను తెలియజేయండి" అన్నాడు. మీ లభ్యతను చెప్పండి.', CASUAL_TE, 'Telugu'),
+        'అతను "మీ లభ్యతను తెలియజేయండి" అన్నాడు. మీ వీలును చెప్పండి.');
+});
