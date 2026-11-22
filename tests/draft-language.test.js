@@ -114,3 +114,20 @@ test('name repair: a one-letter difference is a typo, a longer suffixed form in 
     assert.equal(fixTeluguNames('కమ గారు', 'కమల గారు', 'Telugu'), 'కమల గారు');
     assert.equal(fixTeluguNames('రామ గారు రమ గారితో మాట్లాడారు.', 'రామ గారు రమతోనే మాట్లాడారు.', 'Telugu'), 'రామ గారు రమ గారితో మాట్లాడారు.');
 });
+
+test('లభ్యత is swapped with or without its ను ending', () => {
+    const { casualizeTelugu } = require('../src/utils/language');
+    assert.equal(casualizeTelugu('మీ లభ్యత త్వరగా చెప్పండి. మీ లభ్యతను చెప్పండి.', CASUAL_TE, 'Telugu'), 'మీ వీలు త్వరగా చెప్పండి. మీ వీలును చెప్పండి.');
+});
+
+test('లభ్యత swap is for a person\'s availability only, and only for the whole word', () => {
+    const { casualizeTelugu } = require('../src/utils/language');
+    assert.equal(casualizeTelugu('నీటి లభ్యత తక్కువగా ఉంది.', CASUAL_TE, 'Telugu'), 'నీటి లభ్యత తక్కువగా ఉంది.');
+    assert.equal(casualizeTelugu('మీ లభ్యతే ముఖ్యం.', CASUAL_TE, 'Telugu'), 'మీ లభ్యతే ముఖ్యం.');
+});
+
+test('లభ్యత swap covers a named person (గారి) but not our stock (మా)', () => {
+    const { casualizeTelugu } = require('../src/utils/language');
+    assert.equal(casualizeTelugu('రావు గారి లభ్యతను చెప్పండి.', CASUAL_TE, 'Telugu'), 'రావు గారి వీలును చెప్పండి.');
+    assert.equal(casualizeTelugu('బియ్యం స్టాక్: మా లభ్యత 100 కిలోలు', CASUAL_TE, 'Telugu'), 'బియ్యం స్టాక్: మా లభ్యత 100 కిలోలు');
+});
