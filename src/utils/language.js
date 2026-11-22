@@ -103,7 +103,7 @@ const FORMAL_TELUGU = /బడ[ిా]|గౌరవనీయ|ధృవీకర�
 // A sample counts as conversational when it is mostly Telugu and uses none of the formal words above.
 const isConversationalTelugu = sample => {
     const s = String(sample || '');
-    const telugu = (s.match(/[ఀ-౿]/g) || []).length;
+    const telugu = (s.match(/\p{Script=Telugu}/gu) || []).filter(c => /\p{L}/u.test(c)).length;
     const letters = (s.match(/\p{L}/gu) || []).length;
     return letters > 0 && telugu / letters >= 0.6 && !FORMAL_TELUGU.test(s);
 };
@@ -112,10 +112,36 @@ const isConversationalTelugu = sample => {
 const casualizeTelugu = (output, sample, language) => {
     if (language !== 'Telugu' || !isConversationalTelugu(sample)) return output;
     return output.split(/("[^"]*"|“[^”]*”)/).map((part, i) =>
-        i % 2 ? part : TELUGU_CASUAL_SWAPS.reduce((t, [re, to]) => t.replace(re, to), part)).join('');
+        i % 2 ? part : TELUGU_CASUAL_SWAPS.reduce((t, [re, to]) => t.replace(new RegExp('(?<![\u0C00-\u0C7F])' + re.source, 'g'), to), part)).join('');
+};
+
+// The model sometimes drops or adds one letter in a Telugu name (రావు -> రవు). Names are found before the honorific
+// గారు/గారి.. in the draft; a word before the honorific in the output that is one edit away from a draft name is put back.
+const oneEdit = (a, b) => {
+    a = [...a]; b = [...b];
+    if (Math.abs(a.length - b.length) > 1) return false;
+    let i = 0;
+    while (i < a.length && i < b.length && a[i] === b[i]) i++;
+    if (i === a.length && i === b.length) return false;
+    const rest = a.length === b.length ? [a.slice(i + 1), b.slice(i + 1)]
+        : a.length > b.length ? [a.slice(i + 1), b.slice(i)] : [a.slice(i), b.slice(i + 1)];
+    return rest[0].join('') === rest[1].join('');
+};
+const fixTeluguNames = (output, draft, language) => {
+    if (language !== 'Telugu') return output;
+    const names = new Set();
+    String(draft).replace(/([ఀ-౿]+)\s+గార(?:ు|ి(?:కి|తో|ని|ది)?)(?![ఀ-౿])/g, (_, n) => names.add(n));
+    if (!names.size) return output;
+    const draftWords = new Set(String(draft).match(/[ఀ-౿]+/g));
+    return output.replace(/([ఀ-౿]+)(\s+గార(?:ు|ి(?:కి|తో|ని|ది)?)(?![ఀ-౿]))/g, (m, word, tail) => {
+        if ([...draftWords].some(w => w === word || (w.startsWith(word) && [...w].length - [...word].length >= 2))) return m; // a word the draft really has is never "corrected"
+        const near = [...names].filter(n => oneEdit(word, n));
+        return near.length === 1 ? near[0] + tail : m; // an ambiguous match is left alone
+    });
 };
 
 module.exports = {
+    fixTeluguNames,
     detectLanguage,
     draftLanguage,
     stripStrayScripts,

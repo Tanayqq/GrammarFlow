@@ -72,3 +72,45 @@ test('no swap for formal samples, other languages, no sample, or quoted text', (
     assert.equal(casualizeTelugu('అతను "మీ లభ్యతను తెలియజేయండి" అన్నాడు. మీ లభ్యతను చెప్పండి.', CASUAL_TE, 'Telugu'),
         'అతను "మీ లభ్యతను తెలియజేయండి" అన్నాడు. మీ వీలును చెప్పండి.');
 });
+
+test('a Telugu name changed by one letter is put back, other words are left alone', () => {
+    const { fixTeluguNames } = require('../src/utils/language');
+    const draft = 'గౌరవనీయులైన రావు గారికి, సమావేశం వాయిదా.';
+    assert.equal(fixTeluguNames('రవు గారికి - సమావేశం వాయిదా పడింది.', draft, 'Telugu'), 'రావు గారికి - సమావేశం వాయిదా పడింది.');
+    assert.equal(fixTeluguNames('హాయ్ రావు గారు, సరే.', draft, 'Telugu'), 'హాయ్ రావు గారు, సరే.');
+    assert.equal(fixTeluguNames('సీత గారికి - సరే.', draft, 'Telugu'), 'సీత గారికి - సరే.', 'a different name stays');
+    assert.equal(fixTeluguNames('రవు గారికి', draft, 'English'), 'రవు గారికి', 'Telugu only');
+    assert.equal(fixTeluguNames('రవు గారికి', 'సమావేశం వాయిదా', 'Telugu'), 'రవు గారికి', 'no honorific name in the draft, nothing to match');
+});
+
+test('swaps do not fire inside longer words, and mixed-language samples are not "mostly Telugu"', () => {
+    const { casualizeTelugu, isConversationalTelugu } = require('../src/utils/language');
+    assert.equal(casualizeTelugu('అకారణంగా వచ్చాడు. కారణంగా వెళ్ళాడు.', CASUAL_TE, 'Telugu'), 'అకారణంగా వచ్చాడు. వల్ల వెళ్ళాడు.');
+    assert.equal(isConversationalTelugu('మీరు okay? ' + 'sure thing, okay. '.repeat(10)), false);
+});
+
+test('name repair never swaps one real person for another', () => {
+    const { fixTeluguNames } = require('../src/utils/language');
+    assert.equal(fixTeluguNames('రామ గారు రమ గారి గురించి మాట్లాడారు.', 'రామ గారు రమ గురించి మాట్లాడారు.', 'Telugu'),
+        'రామ గారు రమ గారి గురించి మాట్లాడారు.', 'a word that is in the draft stays');
+    assert.equal(fixTeluguNames('రామ గారు వచ్చారు. రమ గారు వెళ్లారు.', 'రామ గారు వచ్చారు. రమా గారు వెళ్లారు.', 'Telugu'),
+        'రామ గారు వచ్చారు. రమ గారు వెళ్లారు.', 'two near names: no guess');
+});
+
+test('name repair needs a whole honorific word and respects suffixed names in the draft', () => {
+    const { fixTeluguNames } = require('../src/utils/language');
+    assert.equal(fixTeluguNames('రమ గార్డెన్‌లో ఉన్నారు.', 'రామ గార్డెన్‌లో ఉన్నారు.', 'Telugu'), 'రమ గార్డెన్‌లో ఉన్నారు.');
+    assert.equal(fixTeluguNames('రామ గారు రమ గారితో మాట్లాడారు.', 'రామ గారు రమతో మాట్లాడారు.', 'Telugu'), 'రామ గారు రమ గారితో మాట్లాడారు.');
+    assert.equal(fixTeluguNames('రవు గారికి', 'రావు గారికి', 'Telugu'), 'రావు గారికి');
+});
+
+test('name repair fixes a truncated name but keeps a name the draft has with a suffix', () => {
+    const { fixTeluguNames } = require('../src/utils/language');
+    assert.equal(fixTeluguNames('రావ గారికి', 'రావు గారికి', 'Telugu'), 'రావు గారికి');
+});
+
+test('name repair: a one-letter difference is a typo, a longer suffixed form in the draft is a real word', () => {
+    const { fixTeluguNames } = require('../src/utils/language');
+    assert.equal(fixTeluguNames('కమ గారు', 'కమల గారు', 'Telugu'), 'కమల గారు');
+    assert.equal(fixTeluguNames('రామ గారు రమ గారితో మాట్లాడారు.', 'రామ గారు రమతోనే మాట్లాడారు.', 'Telugu'), 'రామ గారు రమ గారితో మాట్లాడారు.');
+});
