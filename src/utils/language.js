@@ -77,7 +77,18 @@ const draftLanguage = (text, menu) => {
     return /^(Telugu|Kannada)$/.test(menu) && /-English$/.test(detectLanguage(value)) ? menu : 'English';
 };
 
+// The model sometimes drops a stray Greek or Cyrillic word into Telugu/Kannada/Hindi output. Remove it, unless the draft had it.
+const stripStrayScripts = (output, draft, language) => {
+    if (!/^(Telugu|Kannada|Hindi)$/.test(language)) return output;
+    const keep = String(draft).normalize('NFC');
+    // Greek, Greek Extended and Cyrillic letters plus their combining marks.
+    const stripped = output.replace(/[ \t]*[Ͱ-Ͽἀ-῿Ѐ-ӿ][̀-ͯͰ-Ͽἀ-῿Ѐ-ӿ]*/g,
+        m => keep.includes(m.trim().normalize('NFC')) ? m : '');
+    return /[\p{L}\p{N}]/u.test(stripped) ? stripped : output; // never leave a result with no words
+};
+
 module.exports = {
     detectLanguage,
-    draftLanguage
+    draftLanguage,
+    stripStrayScripts
 };

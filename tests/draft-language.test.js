@@ -35,3 +35,18 @@ test('digits and long English drafts do not trigger a non-English language', () 
     const long = 'The committee reviewed the quarterly numbers and agreed that the plan should go ahead next month.';
     assert.equal(draftLanguage(long, 'Hinglish'), 'English');
 });
+
+test('a stray Greek or Cyrillic word is removed from Indian-language output, but not from English or the draft', () => {
+    const { stripStrayScripts } = require('../src/utils/language');
+    assert.equal(stripStrayScripts('మీ లభ్యతను όσο త్వరగా చెప్పండి', 'మీ లభ్యత', 'Telugu'), 'మీ లభ్యతను త్వరగా చెప్పండి');
+    assert.equal(stripStrayScripts('తెలుగు слово.', 'తెలుగు', 'Kannada'), 'తెలుగు.');
+    assert.equal(stripStrayScripts('రేడియస్ π పొడవు', 'వ్యాసార్థం π', 'Telugu'), 'రేడియస్ π పొడవు', 'kept when the draft had it');
+    assert.equal(stripStrayScripts('keep όσο here', 'draft', 'English'), 'keep όσο here');
+});
+
+test('stray-script removal also takes attached marks, and never empties a result', () => {
+    const { stripStrayScripts } = require('../src/utils/language');
+    assert.equal(stripStrayScripts('మీ లభ్యతను ο\u0301σο త్వరగా చెప్పండి', 'మీ లభ్యత', 'Telugu'), 'మీ లభ్యతను త్వరగా చెప్పండి');
+    assert.equal(stripStrayScripts('слово', 'తెలుగు', 'Telugu'), 'слово');
+    assert.equal(stripStrayScripts('слово.', 'తెలుగు', 'Telugu'), 'слово.');
+});
