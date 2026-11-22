@@ -198,3 +198,24 @@ test('straight single-quoted text is preserved too', () => {
     const { casualize } = require('../src/utils/language');
     assert.equal(casualize("उसने 'पुष्टि करें' कहा। पुष्टि करें।", CASUAL_HI, 'Hindi'), "उसने 'पुष्टि करें' कहा। कन्फर्म कर दें।");
 });
+
+const CASUAL_HG = 'Hi - chhoti si baat. Main chhota likhta hoon, lambi bhoomika nahi. Jo kehna hai keh kar ruk jaata hoon. Comma kam, dash zyada. '
+    + 'Kabhi kabhi chhota sa joke - bas jab fit ho. Padhne ke liye thanks, thoda seedha lage toh sorry. Chai thandi ho rahi hai, bas.';
+
+test('Hinglish formulas are dropped for a casual Hinglish sample, and Kannada gets two more "soon" forms', () => {
+    const { casualize, isConversationalHinglish } = require('../src/utils/language');
+    assert.equal(isConversationalHinglish(CASUAL_HG), true);
+    assert.equal(isConversationalHinglish('Respected sir, kindly find the shighra confirmation attached. '.repeat(5)), false);
+    assert.equal(casualize('Respected Rao ji, Kindly apni availability ka shighra confirmation dein.', CASUAL_HG, 'Hinglish'),
+        'Rao ji, Please apni availability jaldi confirm kar dein.');
+    assert.equal(casualize('Aap shighra aaiye. Shighra aaiye. Unrespected.', CASUAL_HG, 'Hinglish'), 'Aap jaldi aaiye. Jaldi aaiye. Unrespected.', 'whole words only');
+    assert.equal(casualize('Kindly confirm.', 'Respected sir, kindly find the attached. '.repeat(6), 'Hinglish'), 'Kindly confirm.', 'formal sample: no swap');
+    assert.equal(casualize('he said "Kindly wait" and Kindly left', CASUAL_HG, 'Hinglish'), 'he said "Kindly wait" and Please left', 'quoted text stays');
+    assert.equal(casualize('ಶೀಘ್ರವಾಗಿ ಹೇಳಿ. ಶೀಘ್ರದಲ್ಲಿ ಬನ್ನಿ.', CASUAL_KN, 'Kannada'), 'ಬೇಗ ಹೇಳಿ. ಬೇಗ ಬನ್ನಿ.');
+});
+
+test('Hinglish confirmation rule needs the whole verb, so dijiyega is not half-replaced', () => {
+    const { casualize } = require('../src/utils/language');
+    assert.equal(casualize('Availability ka confirmation dijiyega.', CASUAL_HG, 'Hinglish'), 'Availability ka confirmation dijiyega.');
+    assert.equal(casualize('Availability ka shighra confirmation dijiyega.', CASUAL_HG, 'Hinglish'), 'Availability ka jaldi confirmation dijiyega.');
+});

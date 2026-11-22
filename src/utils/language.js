@@ -116,10 +116,23 @@ const CASUAL = {
             [/ಎಂದು ತಿಳಿಸಲು ಬರೆಯುತ್ತಿದ್ದೇನೆ/g, 'ಅಂತ ಹೇಳ್ತಿದ್ದೀನಿ'],
             [/ದೃಢೀಕರಿಸಬಹುದೇ/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡ್ತೀರಾ'],
             [/(?:ದೃಢೀಕರಿಸಿರಿ|ದೃಢೀಕರಿಸಿ|ದೃಢಪಡಿಸಿ)/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡಿ'],
-            [/(?:ಶೀಘ್ರದಲ್ಲೇ|ಶೀಘ್ರವೇ|ತ್ವರಿತವಾಗಿ)/g, 'ಬೇಗ'],
+            [/(?:ಶೀಘ್ರದಲ್ಲೇ|ಶೀಘ್ರದಲ್ಲಿ|ಶೀಘ್ರವೇ|ಶೀಘ್ರವಾಗಿ|ತ್ವರಿತವಾಗಿ)(?![ಀ-೿])/g, 'ಬೇಗ'],
             [/(?<=(?:ನಿಮ್ಮ|ನಿನ್ನ|ನನ್ನ|ಅವರ|ಅವನ|ಅವಳ)\s+)ಲಭ್ಯತೆಯನ್ನು/g, 'ಸಮಯವನ್ನು'],
             [/(?<=(?:ನಿಮ್ಮ|ನಿನ್ನ|ನನ್ನ|ಅವರ|ಅವನ|ಅವಳ)\s+)ಲಭ್ಯತೆ(?![ಀ-೿])/g, 'ಸಮಯ'],
             [/ಗೌರವಾನ್ವಿತ\s+/g, '']
+        ]
+    },
+    // Romanized Hindi: drop the stiff English-letter formulas. Case variants are listed because the swap regexes are case-sensitive.
+    Hinglish: {
+        script: 'Latin', range: 'A-Za-z',
+        formal: /respected|kindly|shighra|confirmation|apekshit|inform karne/i,
+        swaps: [
+            [/ka (\w+) confirmation (?:dein|dijiye)(?![A-Za-z])/g, '$1 confirm kar dein'],
+            [/ka confirmation (?:dein|dijiye)(?![A-Za-z])/g, 'confirm kar dein'],
+            [/shighra(?![A-Za-z])/g, 'jaldi'],
+            [/Shighra(?![A-Za-z])/g, 'Jaldi'],
+            [/Kindly(?![A-Za-z])/g, 'Please'],
+            [/Respected\s+/g, '']
         ]
     },
     Hindi: {
@@ -193,5 +206,6 @@ module.exports = {
     casualizeHindi: casualize,
     isConversationalTelugu: sample => isConversational(sample, CASUAL.Telugu),
     isConversationalKannada: sample => isConversational(sample, CASUAL.Kannada),
+    isConversationalHinglish: sample => isConversational(sample, CASUAL.Hinglish),
     isConversationalHindi: sample => isConversational(sample, CASUAL.Hindi)
 };
