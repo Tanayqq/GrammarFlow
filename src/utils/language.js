@@ -93,6 +93,8 @@ const QUOTED = /("[^"]*"|“[^”]*”|‘[^’]*’|(?<![\p{L}\p{M}])'[^']+'(?!
 
 // Formal words that have a plain everyday equivalent with the same meaning, per language. Longer forms come first.
 // Each swap keeps the meaning, and none rewrites a passive (that would need a new subject or case).
+// What may follow a person's उपलब्धता for the swap to be safe: an optional adverb, then a request verb.
+const HINDI_REQUEST = '(?=\\s+(?:(?:जल्दी|जल्द)\\s+)*(?:कन्फर्म|बताइए|बताइये|बताएं|बताएँ|बताओ|बता\\s+(?:दीजिए|दीजिये|दें)|भेजिए|भेजिये|भेजें|भेजो)(?![\\u0900-\\u0963\\u0966-\\u097F]))';
 const CASUAL = {
     Telugu: {
         script: 'Telugu', range: 'ఀ-౿',
@@ -115,6 +117,9 @@ const CASUAL = {
         swaps: [
             [/ಎಂದು ತಿಳಿಸಲು ಬರೆಯುತ್ತಿದ್ದೇನೆ/g, 'ಅಂತ ಹೇಳ್ತಿದ್ದೀನಿ'],
             [/ದೃಢೀಕರಿಸಬಹುದೇ/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡ್ತೀರಾ'],
+            // The model sometimes writes the blunt singular command to the reader; the polite form keeps the same verb.
+            [/ಕನ್‌ಫರ್ಮ್ ಮಾಡು(?![ಀ-೿])/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡಿ'],
+            [/ಕನ್ಫರ್ಮ್ ಮಾಡು(?![ಀ-೿])/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡಿ'],
             [/(?:ದೃಢೀಕರಿಸಿರಿ|ದೃಢೀಕರಿಸಿ|ದೃಢಪಡಿಸಿ)/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡಿ'],
             [/(?:ಶೀಘ್ರದಲ್ಲೇ|ಶೀಘ್ರದಲ್ಲಿ|ಶೀಘ್ರವೇ|ಶೀಘ್ರವಾಗಿ|ತ್ವರಿತವಾಗಿ)(?![ಀ-೿])/g, 'ಬೇಗ'],
             [/(?<=(?:ನಿಮ್ಮ|ನಿನ್ನ|ನನ್ನ|ಅವರ|ಅವನ|ಅವಳ)\s+)ಲಭ್ಯತೆಯನ್ನು/g, 'ಸಮಯವನ್ನು'],
@@ -141,6 +146,13 @@ const CASUAL = {
         swaps: [
             [/की पुष्टि (?:करें|कीजिए|कीजिये)(?![ऀ-ॣ०-ॿ])/g, 'कन्फर्म कर दें'],
             [/पुष्टि (?:करें|कीजिए|कीजिये)(?![ऀ-ॣ०-ॿ])/g, 'कन्फर्म कर दें'],
+            // A person's availability -> समय, only before a request verb (बताइए, कन्फर्म कर दें, भेजिए): there nothing else in the
+            // sentence has to agree with the new masculine noun. The possessive changes gender too (उपलब्धता is feminine).
+            [new RegExp('आपकी उपलब्धता' + HINDI_REQUEST, 'g'), 'आपका समय'],
+            [new RegExp('अपनी उपलब्धता' + HINDI_REQUEST, 'g'), 'अपना समय'],
+            [new RegExp('मेरी उपलब्धता' + HINDI_REQUEST, 'g'), 'मेरा समय'],
+            [new RegExp('तुम्हारी उपलब्धता' + HINDI_REQUEST, 'g'), 'तुम्हारा समय'],
+            [new RegExp('उनकी उपलब्धता' + HINDI_REQUEST, 'g'), 'उनका समय'],
             [/(?:शीघ्रातिशीघ्र|शीघ्र)(?![ऀ-ॣ०-ॿ])/g, 'जल्दी'],
             [/आदरणीय\s+/g, '']
         ]
@@ -194,7 +206,19 @@ const fixNames = (output, draft, language) => {
     });
 };
 
+// The model sometimes gives the masculine loanword टाइम a feminine possessive ("अपनी टाइम"). Fix only that pairing, in any Hindi output.
+const HINDI_POSSESSIVE_MASC = { 'अपनी': 'अपना', 'आपकी': 'आपका', 'मेरी': 'मेरा', 'तुम्हारी': 'तुम्हारा', 'उनकी': 'उनका' };
+const HINDI_POSSESSIVE_OBLIQUE = { 'अपनी': 'अपने', 'आपकी': 'आपके', 'मेरी': 'मेरे', 'तुम्हारी': 'तुम्हारे', 'उनकी': 'उनके' };
+const HINDI_NOT_WORD = String.raw`[ऀ-ॣ०-ॿ]`;
+const HINDI_TIME_OBLIQUE = new RegExp(String.raw`(?<!${HINDI_NOT_WORD})(अपनी|आपकी|मेरी|तुम्हारी|उनकी)(\s+)टाइम(?=\s+(?:पर|से|को|में|तक|के|का|की)(?!${HINDI_NOT_WORD}))`, 'g');
+const HINDI_TIME_DIRECT = new RegExp(String.raw`(?<!${HINDI_NOT_WORD})(अपनी|आपकी|मेरी|तुम्हारी|उनकी)(\s+)टाइम(?!${HINDI_NOT_WORD})(?!\s+मशीन)`, 'g');
+const fixHindiGender = (output, language) => language !== 'Hindi' ? output
+    : output.split(QUOTED).map((part, i) => i % 2 ? part
+        : part.replace(HINDI_TIME_OBLIQUE, (m, who, space) => HINDI_POSSESSIVE_OBLIQUE[who] + space + 'टाइम')
+              .replace(HINDI_TIME_DIRECT, (m, who, space) => HINDI_POSSESSIVE_MASC[who] + space + 'टाइम')).join('');
+
 module.exports = {
+    fixHindiGender,
     fixNames,
     fixTeluguNames: fixNames,
     detectLanguage,

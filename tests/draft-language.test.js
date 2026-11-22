@@ -173,7 +173,7 @@ test('a casual Hindi sample gets formal Hindi words swapped, meaning kept', () =
     const { casualize, isConversationalHindi } = require('../src/utils/language');
     assert.equal(isConversationalHindi(CASUAL_HI), true);
     assert.equal(casualize('आदरणीय राव जी, कृपया अपनी उपलब्धता की पुष्टि करें और शीघ्र बताएँ।', CASUAL_HI, 'Hindi'),
-        'राव जी, कृपया अपनी उपलब्धता कन्फर्म कर दें और जल्दी बताएँ।');
+        'राव जी, कृपया अपना समय कन्फर्म कर दें और जल्दी बताएँ।');
     assert.equal(casualize('शीघ्रता से आइए।', CASUAL_HI, 'Hindi'), 'शीघ्रता से आइए।', 'only the whole word शीघ्र');
     assert.equal(casualize('कृपया पुष्टि करें।', 'आदरणीय महोदय, सूचित करने हेतु लिख रहा हूँ। '.repeat(6), 'Hindi'), 'कृपया पुष्टि करें।', 'formal sample: no swap');
     assert.equal(casualize('कृपया पुष्टि करें।', CASUAL_HI, 'Hinglish'), 'कृपया पुष्टि करें।', 'Hinglish has no swap list');
@@ -218,4 +218,34 @@ test('Hinglish confirmation rule needs the whole verb, so dijiyega is not half-r
     const { casualize } = require('../src/utils/language');
     assert.equal(casualize('Availability ka confirmation dijiyega.', CASUAL_HG, 'Hinglish'), 'Availability ka confirmation dijiyega.');
     assert.equal(casualize('Availability ka shighra confirmation dijiyega.', CASUAL_HG, 'Hinglish'), 'Availability ka jaldi confirmation dijiyega.');
+});
+
+test('Hindi: gender of टाइम is fixed in any Hindi output, and a person\'s उपलब्धता becomes समय with the right possessive', () => {
+    const { fixHindiGender, casualize } = require('../src/utils/language');
+    assert.equal(fixHindiGender('कृपया अपनी टाइम बताइए। आपकी टाइम क्या है? उनकी टाइम।', 'Hindi'), 'कृपया अपना टाइम बताइए। आपका टाइम क्या है? उनका टाइम।');
+    assert.equal(fixHindiGender('अपनी टाइमलाइन भेजिए।', 'Hindi'), 'अपनी टाइमलाइन भेजिए।', 'whole word only');
+    assert.equal(fixHindiGender('अपनी टाइम', 'Hinglish'), 'अपनी टाइम', 'Hindi only');
+    assert.equal(casualize('कृपया अपनी उपलब्धता की पुष्टि करें।', CASUAL_HI, 'Hindi'), 'कृपया अपना समय कन्फर्म कर दें।');
+    assert.equal(casualize('आपकी उपलब्धता बताइए। संसाधनों की उपलब्धता कम है।', CASUAL_HI, 'Hindi'), 'आपका समय बताइए। संसाधनों की उपलब्धता कम है।', 'only a person\'s availability');
+});
+
+test('Kannada: the blunt "ಕನ್ಫರ್ಮ್ ಮಾಡು" becomes the polite form, with or without the joiner character', () => {
+    const { casualize } = require('../src/utils/language');
+    assert.equal(casualize('ನಿಮ್ಮ ಸಮಯ ಕನ್\u200Cಫರ್ಮ್ ಮಾಡು. ಕನ್ಫರ್ಮ್ ಮಾಡುತ್ತೇನೆ.', CASUAL_KN, 'Kannada'), 'ನಿಮ್ಮ ಸಮಯ ಕನ್ಫರ್ಮ್ ಮಾಡಿ. ಕನ್ಫರ್ಮ್ ಮಾಡುತ್ತೇನೆ.');
+});
+
+test('Hindi gender/availability fixes only where agreement is safe, and never inside quotes', () => {
+    const { fixHindiGender, casualize } = require('../src/utils/language');
+    assert.equal(fixHindiGender('अपनी टाइम पर आइए। आपकी टाइम के अनुसार चलें।', 'Hindi'), 'अपने टाइम पर आइए। आपके टाइम के अनुसार चलें।', 'oblique before a postposition');
+    assert.equal(fixHindiGender('उसने "अपनी टाइम बताइए" कहा। अपनी टाइम बताइए।', 'Hindi'), 'उसने "अपनी टाइम बताइए" कहा। अपना टाइम बताइए।', 'quotes stay');
+    assert.equal(casualize('मेरी उपलब्धता बदल गई है।', CASUAL_HI, 'Hindi'), 'मेरी उपलब्धता बदल गई है।', 'a feminine verb would not agree: no swap');
+    assert.equal(casualize('आपकी उपलब्धता के अनुसार चलेंगे।', CASUAL_HI, 'Hindi'), 'आपकी उपलब्धता के अनुसार चलेंगे।', 'a postposition would need the oblique form: no swap');
+    assert.equal(casualize('अपनी उपलब्धता जल्दी बताइए।', CASUAL_HI, 'Hindi'), 'अपना समय जल्दी बताइए।');
+});
+
+test('Hindi fixes skip टाइम मशीन (feminine) and need a whole request verb', () => {
+    const { fixHindiGender, casualize } = require('../src/utils/language');
+    assert.equal(fixHindiGender('मेरी टाइम मशीन तैयार है।', 'Hindi'), 'मेरी टाइम मशीन तैयार है।');
+    assert.equal(casualize('आपकी उपलब्धता बताई गई है।', CASUAL_HI, 'Hindi'), 'आपकी उपलब्धता बताई गई है।', 'बताई is not a request');
+    assert.equal(casualize('आपकी उपलब्धता बता दीजिए।', CASUAL_HI, 'Hindi'), 'आपका समय बता दीजिए।');
 });

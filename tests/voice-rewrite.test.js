@@ -85,6 +85,7 @@ test('Hindi and Hinglish voice prompts carry their own register examples, nothin
     assert.match(hindi, /Register examples for Hindi/);
     assert.match(hindi, /आप stays आप/);
     assert.match(hindi, /ALL THREE versions/);
+    assert.match(hindi, /अपरिहार्य .*must not become अनिवार्य/);
     const hinglish = prompts.getRewritePrompt('Casual', 'Friendly', 'Hinglish', false, false, SAMPLE);
     assert.match(hinglish, /Register examples for Hinglish/);
     assert.match(hinglish, /aap stays aap/);

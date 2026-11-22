@@ -271,6 +271,7 @@ Formal words and their everyday replacements (again: the difference only, never 
 - पुष्टि करें -> कन्फर्म कर दें (confirm stays confirm); सूचित / अवगत कराना -> बताना; शीघ्र -> जल्दी; हेतु -> के लिए; a person's उपलब्धता -> समय
 - openers such as आदरणीय ... and closers such as सधन्यवाद -> a short plain greeting or none; no letter-style formulas
 Keep the reader's politeness level (आप stays आप; never switch to तू/तुम).
+Never replace a word with a near-synonym that means something different: अपरिहार्य ("unavoidable") must not become अनिवार्य ("mandatory"), and बैठक/मीटिंग must not become सत्र. Mind gender: टाइम is masculine (अपना टाइम), मीटिंग and बैठक are feminine.
 If the voice sample is conversational, do this in ALL THREE versions, and before answering check each one: any passive, any word from the formal list, or a formal opener means that version must be rewritten (names and quoted text stay exactly as they are). If the sample is formal, keep the formal register.
 `;
 const HINGLISH_REGISTER_EXAMPLES = `
