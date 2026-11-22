@@ -63,7 +63,8 @@ test('Telugu output gets register examples; other languages and no-sample prompt
     assert.match(telugu, /ALL THREE versions/);
     const kannada = prompts.getRewritePrompt('Casual', 'Friendly', 'Kannada', false, false, SAMPLE);
     assert.match(kannada, /Register examples for Kannada/);
-    assert.match(kannada, /ದೃಢೀಕರಿಸು/);
+    assert.match(kannada, /ದೃಢೀಕರಿಸಿ/);
+    assert.match(kannada, /never a blunt singular command/);
     assert.doesNotMatch(kannada, /Register examples for Telugu/);
     assert.match(prompts.getRewritePrompt('Casual', 'Friendly', 'Kannada', false, false), /Never put a word from any other script/);
     assert.match(telugu, /ధృవీకరించు/);
@@ -77,4 +78,17 @@ test('Telugu prompts forbid foreign-script words and require names copied exactl
     assert.match(telugu, /Never put a word from any other script/);
     assert.match(telugu, /Copy every name exactly/);
     assert.doesNotMatch(prompts.getRewritePrompt('Casual', 'Friendly', 'English', false, false), /Copy every name exactly/);
+});
+
+test('Hindi and Hinglish voice prompts carry their own register examples, nothing else does', () => {
+    const hindi = prompts.getRewritePrompt('Casual', 'Friendly', 'Hindi', false, false, SAMPLE);
+    assert.match(hindi, /Register examples for Hindi/);
+    assert.match(hindi, /आप stays आप/);
+    assert.match(hindi, /ALL THREE versions/);
+    const hinglish = prompts.getRewritePrompt('Casual', 'Friendly', 'Hinglish', false, false, SAMPLE);
+    assert.match(hinglish, /Register examples for Hinglish/);
+    assert.match(hinglish, /aap stays aap/);
+    assert.doesNotMatch(hinglish, /Register examples for Hindi/);
+    assert.doesNotMatch(prompts.getRewritePrompt('Casual', 'Friendly', 'Hindi', false, false, ''), /Register examples/, 'no sample, no voice block');
+    assert.doesNotMatch(rewrite(SAMPLE), /Register examples/, 'English is unchanged');
 });

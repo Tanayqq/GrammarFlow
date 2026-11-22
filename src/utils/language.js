@@ -89,58 +89,63 @@ const stripStrayScripts = (output, draft, language) => {
 };
 
 // Quoted text (straight double, curly double, curly single) is left exactly as written.
-const QUOTED = /("[^"]*"|“[^”]*”|‘[^’]*’)/;
+const QUOTED = /("[^"]*"|“[^”]*”|‘[^’]*’|(?<![\p{L}\p{M}])'[^']+'(?![\p{L}\p{M}]))/u;
 
-// Formal Telugu words that have a plain everyday equivalent with the same meaning. Order matters: longer forms first.
-const TELUGU_CASUAL_SWAPS = [
-    [/వాయిదా వేయబడింది/g, 'వాయిదా పడింది'],
-    [/వాయిదా వేయబడిందని/g, 'వాయిదా పడిందని'],
-    [/(?:ధృవీకరించగలరా|నిర్ధారించగలరా)/g, 'కన్ఫర్మ్ చేస్తారా'],
-    [/(?:ధృవీకరించగలరు|ధృవీకరించండి|నిర్ధారించగలరు|నిర్ధారించండి)/g, 'కన్ఫర్మ్ చేయండి'],
-    [/(?:తెలియజేయగలరు|తెలియజేయండి)/g, 'చెప్పండి'],
-    // Only a person's availability (after a possessive such as మీ): water or stock "availability" is a different word.
-    [/(?<=(?:మీ|నా|నీ|వారి|అతని|ఆమె|గారి)\s+)లభ్యత(ను)?(?![ా-ౖ])/g, 'వీలు$1'],
-    [/(?:వలన|కారణంగా)/g, 'వల్ల'],
-    [/గౌరవనీయ(?:ులైన)?\s+/g, '']
-];
-const FORMAL_TELUGU = /బడ[ిా]|గౌరవనీయ|ధృవీకరించ|నిర్ధారించ|తెలియజేయ|లభ్యత|గలరు|వలన|కారణంగా/;
-
-// A sample counts as conversational when it is mostly Telugu and uses none of the formal words above.
-const isConversationalTelugu = sample => {
+// Formal words that have a plain everyday equivalent with the same meaning, per language. Longer forms come first.
+// Each swap keeps the meaning, and none rewrites a passive (that would need a new subject or case).
+const CASUAL = {
+    Telugu: {
+        script: 'Telugu', range: 'ఀ-౿',
+        formal: /బడ[ిా]|గౌరవనీయ|ధృవీకరించ|నిర్ధారించ|తెలియజేయ|లభ్యత|గలరు|వలన|కారణంగా/,
+        swaps: [
+            [/వాయిదా వేయబడింది/g, 'వాయిదా పడింది'],
+            [/వాయిదా వేయబడిందని/g, 'వాయిదా పడిందని'],
+            [/(?:ధృవీకరించగలరా|నిర్ధారించగలరా)/g, 'కన్ఫర్మ్ చేస్తారా'],
+            [/(?:ధృవీకరించగలరు|ధృవీకరించండి|నిర్ధారించగలరు|నిర్ధారించండి)/g, 'కన్ఫర్మ్ చేయండి'],
+            [/(?:తెలియజేయగలరు|తెలియజేయండి)/g, 'చెప్పండి'],
+            // Only a person's availability (after a possessive such as మీ): water or stock "availability" is a different word.
+            [/(?<=(?:మీ|నా|నీ|వారి|అతని|ఆమె|గారి)\s+)లభ్యత(ను)?(?![ా-ౖ])/g, 'వీలు$1'],
+            [/(?:వలన|కారణంగా)/g, 'వల్ల'],
+            [/గౌరవనీయ(?:ులైన)?\s+/g, '']
+        ]
+    },
+    Kannada: {
+        script: 'Kannada', range: 'ಀ-೿',
+        formal: /ಲಾಗಿದೆ|ಲಾಯಿತು|ಗೌರವಾನ್ವಿತ|ದೃಢೀಕರಿಸ|ದೃಢಪಡಿಸ|ಲಭ್ಯತೆ|ತಿಳಿಸಲು|ವಿನಂತಿ|ಶೀಘ್ರ/,
+        swaps: [
+            [/ಎಂದು ತಿಳಿಸಲು ಬರೆಯುತ್ತಿದ್ದೇನೆ/g, 'ಅಂತ ಹೇಳ್ತಿದ್ದೀನಿ'],
+            [/ದೃಢೀಕರಿಸಬಹುದೇ/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡ್ತೀರಾ'],
+            [/(?:ದೃಢೀಕರಿಸಿರಿ|ದೃಢೀಕರಿಸಿ|ದೃಢಪಡಿಸಿ)/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡಿ'],
+            [/(?:ಶೀಘ್ರದಲ್ಲೇ|ಶೀಘ್ರವೇ|ತ್ವರಿತವಾಗಿ)/g, 'ಬೇಗ'],
+            [/(?<=(?:ನಿಮ್ಮ|ನಿನ್ನ|ನನ್ನ|ಅವರ|ಅವನ|ಅವಳ)\s+)ಲಭ್ಯತೆಯನ್ನು/g, 'ಸಮಯವನ್ನು'],
+            [/(?<=(?:ನಿಮ್ಮ|ನಿನ್ನ|ನನ್ನ|ಅವರ|ಅವನ|ಅವಳ)\s+)ಲಭ್ಯತೆ(?![ಀ-೿])/g, 'ಸಮಯ'],
+            [/ಗೌರವಾನ್ವಿತ\s+/g, '']
+        ]
+    },
+    Hindi: {
+        script: 'Devanagari', range: 'ऀ-ॣ०-ॿ',
+        formal: /आदरणीय|शीघ्र|पुष्टि|अवगत|सूचित|हेतु|अपेक्षित|उपलब्धता|स्थगित/,
+        swaps: [
+            [/की पुष्टि (?:करें|कीजिए|कीजिये)(?![ऀ-ॣ०-ॿ])/g, 'कन्फर्म कर दें'],
+            [/पुष्टि (?:करें|कीजिए|कीजिये)(?![ऀ-ॣ०-ॿ])/g, 'कन्फर्म कर दें'],
+            [/(?:शीघ्रातिशीघ्र|शीघ्र)(?![ऀ-ॣ०-ॿ])/g, 'जल्दी'],
+            [/आदरणीय\s+/g, '']
+        ]
+    }
+};
+// A sample counts as conversational when it is mostly in the language's script and uses none of its formal words.
+const isConversational = (sample, cfg) => {
     const s = String(sample || '');
-    const telugu = (s.match(/\p{Script=Telugu}/gu) || []).filter(c => /\p{L}/u.test(c)).length;
+    const own = (s.match(new RegExp(String.raw`\p{Script=${cfg.script}}`, 'gu')) || []).filter(c => /\p{L}/u.test(c)).length;
     const letters = (s.match(/\p{L}/gu) || []).length;
-    return letters > 0 && telugu / letters >= 0.6 && !FORMAL_TELUGU.test(s);
+    return letters > 0 && own / letters >= 0.6 && !cfg.formal.test(s);
 };
-
-// With a conversational sample, replace formal Telugu words in a rewrite. Text inside quote marks is left as written.
-const casualizeTelugu = (output, sample, language) => {
-    if (language !== 'Telugu' || !isConversationalTelugu(sample)) return output;
-    return output.split(QUOTED).map((part, i) =>
-        i % 2 ? part : TELUGU_CASUAL_SWAPS.reduce((t, [re, to]) => t.replace(new RegExp('(?<![\u0C00-\u0C7F])' + re.source, 'g'), to), part)).join('');
-};
-
-// Kannada: the same idea. Each swap keeps the meaning; a person's availability only (after a possessive).
-const KANNADA_CASUAL_SWAPS = [
-    [/ಎಂದು ತಿಳಿಸಲು ಬರೆಯುತ್ತಿದ್ದೇನೆ/g, 'ಅಂತ ಹೇಳ್ತಿದ್ದೀನಿ'],
-    [/ದೃಢೀಕರಿಸಬಹುದೇ/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡ್ತೀರಾ'],
-    [/(?:ದೃಢೀಕರಿಸಿರಿ|ದೃಢೀಕರಿಸಿ|ದೃಢಪಡಿಸಿ)/g, 'ಕನ್ಫರ್ಮ್ ಮಾಡಿ'],
-    [/(?:ಶೀಘ್ರದಲ್ಲೇ|ಶೀಘ್ರವೇ|ತ್ವರಿತವಾಗಿ)/g, 'ಬೇಗ'],
-    [/(?<=(?:ನಿಮ್ಮ|ನಿನ್ನ|ನನ್ನ|ಅವರ|ಅವನ|ಅವಳ)\s+)ಲಭ್ಯತೆಯನ್ನು/g, 'ಸಮಯವನ್ನು'],
-    [/(?<=(?:ನಿಮ್ಮ|ನಿನ್ನ|ನನ್ನ|ಅವರ|ಅವನ|ಅವಳ)\s+)ಲಭ್ಯತೆ(?![ಀ-೿])/g, 'ಸಮಯ'],
-    [/ಗೌರವಾನ್ವಿತ\s+/g, '']
-];
-const FORMAL_KANNADA = /ಲಾಗಿದೆ|ಲಾಯಿತು|ಗೌರವಾನ್ವಿತ|ದೃಢೀಕರಿಸ|ದೃಢಪಡಿಸ|ಲಭ್ಯತೆ|ತಿಳಿಸಲು|ವಿನಂತಿ|ಶೀಘ್ರ/;
-const isConversationalKannada = sample => {
-    const s = String(sample || '');
-    const kannada = (s.match(/\p{Script=Kannada}/gu) || []).filter(c => /\p{L}/u.test(c)).length;
-    const letters = (s.match(/\p{L}/gu) || []).length;
-    return letters > 0 && kannada / letters >= 0.6 && !FORMAL_KANNADA.test(s);
-};
-const casualizeKannada = (output, sample, language) => {
-    if (language !== 'Kannada' || !isConversationalKannada(sample)) return output;
-    return output.split(QUOTED).map((part, i) =>
-        i % 2 ? part : KANNADA_CASUAL_SWAPS.reduce((t, [re, to]) => t.replace(new RegExp('(?<![\u0C80-\u0CFF])' + re.source, 'g'), to), part)).join('');
+// With a conversational sample, replace formal words in a rewrite. Quoted text is left as written.
+const casualize = (output, sample, language) => {
+    const cfg = CASUAL[language];
+    if (!cfg || !isConversational(sample, cfg)) return output;
+    return output.split(QUOTED).map((part, i) => i % 2 ? part
+        : cfg.swaps.reduce((t, [re, to]) => t.replace(new RegExp('(?<![' + cfg.range + '])' + re.source, 'g'), to), part)).join('');
 };
 
 // The model sometimes drops or adds one letter in a Telugu name (రావు -> రవు). Names are found before the honorific
@@ -155,13 +160,21 @@ const oneEdit = (a, b) => {
         : a.length > b.length ? [a.slice(i + 1), b.slice(i)] : [a.slice(i), b.slice(i + 1)];
     return rest[0].join('') === rest[1].join('');
 };
-const fixTeluguNames = (output, draft, language) => {
-    if (language !== 'Telugu') return output;
+// Names are found before the honorific in the draft (Telugu గారు.., Kannada ಅವರು..). A word before the honorific in the
+// output that is one edit away from exactly one draft name, and is not itself a word of the draft, is put back.
+const NAME_CFG = {
+    Telugu: { range: 'ఀ-౿', honor: 'గార(?:ు|ి(?:కి|తో|ని|ది)?)' },
+    Kannada: { range: 'ಀ-೿', honor: 'ಅವರ(?:ು|ಿಗೆ|ನ್ನು|ೊಂದಿಗೆ|ೇ)?' }
+};
+const fixNames = (output, draft, language) => {
+    const cfg = NAME_CFG[language];
+    if (!cfg) return output;
+    const find = new RegExp(`([${cfg.range}]+)\\s+${cfg.honor}(?![${cfg.range}])`, 'g');
     const names = new Set();
-    String(draft).replace(/([ఀ-౿]+)\s+గార(?:ు|ి(?:కి|తో|ని|ది)?)(?![ఀ-౿])/g, (_, n) => names.add(n));
+    String(draft).replace(find, (_, n) => names.add(n));
     if (!names.size) return output;
-    const draftWords = new Set(String(draft).match(/[ఀ-౿]+/g));
-    return output.replace(/([ఀ-౿]+)(\s+గార(?:ు|ి(?:కి|తో|ని|ది)?)(?![ఀ-౿]))/g, (m, word, tail) => {
+    const draftWords = new Set(String(draft).match(new RegExp(`[${cfg.range}]+`, 'g')));
+    return output.replace(new RegExp(`([${cfg.range}]+)(\\s+${cfg.honor})(?![${cfg.range}])`, 'g'), (m, word, tail) => {
         if ([...draftWords].some(w => w === word || (w.startsWith(word) && [...w].length - [...word].length >= 2))) return m; // a word the draft really has is never "corrected"
         const near = [...names].filter(n => oneEdit(word, n));
         return near.length === 1 ? near[0] + tail : m; // an ambiguous match is left alone
@@ -169,12 +182,16 @@ const fixTeluguNames = (output, draft, language) => {
 };
 
 module.exports = {
-    fixTeluguNames,
+    fixNames,
+    fixTeluguNames: fixNames,
     detectLanguage,
     draftLanguage,
     stripStrayScripts,
-    casualizeTelugu,
-    casualizeKannada,
-    isConversationalKannada,
-    isConversationalTelugu
+    casualize,
+    casualizeTelugu: casualize,
+    casualizeKannada: casualize,
+    casualizeHindi: casualize,
+    isConversationalTelugu: sample => isConversational(sample, CASUAL.Telugu),
+    isConversationalKannada: sample => isConversational(sample, CASUAL.Kannada),
+    isConversationalHindi: sample => isConversational(sample, CASUAL.Hindi)
 };

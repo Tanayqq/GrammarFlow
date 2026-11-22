@@ -166,3 +166,35 @@ test('single-quoted text is preserved in both languages, and passive verbs are n
     assert.equal(casualizeTelugu('అతను ‘తెలియజేయండి’ అన్నాడు. తెలియజేయండి.', CASUAL_TE, 'Telugu'), 'అతను ‘తెలియజేయండి’ అన్నాడు. చెప్పండి.');
     assert.equal(casualizeKannada('ಸಭೆಯನ್ನು ಮುಂದೂಡಲಾಗಿದೆ.', CASUAL_KN, 'Kannada'), 'ಸಭೆಯನ್ನು ಮುಂದೂಡಲಾಗಿದೆ.');
 });
+
+const CASUAL_HI = 'हाय - छोटी सी बात। मैं छोटा लिखता हूँ, लंबी भूमिका नहीं। जो कहना है कह कर रुक जाता हूँ। कॉमा कम, डैश ज़्यादा। कभी-कभी छोटा सा जोक - बस जब जमे। पढ़ने के लिए थैंक्स, थोड़ा सीधा लगे तो सॉरी। चाय ठंडी हो रही है, बस।';
+
+test('a casual Hindi sample gets formal Hindi words swapped, meaning kept', () => {
+    const { casualize, isConversationalHindi } = require('../src/utils/language');
+    assert.equal(isConversationalHindi(CASUAL_HI), true);
+    assert.equal(casualize('आदरणीय राव जी, कृपया अपनी उपलब्धता की पुष्टि करें और शीघ्र बताएँ।', CASUAL_HI, 'Hindi'),
+        'राव जी, कृपया अपनी उपलब्धता कन्फर्म कर दें और जल्दी बताएँ।');
+    assert.equal(casualize('शीघ्रता से आइए।', CASUAL_HI, 'Hindi'), 'शीघ्रता से आइए।', 'only the whole word शीघ्र');
+    assert.equal(casualize('कृपया पुष्टि करें।', 'आदरणीय महोदय, सूचित करने हेतु लिख रहा हूँ। '.repeat(6), 'Hindi'), 'कृपया पुष्टि करें।', 'formal sample: no swap');
+    assert.equal(casualize('कृपया पुष्टि करें।', CASUAL_HI, 'Hinglish'), 'कृपया पुष्टि करें।', 'Hinglish has no swap list');
+    assert.equal(casualize('उसने "पुष्टि करें" कहा। पुष्टि करें।', CASUAL_HI, 'Hindi'), 'उसने "पुष्टि करें" कहा। कन्फर्म कर दें।');
+});
+
+test('Kannada names get the same one-letter repair as Telugu, and never swap real people', () => {
+    const { fixNames } = require('../src/utils/language');
+    assert.equal(fixNames('ರಾವ ಅವರಿಗೆ, ಸಭೆ ಮುಂದಕ್ಕೆ.', 'ಗೌರವಾನ್ವಿತ ರಾವ್ ಅವರಿಗೆ, ಸಭೆ.', 'Kannada'), 'ರಾವ್ ಅವರಿಗೆ, ಸಭೆ ಮುಂದಕ್ಕೆ.');
+    assert.equal(fixNames('ರಮ ಅವರು ಬಂದರು.', 'ರಾಮ ಅವರು ಮತ್ತು ರಮ ಅವರು ಬಂದರು.', 'Kannada'), 'ರಮ ಅವರು ಬಂದರು.', 'a name the draft has stays');
+    assert.equal(fixNames('ರಮ ಅವರು ಬಂದರು.', 'ರಾಮ ಅವರು ಬಂದರು. ರಮಾ ಅವರು ಹೋದರು.', 'Kannada'), 'ರಮ ಅವರು ಬಂದರು.', 'two near names: no guess');
+    assert.equal(fixNames('ರಾವ ಅವರಿಗೆ', 'ರಾವ್ ಅವರಿಗೆ', 'English'), 'ರಾವ ಅವರಿಗೆ');
+});
+
+test('Hindi request forms need a right boundary, so कीजिएगा is not half-replaced', () => {
+    const { casualize } = require('../src/utils/language');
+    assert.equal(casualize('कृपया पुष्टि कीजिएगा।', CASUAL_HI, 'Hindi'), 'कृपया पुष्टि कीजिएगा।');
+    assert.equal(casualize('कृपया पुष्टि कीजिए।', CASUAL_HI, 'Hindi'), 'कृपया कन्फर्म कर दें।');
+});
+
+test('straight single-quoted text is preserved too', () => {
+    const { casualize } = require('../src/utils/language');
+    assert.equal(casualize("उसने 'पुष्टि करें' कहा। पुष्टि करें।", CASUAL_HI, 'Hindi'), "उसने 'पुष्टि करें' कहा। कन्फर्म कर दें।");
+});
