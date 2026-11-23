@@ -48,10 +48,10 @@ body.editorial{background:var(--paper);color:var(--ink);font-family:Inter,system
 .editorial :is(#globalControls,#documentModeContainer) select{background:#f5f7f2;color:var(--ink);border:1px solid var(--line);border-radius:7px;box-shadow:none;padding:9px 34px 9px 12px;font-size:12px}
 #humanizeToggle:checked+div{background:var(--accent)}#humanizeToggle:focus-visible+div{outline:3px solid #7b9677;outline-offset:3px}
 #textActionContainer,#documentActionContainer{margin-left:auto}#textActionButtons{gap:9px}
-.editorial :is(#dictateBtn,#fixGrammarBtn,#rewriteBtn,#processDocumentBtn,#downloadPdfBtn,#exploreDocumentBtn){padding:12px 20px;border-radius:8px;font-size:12px;line-height:1.5;background:var(--accent);color:white;border:1px solid var(--accent);font-weight:600;box-shadow:none;white-space:nowrap}
-.editorial :is(#rewriteBtn,#dictateBtn){background:white;color:var(--accent)}.editorial #dictateBtn[aria-pressed="true"]{background:#b42318;border-color:#b42318;color:white}
+.editorial :is(#dictateBtn,#teleprompterBtn,#fixGrammarBtn,#rewriteBtn,#processDocumentBtn,#downloadPdfBtn,#exploreDocumentBtn){padding:12px 20px;border-radius:8px;font-size:12px;line-height:1.5;background:var(--accent);color:white;border:1px solid var(--accent);font-weight:600;box-shadow:none;white-space:nowrap}
+.editorial :is(#rewriteBtn,#dictateBtn,#teleprompterBtn){background:white;color:var(--accent)}.editorial #dictateBtn[aria-pressed="true"]{background:#b42318;border-color:#b42318;color:white}
 .editorial :is(#fixGrammarBtn,#processDocumentBtn,#downloadPdfBtn,#exploreDocumentBtn):hover{background:#244b36}
-.editorial :is(#rewriteBtn,#dictateBtn[aria-pressed="false"]):hover{background:var(--wash)}
+.editorial :is(#rewriteBtn,#teleprompterBtn,#dictateBtn[aria-pressed="false"]):hover{background:var(--wash)}
 .document-feature{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:26px 30px;background:#e9efe4;border:1px solid #dfe6d8;border-radius:12px}
 .document-feature .eyebrow{margin-bottom:8px}.document-feature h2{font-size:23px;margin-bottom:5px}
 .workspace-footer{display:flex;justify-content:space-between;gap:20px;font-size:10px;color:var(--muted)}
@@ -126,19 +126,40 @@ body.editorial{background:var(--paper);color:var(--ink);font-family:Inter,system
 .voice-foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:12px;color:var(--muted)}
 .voice-foot button{background:transparent;border:1px solid var(--line);border-radius:8px;padding:5px 12px;color:var(--muted)}
 
-/* Teleprompter overlay */
-.tp { position: fixed; inset: 0; z-index: 2147483000; background: #000; color: #fff; }
+/* Teleprompter: the editorial look (ivory paper, forest ink), plus a deep-forest variant for dim rooms. The fallbacks matter:
+   a pop-out window gets only these rules, not the page's :root colors. */
+.tp { position: fixed; inset: 0; z-index: 2147483000; background: var(--paper, #f6f5ef); color: var(--ink, #263c33); font-family: Inter, system-ui, sans-serif;
+  --tp-bar: #fff; --tp-line: var(--line, #dce2d8); --tp-btn: #fff; --tp-btn-ink: var(--accent, #315f46); --tp-btn-border: #b9c8b8;
+  --tp-hover: var(--wash, #edf1e8); --tp-muted: var(--muted, #637168); --tp-rule: var(--accent, #315f46); }
+.tp.tp-dark { background: #17231d; color: #f6f5ef; --tp-bar: #1d2c24; --tp-line: #2e4237; --tp-btn: transparent; --tp-btn-ink: #dfe8dc;
+  --tp-btn-border: #3a5244; --tp-hover: #263a2f; --tp-muted: #9db09a; --tp-rule: #8fb08a; }
 .tp-stage { height: 100%; overflow-y: auto; scrollbar-width: none; outline: none; }
 .tp-stage::-webkit-scrollbar { display: none; }
 .tp-text { max-width: 60rem; margin: 0 auto; padding: 50vh 1.5rem 60vh; line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
 .tp-text.tp-mirror { transform: scaleX(-1); }
-.tp-line { position: fixed; left: 0; right: 0; top: 50%; height: 2px; background: rgba(168, 85, 247, 0.7); pointer-events: none; }
-.tp-bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; padding: 0.75rem 1rem; background: rgba(20, 20, 40, 0.94); border-top: 1px solid rgba(255, 255, 255, 0.1); }
-.tp-btn { min-height: 44px; min-width: 44px; padding: 0 0.9rem; border-radius: 0.75rem; background: #252545; color: #e5e7eb; border: 1px solid rgba(255, 255, 255, 0.1); font-weight: 600; }
-.tp-btn:hover, .tp-btn:focus-visible { background: #2d2d55; outline: 2px solid rgba(168, 85, 247, 0.8); }
-.tp-btn[aria-pressed="true"] { background: #6d28d9; }
-.tp-range { width: 8rem; min-height: 44px; }
-.tp-value { min-width: 4.5rem; color: #9ca3af; font-size: 0.85rem; }
-.tp-gap { flex: 0 0 0.5rem; }
-@media (prefers-reduced-motion: reduce) { .tp-stage { scroll-behavior: auto; } }
-.tp-count { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 30vmin; font-weight: 700; color: rgba(255, 255, 255, 0.9); text-shadow: 0 0 40px rgba(168, 85, 247, 0.8); pointer-events: none; }
+.tp-line { position: fixed; left: 0; right: 0; top: 50%; height: 2px; background: var(--tp-rule); opacity: 0.55; pointer-events: none; }
+.tp-bar { position: fixed; left: 0; right: 0; bottom: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 16px; background: var(--tp-bar); border-top: 1px solid var(--tp-line); }
+.tp-btn { min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 8px; font-size: 12px; font-weight: 600; line-height: 1.5; background: var(--tp-btn); color: var(--tp-btn-ink); border: 1px solid var(--tp-btn-border); cursor: pointer; transition: background 0.18s, color 0.18s; }
+.tp-btn:hover { background: var(--tp-hover); }
+.tp-btn[aria-pressed="true"] { background: var(--tp-hover); border-color: var(--tp-rule); font-weight: 700; }
+.tp-btn.tp-primary { background: var(--accent, #315f46); border-color: var(--accent, #315f46); color: #fff; }
+.tp-btn.tp-primary:hover { background: #244b36; }
+.tp-dark .tp-btn.tp-primary { background: #5b9a76; border-color: #5b9a76; color: #10201a; }
+.tp-dark .tp-btn.tp-primary:hover { background: #6fae8a; }
+.tp :is(button, input, [tabindex]):focus-visible { outline: 3px solid #7b9677; outline-offset: 3px; }
+.tp-range { width: 8rem; min-height: 44px; accent-color: var(--accent, #315f46); }
+.tp-dark .tp-range { accent-color: #8fb08a; }
+.tp-value { min-width: 4.5rem; color: var(--tp-muted); font-size: 11px; }
+.tp-gap { flex: 0 0 8px; }
+.tp-count { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Libre Baskerville', Georgia, serif; font-size: 30vmin; font-weight: 400; color: var(--accent, #315f46); pointer-events: none; }
+.tp-dark .tp-count { color: #dfe8dc; }
+.tp-hint { position: fixed; left: 0; right: 0; bottom: 4.6rem; padding: 0 1rem; text-align: center; color: var(--tp-muted); font-size: 11px; pointer-events: none; }
+.tp-hint:empty { display: none; }
+.tp-showbtn { display: none; }
+.tp-hidden > .tp-stage, .tp-hidden > .tp-line, .tp-hidden > .tp-count, .tp-hidden > .tp-hint, .tp-hidden > .tp-bar { visibility: hidden; }
+.tp-hidden > .tp-showbtn { display: block; position: fixed; right: 12px; bottom: 12px; min-height: 44px; padding: 0 14px; border-radius: 8px; background: var(--tp-bar); color: var(--tp-muted); border: 1px solid var(--tp-line); font-size: 11px; cursor: pointer; }
+.tp-hidden > .tp-showbtn:hover { background: var(--tp-hover); }
+
+/* The Teleprompter button under a result follows the other buttons in the result cards. */
+.read-btn-mini { margin-top: 12px; min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line); font-size: 12px; font-weight: 600; }
+.read-btn-mini:hover { border-color: var(--accent); }

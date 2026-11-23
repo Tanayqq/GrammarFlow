@@ -439,7 +439,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-    const renderResults = (results) => {
+    const renderResults = (results, readable = false) => {
         const tab = (window.documentProcessor && window.documentProcessor.currentTab) || 'text';
         const resultsList = tab === 'text' ? document.getElementById("resultsList") : document.getElementById("docResultsList");
         if (!resultsList) return;
@@ -531,6 +531,18 @@ document.addEventListener("DOMContentLoaded", () => {
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                         </svg>
                     </button>`;
+            }
+            if (readable && window.GFTeleprompter) {
+                const readBtn = document.createElement('button');
+                readBtn.type = 'button';
+                readBtn.className = 'read-btn-mini';
+                readBtn.textContent = 'Teleprompter';
+                readBtn.title = 'Read this result full-screen, scrolling at your pace.';
+                readBtn.onclick = () => {
+                    const shown = card.querySelector('.result-text');
+                    window.GFTeleprompter.openTeleprompter(shown ? (shown.innerText || shown.textContent) : text);
+                };
+                card.appendChild(readBtn);
             }
             resultsList.appendChild(card);
         });
@@ -745,13 +757,13 @@ document.addEventListener("DOMContentLoaded", () => {
             const linesCount = text.split("\n").map(l => l.trim()).filter(Boolean).length;
             if (linesCount > 15) {
                 const results = await processLargeText(text, "rewrite");
-                renderResults(results);
+                renderResults(results, true);
             } else {
                 const res = await GrammarFlowAPI.request("/rewrite", {
                     text, style: UI.styleSelect.value, tone: UI.toneSelect.value,
                     language: UI.languageSelect.value, humanize: UI.humanizeToggle.checked
                 });
-                renderResults(res.data);
+                renderResults(res.data, true);
             }
         } catch (e) { renderResults([`Error: ${e.message}`]); }
         finally { setBusy(false); }
@@ -928,7 +940,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const linesCount = text.split("\n").map(l => l.trim()).filter(Boolean).length;
             if (linesCount > 15) {
                 const result = await processLargeText(text, "grammar-fix");
-                renderResults([result]);
+                renderResults([result], true);
             } else {
                 const res = await GrammarFlowAPI.request("/grammar-fix", {
                     text,
@@ -940,9 +952,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 if (res.data && res.data.status === "queued" && res.data.jobId) {
                     const result = await pollJobStatus(res.data.jobId);
-                    renderResults([result]);
+                    renderResults([result], true);
                 } else {
-                    renderResults(res.data);
+                    renderResults(res.data, true);
                 }
             }
         } catch (e) { renderResults([`Error: ${e.message}`]); }

@@ -37,6 +37,7 @@ async function editor(t, respond = () => ({ success: true, data: ['Corrected tex
     w.eval(read('public/vendor/purify.min.js'));
     const { marked } = await import('marked');
     w.marked = marked;
+    w.eval(read('public/teleprompter.js'));
     w.eval(read('public/app-v16.js'));
     // Execute inline scripts too: duplicate tab handlers previously referenced missing elements.
     for (const script of w.document.querySelectorAll('script:not([src])')) w.eval(script.textContent);
@@ -356,4 +357,35 @@ test('long explanations label partial output, resume only identical source and s
     p.requestWithRetry = async text => { assert.equal(text, 'different'); return 'Naya source alag hai.'; };
     await p.processDocument();
     assert.equal(resumes, 1); assert.equal(p.finalOutput, 'Naya source alag hai.');
+});
+
+test('Rewrite results get a Teleprompter button that reads that version; errors do not', async t => {
+    const versions = ['First version of my words.', 'Second version, a bit shorter.', 'Third <b>version</b> & more.'];
+    const app = await editor(t, () => ({ success: true, data: versions }));
+    app.get('inputText').value = 'A synthetic sentence.';
+    await app.get('rewriteBtn').onclick();
+    const buttons = [...app.get('resultsList').querySelectorAll('.read-btn-mini')];
+    assert.equal(buttons.length, 3, 'one button per version');
+    buttons[1].click();
+    const overlay = app.w.document.querySelector('.tp');
+    assert.ok(overlay, 'the teleprompter opened');
+    assert.equal(overlay.querySelector('.tp-text').textContent.trim(), 'Second version, a bit shorter.');
+    app.w.document.querySelector('.tp-btn:last-child').click();
+    assert.equal(app.w.document.querySelector('.tp'), null);
+    buttons[2].click();
+    assert.equal(app.w.document.querySelector('.tp-text').textContent.trim(), 'Third version & more.', 'the shown text, not markup');
+    app.w.document.querySelector('.tp-btn:last-child').click();
+
+    const failing = await editor(t, () => { throw new Error('Synthetic network failure'); });
+    failing.get('inputText').value = 'A synthetic sentence.';
+    await failing.get('rewriteBtn').onclick();
+    assert.equal(failing.get('resultsList').querySelector('.read-btn-mini'), null, 'an error message is not readable');
+});
+
+test('Fix Grammar results are readable too, and show the corrected text only', async t => {
+    const app = await editor(t, () => ({ success: true, data: ['Corrected sentence.===GF_SEPARATOR===**Why:** a comma.'] }));
+    app.get('inputText').value = 'A synthetic sentence.';
+    await app.get('fixGrammarBtn').onclick();
+    app.get('resultsList').querySelector('.read-btn-mini').click();
+    assert.equal(app.w.document.querySelector('.tp-text').textContent.trim(), 'Corrected sentence.');
 });
