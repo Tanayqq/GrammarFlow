@@ -227,8 +227,8 @@ test('HTTP registration requires OTP proof and login issues a verified server se
         assert.equal((await request('sync', {}, `mock_token_${address}_Test`)).status, 401);
         assert.equal((await request('sync', {}, loggedIn.body.data.token + 'x')).status, 401);
         // A registered account linked to an old guest header must never migrate to another account.
-        users.set('victim', { id: 'victim', email: email(), password_hash: 'hash', guest_session_id: 'old-guest' });
-        assert.equal((await request('sync', { guestSessionId: 'old-guest' }, loggedIn.body.data.token)).status, 200);
+        users.set('victim', { id: 'victim', email: email(), password_hash: 'hash', guest_session_id: 'old-guest-session-id' });
+        assert.equal((await request('sync', { guestSessionId: 'old-guest-session-id' }, loggedIn.body.data.token)).status, 200);
         assert.equal(migrated, false);
         // Historical local account IDs remain usable after replacing unsigned tokens.
         const legacy = { id: 'mock_user_legacy', email: email(), name: 'Legacy', password_hash: [...users.values()][0].password_hash };
@@ -278,7 +278,7 @@ test('browser requests retain server sessions when Clerk is signed out', async (
 });
 
 test('a leaked guest header cannot read or delete registered-account history', async () => {
-    let owner = { guest_session_id: 'leaked-header', email: 'owner@example.com', password_hash: 'hash' };
+    let owner = { guest_session_id: 'leaked-header-guest-id', email: 'owner@example.com', password_hash: 'hash' };
     let deleted = false;
     const controller = load('src/controllers/ai.controller.js', {
         '../services/ai.service': {}, '../queue': {}, '../historyQueue': {}, '../historyWorker': {},
@@ -292,7 +292,7 @@ test('a leaked guest header cannot read or delete registered-account history', a
     });
     const invoke = async (fn, userId = null) => {
         const response = { statusCode: 200, setHeader() {}, status(code) { this.statusCode = code; return this; }, json(body) { this.body = body; } };
-        await fn({ headers: { 'x-guest-session-id': 'leaked-header' }, params: { id: 'operation' }, userId }, response);
+        await fn({ headers: { 'x-guest-session-id': 'leaked-header-guest-id' }, params: { id: 'operation' }, userId }, response);
         return response.statusCode;
     };
     assert.equal(await invoke(controller.getHistoryDetail), 403);
@@ -300,14 +300,14 @@ test('a leaked guest header cannot read or delete registered-account history', a
     assert.equal(deleted, false);
     assert.equal(await invoke(controller.getHistoryDetail, 'owner'), 200);
     assert.equal(await invoke(controller.getHistoryDetail, 'other-user'), 403);
-    owner = { guest_session_id: 'leaked-header', email: null, password_hash: null };
+    owner = { guest_session_id: 'leaked-header-guest-id', email: null, password_hash: null };
     assert.equal(await invoke(controller.getHistoryDetail), 200);
     assert.equal(await invoke(controller.deleteHistory), 200);
     assert.equal(deleted, true);
 });
 
 test('getHistoryDetail never sends the owner\'s password hash (or any user field) to the client', async () => {
-    const owner = { guest_session_id: 'leaked-header', email: 'owner@example.com', password_hash: 'super-secret-bcrypt-hash' };
+    const owner = { guest_session_id: 'leaked-header-guest-id', email: 'owner@example.com', password_hash: 'super-secret-bcrypt-hash' };
     const controller = load('src/controllers/ai.controller.js', {
         '../services/ai.service': {}, '../queue': {}, '../historyQueue': {}, '../historyWorker': {},
         '../db': { aiOperation: {

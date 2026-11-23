@@ -4,6 +4,33 @@ const prisma = require('./db');
 
 const MODEL_NAME = 'openai/gpt-oss-120b';
 
+// "Clear all" records when it happened, per owner (the signed-in user, or the guest session). A save that was queued
+// before that moment is dropped, even if the queue only gets to it afterwards. Saves queued after it are kept.
+// If Redis is unavailable this is skipped, and a save made in the last second before a clear can survive it.
+const clearedKey = owner => `gf:histclear:${owner}`;
+
+async function markHistoryCleared(owner) {
+    if (!owner || !redisConnection || redisConnection.status !== 'ready') return;
+    try { await redisConnection.set(clearedKey(owner), String(Date.now()), 'EX', 600); } catch { /* best effort */ }
+}
+
+async function clearedAfterQueued(data) {
+    const owner = data.user_id || data.guest_session_id;
+    if (!data.queued_at || !owner || !redisConnection || redisConnection.status !== 'ready') return false;
+    try { return Number(await redisConnection.get(clearedKey(owner))) >= data.queued_at; } catch { return false; }
+}
+
+// Two first requests from a new guest can both try to create the same row: the loser hits the unique index.
+// By then the row exists, so the same call simply finds it.
+async function upsertUser(args) {
+    try {
+        return await prisma.user.upsert(args);
+    } catch (error) {
+        if (error.code !== 'P2002') throw error;
+        return prisma.user.upsert(args);
+    }
+}
+
 async function logHistoryRecord(data) {
     const {
         guest_session_id,
@@ -25,12 +52,13 @@ async function logHistoryRecord(data) {
     if (!guest_session_id && !user_id) {
         return;
     }
+    if (await clearedAfterQueued(data)) return; // the history was cleared after this save was queued
 
     try {
         let user;
         if (user_id) {
             // Find or create User by authenticated user_id
-            user = await prisma.user.upsert({
+            user = await upsertUser({
                 where: { id: user_id },
                 update: {},
                 create: {
@@ -44,7 +72,7 @@ async function logHistoryRecord(data) {
             });
         } else {
             // Find or create User by guest_session_id
-            user = await prisma.user.upsert({
+            user = await upsertUser({
                 where: { guest_session_id },
                 update: {},
                 create: {
@@ -78,7 +106,9 @@ async function logHistoryRecord(data) {
 
         console.log(`[HISTORY] ✓ Logged "${operation_type}" for user/guest: ${(user_id || guest_session_id).substring(0, 8)}...`);
     } catch (error) {
+        // Rethrown on purpose: the queue retries a failed job (3 tries), and callers that run this directly catch it.
         console.error(`[HISTORY ERROR] Failed to save operation:`, error.message);
+        throw error;
     }
 }
 
@@ -105,4 +135,4 @@ try {
     console.warn('[BULLMQ] History worker initialization skipped:', workerErr.message);
 }
 
-module.exports = { historyWorker, logHistoryRecord };
+module.exports = { historyWorker, logHistoryRecord, markHistoryCleared };

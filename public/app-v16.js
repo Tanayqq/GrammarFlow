@@ -1796,6 +1796,33 @@ document.addEventListener("DOMContentLoaded", () => {
         closeHistoryBtn.onclick = () => historyModal.classList.add("hidden");
     }
 
+    // Clear every history entry, on the server and in this browser's offline copies.
+    // Reads that were already on their way when Clear all starts (or finishes) must not draw or cache deleted text,
+    // so each read remembers this counter and drops its answer if the counter moved.
+    let historyEpoch = 0;
+    const clearHistoryBtn = document.getElementById("clearHistoryBtn");
+    if (clearHistoryBtn) {
+        clearHistoryBtn.onclick = async () => {
+            if (!confirm("Delete your entire writing history? This cannot be undone.")) return;
+            clearHistoryBtn.disabled = true;
+            historyEpoch++;
+            try {
+                const res = await GrammarFlowAPI.request("/history", undefined, "DELETE");
+                if (!res.success) throw new Error(res.error?.message || "Unknown error");
+                historyEpoch++;
+                Object.keys(localStorage).forEach(key => {
+                    if (key === "gf_history_cache" || key.startsWith("gf_history_detail_")) localStorage.removeItem(key);
+                });
+                renderHistoryList([]);
+            } catch (err) {
+                alert("Couldn't clear history: " + err.message);
+                loadHistory(); // a read that was cancelled when the clear started must not leave "Loading..." on screen
+            } finally {
+                clearHistoryBtn.disabled = false;
+            }
+        };
+    }
+
     // Modal Control: Close Settings
     if (closeSettingsBtn && settingsModal) {
         closeSettingsBtn.onclick = () => settingsModal.classList.add("hidden");
@@ -2449,9 +2476,11 @@ document.addEventListener("DOMContentLoaded", () => {
         // ─── END AUTH GATE ────────────────────────────────────────────────────
 
         container.innerHTML = `<p class="text-gray-400 text-center py-8">Loading history...</p>`;
-        
+        const epoch = historyEpoch;
+
         try {
             const res = await GrammarFlowAPI.request("/history?page=1&limit=20", undefined, "GET");
+            if (epoch !== historyEpoch) return; // history was cleared while this was loading
             if (res.success && res.data && res.data.operations) {
                 const ops = res.data.operations;
                 
@@ -2463,6 +2492,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 loadHistoryFromCache(container);
             }
         } catch (err) {
+            if (epoch !== historyEpoch) return;
             console.warn("[HISTORY] Failed to fetch live history, falling back to local cache:", err.message);
             loadHistoryFromCache(container);
         }
@@ -2591,9 +2621,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!container) return;
         
         container.innerHTML = `<p class="text-gray-400 text-center py-8">Loading details...</p>`;
-        
+        const epoch = historyEpoch;
+
         try {
             const res = await GrammarFlowAPI.request(`/history/${opId}`, undefined, "GET");
+            if (epoch !== historyEpoch) return; // history was cleared while this was loading
             if (res.success && res.data) {
                 const op = res.data;
                 
@@ -2605,6 +2637,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 loadDetailFromCache(container, opId);
             }
         } catch (err) {
+            if (epoch !== historyEpoch) return;
             console.warn("[HISTORY] Failed to fetch live detail, falling back to local cache:", err.message);
             loadDetailFromCache(container, opId);
         }

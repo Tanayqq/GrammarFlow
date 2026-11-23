@@ -52,6 +52,10 @@ class ClerkAuthProvider {
             console.warn('[CLERK AUTH WARNING] Production is using Clerk DEVELOPMENT keys (pk_test_/sk_test_). Create a Clerk production instance and replace CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY and CLERK_ISSUER.');
         }
 
+        // Clerk session tokens usually carry no email or name, so each one needs a profile lookup. Remember the answers.
+        this.detailsCache = new Map();
+        this.detailsPending = new Map();
+
         this.client = null;
         if (this.jwksUri) {
             // Instance-hosted JWKS is a safe fallback; the shared API host is not an issuer.
@@ -109,7 +113,7 @@ class ClerkAuthProvider {
                 
                 if ((!email || !name) && this.secretKey) {
                     try {
-                        const details = await this.getUserDetails(decoded.sub);
+                        const details = await this.cachedUserDetails(decoded.sub);
                         email = details.email || email;
                         name = details.name || name;
                     } catch (e) {
@@ -126,6 +130,24 @@ class ClerkAuthProvider {
         });
     }
 
+    // A profile is remembered for 10 minutes (a name or email change shows up after that), a failure for 30 seconds so a
+    // Clerk outage or rate limit is not hammered, and callers that arrive during a lookup share it.
+    cachedUserDetails(userId) {
+        const hit = this.detailsCache.get(userId);
+        if (hit && hit.expires > Date.now()) return hit.error ? Promise.reject(hit.error) : Promise.resolve(hit.value);
+        if (this.detailsPending.has(userId)) return this.detailsPending.get(userId);
+        const remember = entry => {
+            if (this.detailsCache.size >= 500) this.detailsCache.delete(this.detailsCache.keys().next().value);
+            this.detailsCache.set(userId, entry);
+        };
+        const request = this.getUserDetails(userId)
+            .then(value => { remember({ value, expires: Date.now() + 10 * 60 * 1000 }); return value; },
+                error => { remember({ error, expires: Date.now() + 30 * 1000 }); throw error; })
+            .finally(() => this.detailsPending.delete(userId));
+        this.detailsPending.set(userId, request);
+        return request;
+    }
+
     /**
      * Fetches user metadata using Clerk Backend API.
      */
@@ -138,7 +160,8 @@ class ClerkAuthProvider {
             headers: {
                 'Authorization': `Bearer ${this.secretKey}`,
                 'Content-Type': 'application/json'
-            }
+            },
+            signal: AbortSignal.timeout(4000) // a stalled lookup ends, so it cannot hold up callers that share it
         });
 
         if (!response.ok) {

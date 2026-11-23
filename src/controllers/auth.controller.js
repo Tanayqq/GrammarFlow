@@ -6,6 +6,7 @@ const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const { isDatabaseDown } = require('../utils/databaseError');
 const loginThrottle = require('../services/auth/loginThrottle');
+const { cleanGuestId } = require('../utils/guestId');
 // Hash of a random value nobody knows; compared against when the email is unknown.
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(require('node:crypto').randomBytes(16).toString('hex'), 12);
 
@@ -22,7 +23,7 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  */
 const syncSession = async (req, res) => {
     try {
-        const { guestSessionId } = req.body;
+        const guestSessionId = cleanGuestId(req.body.guestSessionId); // the same plain-token rule as the header
         const authUser = req.user; // populated by passiveAuth middleware
 
         if (!authUser || !req.userId) {
@@ -310,14 +311,17 @@ const register = async (req, res) => {
         // It is only looked at here and spent just before the account is created, so a database hiccup does not waste it.
         if (!await verification.peekProof(cleanEmail, verificationToken)) return proofRequired();
         const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
-        if (existingUser) {
+        if (existingUser && existingUser.password_hash) {
             return res.status(409).json({ success: false, error: { message: "An account with this email already exists. Please log in.", code: "EMAIL_EXISTS" } });
         }
         if (!await verification.consumeProof(cleanEmail, verificationToken)) return proofRequired(); // used by a parallel request
         const passwordHash = await bcrypt.hash(password, 12);
-        const user = await prisma.user.create({
-            data: { id: randomUUID(), email: cleanEmail, name: cleanName, password_hash: passwordHash }
-        });
+        // An account that came through Clerk (Google, for example) has an email but no password. The person has just proved
+        // they own that mailbox, so the same account gets a password and keeps its history. Without this, they were told
+        // "an account exists, log in" and then could not log in.
+        const user = existingUser
+            ? await prisma.user.update({ where: { id: existingUser.id }, data: { password_hash: passwordHash, name: existingUser.name || cleanName } })
+            : await prisma.user.create({ data: { id: randomUUID(), email: cleanEmail, name: cleanName, password_hash: passwordHash } });
 
         console.log(`[AUTH CONTROLLER] Registered new user: ${cleanEmail} (ID: ${user.id})`);
 

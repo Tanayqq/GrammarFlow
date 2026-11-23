@@ -3,7 +3,9 @@ const dictation = require('../services/dictation');
 const prompts = require('../config/prompts');
 const { aiQueue, redisConnection } = require('../queue');
 const { aiHistoryQueue } = require('../historyQueue');
-const { logHistoryRecord } = require('../historyWorker');
+const { logHistoryRecord, markHistoryCleared } = require('../historyWorker');
+const { readGuestId } = require('../utils/guestId');
+const { isDatabaseDown } = require('../utils/databaseError');
 const prisma = require('../db');
 const { detectLanguage, draftLanguage, stripStrayScripts, casualize, fixNames, fixHindiGender } = require('../utils/language');
 const { sendAIError } = require('../utils/publicError');
@@ -28,7 +30,7 @@ const rewrite = async (req, res, next) => {
     const startTime = Date.now();
     try {
         const { text, style = "Casual", tone = "Friendly", humanize = false } = req.body;
-        const guestSessionId = req.headers['x-guest-session-id'] || null;
+        const guestSessionId = readGuestId(req);
         const userId = req.userId || null;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required", code: "MISSING_INPUT" } });
         const language = draftLanguage(text, req.body.language || "English"); // follow the draft, not the menu
@@ -104,6 +106,7 @@ const rewrite = async (req, res, next) => {
         // Queue history logging asynchronously — never blocks response
         if (guestSessionId || userId) {
             const historyPayload = {
+                queued_at:          Date.now(),
                 guest_session_id:   guestSessionId,
                 user_id:            userId,
                 input_text:         text,
@@ -130,7 +133,7 @@ const rewrite = async (req, res, next) => {
 const grammarFix = async (req, res, next) => {
     try {
         const { text, style = "Standard", tone = "Neutral", humanize = false, learningMode = false } = req.body;
-        const guestSessionId = req.headers['x-guest-session-id'] || null;
+        const guestSessionId = readGuestId(req);
         const userId = req.userId || null;
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required" } });
         const language = draftLanguage(text, req.body.language || "English");
@@ -194,6 +197,7 @@ const grammarFix = async (req, res, next) => {
 
         if (guestSessionId || userId) {
             const historyData = {
+                queued_at:          Date.now(),
                 guest_session_id:   guestSessionId || 'unknown',
                 user_id:            userId || null,
                 input_text:         text,
@@ -383,7 +387,7 @@ const processDocument = async (req, res, next) => {
     const startTime = Date.now();
     try {
         const { text, mode = "Summarize", language = "English", style = "Casual", tone = "Friendly", humanize = false, isConsolidation = false } = req.body;
-        const guestSessionId = req.headers['x-guest-session-id'] || null;
+        const guestSessionId = readGuestId(req);
 
         if (!text || text.trim().length === 0) {
             return res.status(400).json({ success: false, error: { message: "Document text is required" } });
@@ -439,7 +443,7 @@ const checkJobStatus = async (req, res, next) => {
         }
         const ownsJob = job.data?.user_id
             ? req.userId && req.userId === job.data.user_id
-            : job.data?.guest_session_id && req.headers['x-guest-session-id'] === job.data.guest_session_id;
+            : job.data?.guest_session_id && readGuestId(req) === job.data.guest_session_id;
         if (!ownsJob) return res.status(404).json({ success: false, error: { message: 'Job not found' } });
 
         let state = 'active';
@@ -477,7 +481,7 @@ const getHistory = async (req, res) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     try {
-        const guestSessionId = req.headers['x-guest-session-id'] || null;
+        const guestSessionId = readGuestId(req);
         if (!req.userId && !guestSessionId) {
             return res.status(400).json({ success: false, error: { message: 'Authentication or x-guest-session-id header is required' } });
         }
@@ -559,7 +563,7 @@ const getHistoryDetail = async (req, res) => {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     try {
-        const guestSessionId = req.headers['x-guest-session-id'] || null;
+        const guestSessionId = readGuestId(req);
 
         let operation = null;
         try {
@@ -596,7 +600,7 @@ const getHistoryDetail = async (req, res) => {
 
 const deleteHistory = async (req, res) => {
     try {
-        const guestSessionId = req.headers['x-guest-session-id'] || null;
+        const guestSessionId = readGuestId(req);
         const opId = req.params.id;
 
         // Find the operation first to verify ownership
@@ -627,6 +631,38 @@ const deleteHistory = async (req, res) => {
     } catch (error) {
         console.error('[API v1] deleteHistory error:', error.message);
         res.status(500).json({ success: false, error: { message: 'Failed to delete history item' } });
+    }
+};
+
+// Deletes every history entry of the caller: the signed-in user, or a guest identified by the session header.
+// A guest header can never reach a registered account's history.
+const deleteAllHistory = async (req, res) => {
+    try {
+        let ownerId = req.userId || null;
+        if (!ownerId) {
+            const guestSessionId = readGuestId(req);
+            if (!guestSessionId) {
+                return res.status(400).json({ success: false, error: { message: 'Authentication or x-guest-session-id header is required' } });
+            }
+            const guest = await prisma.user.findUnique({ where: { guest_session_id: guestSessionId } });
+            if (guest && (guest.email || guest.password_hash)) return sendResponse(res, true, { deleted: 0 }); // never a registered account
+            // A guest's first save may still be queued with no row yet: record the clear anyway.
+            await markHistoryCleared(guestSessionId);
+            if (!guest) return sendResponse(res, true, { deleted: 0 });
+            ownerId = guest.id;
+        } else {
+            await markHistoryCleared(ownerId);
+        }
+        // Saves queued before this moment are dropped by the history writer, so they cannot bring the history back.
+        // This is a best-effort boundary (see historyWorker.js), not a database transaction.
+        const result = await prisma.aiOperation.deleteMany({ where: { user_id: ownerId } });
+        sendResponse(res, true, { deleted: result.count });
+    } catch (error) {
+        if (isDatabaseDown(error)) {
+            return res.status(503).json({ success: false, error: { message: 'Database is temporarily offline.', code: 'DATABASE_OFFLINE' } });
+        }
+        console.error('[API v1] deleteAllHistory error:', error.message);
+        res.status(500).json({ success: false, error: { message: 'Failed to clear history' } });
     }
 };
 
@@ -884,6 +920,7 @@ module.exports = {
     getHistory,
     getHistoryDetail,
     deleteHistory,
+    deleteAllHistory,
     humanizeText,
     humanizeFile
 };

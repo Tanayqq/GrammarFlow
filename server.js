@@ -7,6 +7,7 @@ const aiRoutes = require('./src/routes/ai.routes');
 // Initialize background queue workers
 if (process.env.ENABLE_BACKGROUND_QUEUES === 'true') require('./src/worker');
 require('./src/historyWorker'); // ai-history queue (async DB logging)
+require('./src/historyRetention').start(); // old history expires (see HISTORY_GUEST_DAYS / HISTORY_USER_DAYS)
 
 const app = express();
 if (process.env.RENDER === 'true') app.set('trust proxy', require('./src/config/trustedProxies'));
