@@ -141,3 +141,4 @@ body.editorial{background:var(--paper);color:var(--ink);font-family:Inter,system
 .tp-value { min-width: 4.5rem; color: #9ca3af; font-size: 0.85rem; }
 .tp-gap { flex: 0 0 0.5rem; }
 @media (prefers-reduced-motion: reduce) { .tp-stage { scroll-behavior: auto; } }
+.tp-count { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 30vmin; font-weight: 700; color: rgba(255, 255, 255, 0.9); text-shadow: 0 0 40px rgba(168, 85, 247, 0.8); pointer-events: none; }

@@ -5,6 +5,7 @@
 
     const LIMITS = { speed: [10, 300], size: [24, 120] };
     const DEFAULTS = { speed: 60, size: 48, mirror: false };
+    const COUNTDOWN = 3; // seconds shown before scrolling starts from the top
     const KEY = 'gf_teleprompter';
 
     const clamp = (value, [lo, hi]) => Math.min(hi, Math.max(lo, value));
@@ -68,9 +69,13 @@
             mk('Faster', 'Faster (Arrow up)', () => setSpeed(settings.speed + 10)), speedLabel,
             mk('A-', 'Smaller text (-)', () => setSize(settings.size - 4)), sizeLabel,
             mk('A+', 'Larger text (+)', () => setSize(settings.size + 4)), mirrorBtn, closeBtn);
-        overlay.append(stage, line, bar);
+        const countEl = el(doc, 'div', 'tp-count');
+        countEl.setAttribute('aria-live', 'assertive');
+        overlay.append(stage, line, countEl, bar);
 
         let playing = false;
+        let counting = 0; // seconds left in the countdown, 0 when none
+        let countTimer = 0;
         let pos = 0;
         let frame = 0;
         let last = 0;
@@ -84,7 +89,7 @@
             content.style.fontSize = settings.size + 'px';
             content.classList.toggle('tp-mirror', settings.mirror);
             mirrorBtn.setAttribute('aria-pressed', String(settings.mirror));
-            playBtn.textContent = playing ? 'Pause' : (pos > 0 && pos >= maxScroll() ? 'Restart' : 'Play');
+            playBtn.textContent = counting ? 'Cancel' : playing ? 'Pause' : (pos > 0 && pos >= maxScroll() ? 'Restart' : 'Play');
         };
         const setSpeed = v => { settings.speed = clamp(Math.round(v), LIMITS.speed); saveSettings(settings); render(); };
         const setSize = v => { settings.size = clamp(Math.round(v), LIMITS.size); saveSettings(settings); render(); };
@@ -103,16 +108,34 @@
             last = now;
             if (playing && raf) frame = raf(loop);
         };
+        const stopCount = () => {
+            if (countTimer) root.clearInterval(countTimer);
+            countTimer = 0; counting = 0; countEl.textContent = '';
+        };
+        const startPlaying = () => { playing = true; last = 0; render(); if (raf) frame = raf(loop); };
+        const startCount = () => {
+            counting = COUNTDOWN;
+            countEl.textContent = String(counting);
+            render();
+            countTimer = root.setInterval(() => {
+                if (!counting) return; // a stray tick after Cancel, Top or Close must not start the text
+                counting -= 1;
+                if (counting > 0) { countEl.textContent = String(counting); return; }
+                stopCount();
+                startPlaying();
+            }, 1000);
+        };
+        // Play from the top counts down first; Play again during the countdown cancels it; resuming mid-text starts at once.
         function toggle() {
             if (!body) return;
-            if (!playing && pos >= maxScroll() && pos > 0) reset();
-            playing = !playing;
-            last = 0;
-            render();
-            if (playing && raf) frame = raf(loop);
+            if (counting) { stopCount(); render(); return; }
+            if (playing) { playing = false; render(); return; }
+            if (pos >= maxScroll() && pos > 0) reset();
+            if (pos === 0) startCount(); else startPlaying();
         }
-        function reset() { pos = 0; stage.scrollTop = 0; render(); }
+        function reset() { stopCount(); pos = 0; stage.scrollTop = 0; render(); }
         function close() {
+            stopCount();
             playing = false;
             if (frame && root.cancelAnimationFrame) root.cancelAnimationFrame(frame);
             doc.removeEventListener('keydown', onKey, true);
@@ -145,7 +168,7 @@
         if (overlay.requestFullscreen) { try { const p = overlay.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* the overlay already fills the page */ } }
         render();
         (body ? playBtn : closeBtn).focus();
-        return { overlay, toggle, step, reset, close, setSpeed, setSize, setMirror, state: () => ({ ...settings, playing, pos }) };
+        return { overlay, toggle, step, reset, close, setSpeed, setSize, setMirror, state: () => ({ ...settings, playing, counting, pos }) };
     }
 
     // Selected text in the draft if there is a selection, otherwise the whole draft.

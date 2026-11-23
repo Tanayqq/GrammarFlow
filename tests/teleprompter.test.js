@@ -56,12 +56,14 @@ test('empty text shows a hint and cannot be played', () => {
     h.close();
 });
 
-test('play scrolls at the chosen speed, stops at the end and restarts from the top', () => {
+test('play scrolls at the chosen speed, stops at the end and restarts from the top', t => {
+    t.mock.timers.enable({ apis: ['setInterval'] });
     const { doc } = page();
     const h = tp.openTeleprompter('Line one.\nLine two.', doc);
     const stage = withLayout(h, 1000, 800); // 200 px to scroll
     h.setSpeed(100);
     h.toggle();
+    t.mock.timers.tick(3000); // the countdown from the top
     assert.equal(h.state().playing, true);
     h.step(1000);
     assert.equal(h.state().pos, 100);
@@ -72,17 +74,21 @@ test('play scrolls at the chosen speed, stops at the end and restarts from the t
     assert.equal(h.overlay.querySelector('.tp-btn').textContent, 'Restart');
     h.toggle();
     assert.equal(h.state().pos, 0, 'Play at the end starts over');
+    assert.equal(h.state().counting, 3, 'with the countdown, like any start from the top');
+    t.mock.timers.tick(3000);
     assert.equal(h.state().playing, true);
     h.close();
 });
 
-test('keys: Space plays and pauses, arrows change speed, + and - change size, M mirrors, Esc closes', () => {
+test('keys: Space plays and pauses, arrows change speed, + and - change size, M mirrors, Esc closes', t => {
+    t.mock.timers.enable({ apis: ['setInterval'] });
     const { doc } = page();
     const draft = doc.getElementById('inputText');
     draft.focus();
     const h = tp.openTeleprompter('Some words to read out loud.', doc);
     withLayout(h);
     key(doc, ' ');
+    t.mock.timers.tick(3000);
     assert.equal(h.state().playing, true);
     key(doc, ' ');
     assert.equal(h.state().playing, false);
@@ -135,4 +141,53 @@ test('the Teleprompter button opens the draft, and the page ships the button and
     const html = readFileSync(path.join(__dirname, '..', 'public/index.html'), 'utf8');
     assert.match(html, /id="teleprompterBtn"/);
     assert.match(html, /<script src="teleprompter\.js\?v=\d+"><\/script>/);
+});
+
+test('countdown: 3, 2, 1 on screen, then scrolling starts', t => {
+    t.mock.timers.enable({ apis: ['setInterval'] });
+    const { doc } = page();
+    const h = tp.openTeleprompter('Read this.', doc);
+    withLayout(h);
+    const count = h.overlay.querySelector('.tp-count');
+    assert.equal(count.getAttribute('aria-live'), 'assertive');
+    h.toggle();
+    assert.equal(count.textContent, '3');
+    assert.equal(h.overlay.querySelector('.tp-btn').textContent, 'Cancel');
+    assert.equal(h.state().playing, false, 'not scrolling during the countdown');
+    t.mock.timers.tick(1000); assert.equal(count.textContent, '2');
+    t.mock.timers.tick(1000); assert.equal(count.textContent, '1');
+    h.step(5000); // a step during the countdown must not move the text
+    assert.equal(h.state().pos, 0);
+    t.mock.timers.tick(1000);
+    assert.equal(count.textContent, '', 'number is cleared');
+    assert.equal(h.state().playing, true);
+    assert.equal(h.overlay.querySelector('.tp-btn').textContent, 'Pause');
+    h.close();
+});
+
+test('countdown: Play again cancels it, Top and Close stop it, and resuming mid-text starts at once', t => {
+    t.mock.timers.enable({ apis: ['setInterval'] });
+    const { doc } = page();
+    const h = tp.openTeleprompter('Read this.', doc);
+    withLayout(h);
+    h.toggle(); t.mock.timers.tick(1000);
+    h.toggle(); // cancel
+    assert.equal(h.state().counting, 0);
+    t.mock.timers.tick(5000);
+    assert.equal(h.state().playing, false, 'a cancelled countdown never starts the text');
+    h.toggle(); h.reset(); // Top during a countdown
+    t.mock.timers.tick(5000);
+    assert.equal(h.state().playing, false);
+    h.toggle(); t.mock.timers.tick(3000); // play from the top
+    h.step(1000);
+    h.toggle(); // pause mid-text
+    assert.equal(h.state().playing, false);
+    h.toggle(); // resume: no countdown
+    assert.equal(h.state().counting, 0);
+    assert.equal(h.state().playing, true);
+    h.toggle(); h.reset(); h.toggle(); // counting again from the top
+    assert.equal(h.state().counting, 3);
+    h.close();
+    t.mock.timers.tick(5000);
+    assert.equal(h.state().playing, false, 'closing stops a running countdown');
 });
