@@ -223,6 +223,17 @@ const readLimiter = rateLimit({
     handler: limitReachedHandler
 });
 
+// Routes that have their own limiter, so the global one must not count them twice.
+const SELF_LIMITED = ['/rewrite', '/grammar-fix', '/suggestions', '/autocomplete', '/analyze-realtime', '/analyze-smart',
+    '/process-document', '/history', '/job', '/dev-editor/assist', '/dev-editor/execute'];
+// Probes that must never be throttled. Match the exact path only: a query string such as "?x=/health" is not part of it.
+const UNLIMITED = ['/api/v1/health'];
+function skipGlobalLimit(req) {
+    const path = (req.baseUrl || '') + (req.path || '');
+    if (UNLIMITED.includes(path)) return true;
+    return SELF_LIMITED.some(route => path === '/api/v1' + route || path.startsWith('/api/v1' + route + '/'));
+}
+
 // 4. Global Safety Limiter: 100 req/min (protects all other endpoints)
 const globalSafetyLimiter = rateLimit({
     windowMs: 60 * 1000,
@@ -231,31 +242,12 @@ const globalSafetyLimiter = rateLimit({
     legacyHeaders: false,
     store: new SlidingWindowStore(60 * 1000),
     keyGenerator: (req) => getRateLimitKey(req, 'global'),
-    skip: (req) => {
-        const url = req.originalUrl || req.url;
-        
-        // Exclude health, status, and webhook routes from all limits
-        if (url.includes('/health') || url.includes('/status') || url.includes('/webhook')) {
-            return true;
-        }
-
-        // Exclude routes covered by specific limiters to prevent double counting
-        const coveredRoutes = [
-            '/rewrite', '/grammar-fix', '/suggestions', '/autocomplete',
-            '/analyze-realtime', '/analyze-smart', '/process-document',
-            '/history', '/job', '/dev-editor/assist', '/dev-editor/execute'
-        ];
-        
-        if (coveredRoutes.some(route => url.includes(route))) {
-            return true;
-        }
-
-        return false;
-    },
+    skip: skipGlobalLimit,
     handler: limitReachedHandler
 });
 
 module.exports = {
+    skipGlobalLimit,
     executionLimiter: rateLimit({
         windowMs:60000,limit:10,standardHeaders:true,legacyHeaders:false,
         store:new SlidingWindowStore(60000),keyGenerator:req=>getRateLimitKey(req,'execution'),handler:limitReachedHandler

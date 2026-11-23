@@ -5,6 +5,7 @@ const { randomUUID } = require('node:crypto');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
 const { isDatabaseDown } = require('../utils/databaseError');
+const loginThrottle = require('../services/auth/loginThrottle');
 // Hash of a random value nobody knows; compared against when the email is unknown.
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(require('node:crypto').randomBytes(16).toString('hex'), 12);
 
@@ -153,8 +154,50 @@ const syncSession = async (req, res) => {
     }
 };
 
+// Sends one email through the configured SMTP account. Returns true when it was handed over.
+async function deliverMail(to, { subject, text, html }) {
+    if (!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS)) return false;
+    try {
+        const transporter = nodemailer.createTransport({
+            host: process.env.SMTP_HOST,
+            port: parseInt(process.env.SMTP_PORT || '587'),
+            secure: process.env.SMTP_SECURE === 'true',
+            auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+        });
+        await transporter.sendMail({ from: `"GrammarFlow" <${process.env.SMTP_USER}>`, to, subject, text, html });
+        return true;
+    } catch (mailErr) {
+        console.error("[AUTH ERROR] Failed to send email:", mailErr.message);
+        return false;
+    }
+}
+
+const card = body => `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #8b5cf6; text-align: center;">GrammarFlow</h2>
+        ${body}
+    </div>`;
+const codeMail = code => ({
+    subject: "Verify your GrammarFlow Email address",
+    text: `Your GrammarFlow verification code is: ${code}. This code is valid for 5 minutes.`,
+    html: card(`
+        <p>Thank you for signing up for GrammarFlow. Please use the following 6-digit verification code to complete your signup process:</p>
+        <div style="font-size: 24px; font-weight: bold; text-align: center; letter-spacing: 4px; padding: 15px; background: #f3f4f6; border-radius: 8px; margin: 20px 0; color: #1f2937;">${code}</div>
+        <p style="font-size: 12px; color: #6b7280; text-align: center;">This verification code is valid for 5 minutes. If you did not request this code, please ignore this email.</p>`)
+});
+const accountExistsMail = {
+    subject: "You already have a GrammarFlow account",
+    text: "Someone just tried to create a GrammarFlow account with this email address. You already have one, so there is nothing to verify: please log in instead. If this was not you, you can ignore this email.",
+    html: card(`
+        <p>Someone just tried to create a GrammarFlow account with this email address.</p>
+        <p>You already have one, so there is nothing to verify. Please <strong>log in</strong> instead.</p>
+        <p style="font-size: 12px; color: #6b7280;">If this was not you, you can ignore this email.</p>`)
+};
+
 /**
  * Sends a 6-digit verification code to the designated email.
+ * The answer is the same whether or not the email already has an account, so this endpoint cannot be used to find out
+ * who is registered. A registered email gets a "you already have an account" notice instead of a code.
  */
 const sendVerificationCode = async (req, res) => {
     try {
@@ -162,67 +205,32 @@ const sendVerificationCode = async (req, res) => {
         if (typeof email !== 'string' || !email) {
             return res.status(400).json({ success: false, error: { message: "Email is required." } });
         }
-        
+
         const cleanEmail = email.trim().toLowerCase();
         if (!emailRegex.test(cleanEmail)) {
             return res.status(400).json({ success: false, error: { message: "Invalid email format." } });
         }
 
-        // Check if email is already registered
         const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
-        if (existingUser && existingUser.password_hash) {
-            return res.status(409).json({
-                success: false,
-                error: { message: "An account with this email already exists. Please log in instead.", code: "EMAIL_EXISTS" }
-            });
+        const alreadyRegistered = Boolean(existingUser && existingUser.password_hash);
+
+        let message;
+        if (alreadyRegistered) {
+            await verification.reserveNotice(cleanEmail);
+            message = accountExistsMail;
+        } else {
+            message = codeMail(await verification.createChallenge(cleanEmail));
         }
-        
-        const code = await verification.createChallenge(cleanEmail);
-        let emailSent = false;
-        // Try sending real email using nodemailer if configured
-        if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-            try {
-                const transporter = nodemailer.createTransport({
-                    host: process.env.SMTP_HOST,
-                    port: parseInt(process.env.SMTP_PORT || '587'),
-                    secure: process.env.SMTP_SECURE === 'true',
-                    auth: {
-                        user: process.env.SMTP_USER,
-                        pass: process.env.SMTP_PASS
-                    }
-                });
-                
-                await transporter.sendMail({
-                    from: `"GrammarFlow" <${process.env.SMTP_USER}>`,
-                    to: cleanEmail,
-                    subject: "Verify your GrammarFlow Email address",
-                    text: `Your GrammarFlow verification code is: ${code}. This code is valid for 5 minutes.`,
-                    html: `
-                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                            <h2 style="color: #8b5cf6; text-align: center;">GrammarFlow Email Verification</h2>
-                            <p>Thank you for signing up for GrammarFlow. Please use the following 6-digit verification code to complete your signup process:</p>
-                            <div style="font-size: 24px; font-weight: bold; text-align: center; letter-spacing: 4px; padding: 15px; background: #f3f4f6; border-radius: 8px; margin: 20px 0; color: #1f2937;">
-                                ${code}
-                            </div>
-                            <p style="font-size: 12px; color: #6b7280; text-align: center;">This verification code is valid for 5 minutes. If you did not request this code, please ignore this email.</p>
-                        </div>
-                    `
-                });
-                console.log(`[AUTH] Real verification email successfully sent to ${cleanEmail}`);
-                emailSent = true;
-            } catch (mailErr) {
-                console.error("[AUTH ERROR] Failed to send real verification email:", mailErr.message);
-            }
-        }
-        
-        if (!emailSent) {
-            await verification.cancelChallenge(cleanEmail);
+
+        if (!await deliverMail(cleanEmail, message)) {
+            await (alreadyRegistered ? verification.cancelNotice(cleanEmail) : verification.cancelChallenge(cleanEmail));
             return res.status(503).json({ success: false, error: { message: "Verification email could not be delivered. Please try again later." } });
         }
+        console.log("[AUTH] Verification email handed to the mail server.");
         res.json({
             success: true,
             data: {
-                message: "Verification code sent successfully.",
+                message: "If this email can be used for a new account, a verification code is on its way.",
                 devMode: false
             }
         });
@@ -297,13 +305,15 @@ const register = async (req, res) => {
         }
 
         localSession.getSecret();
+        const proofRequired = () => res.status(403).json({ success: false, error: { message: "Email verification is required.", code: "EMAIL_VERIFICATION_REQUIRED" } });
+        // Proof first: without it the answer is the same for every email, so this cannot be used to look up who is registered.
+        // It is only looked at here and spent just before the account is created, so a database hiccup does not waste it.
+        if (!await verification.peekProof(cleanEmail, verificationToken)) return proofRequired();
         const existingUser = await prisma.user.findUnique({ where: { email: cleanEmail } });
         if (existingUser) {
             return res.status(409).json({ success: false, error: { message: "An account with this email already exists. Please log in.", code: "EMAIL_EXISTS" } });
         }
-        if (!await verification.consumeProof(cleanEmail, verificationToken)) {
-            return res.status(403).json({ success: false, error: { message: "Email verification is required.", code: "EMAIL_VERIFICATION_REQUIRED" } });
-        }
+        if (!await verification.consumeProof(cleanEmail, verificationToken)) return proofRequired(); // used by a parallel request
         const passwordHash = await bcrypt.hash(password, 12);
         const user = await prisma.user.create({
             data: { id: randomUUID(), email: cleanEmail, name: cleanName, password_hash: passwordHash }
@@ -344,7 +354,18 @@ const login = async (req, res) => {
         }
         
         const cleanEmail = email.trim().toLowerCase();
-        
+
+        // Too many wrong passwords for this account: refuse before any password work. Counts unknown emails too.
+        const lockedSeconds = await loginThrottle.lockedFor(cleanEmail);
+        if (lockedSeconds) {
+            res.setHeader('Retry-After', String(lockedSeconds));
+            return res.status(429).json({
+                success: false,
+                error: { message: `Too many sign-in attempts for this account. Please wait ${Math.ceil(lockedSeconds / 60)} minutes and try again.`, code: 'TOO_MANY_ATTEMPTS' },
+                retryAfter: lockedSeconds
+            });
+        }
+
         // Check database for existing user by email
         const user = await prisma.user.findFirst({
             where: { email: cleanEmail }
@@ -352,10 +373,13 @@ const login = async (req, res) => {
         
         // Same answer and similar timing for unknown emails and wrong passwords, so login cannot
         // be used to find out who has an account.
-        const invalid = () => res.status(401).json({
+        const invalid = async () => {
+            await loginThrottle.recordFailure(cleanEmail);
+            return res.status(401).json({
             success: false,
             error: { message: "Email or password is incorrect. If you usually sign in another way (for example with Google), use that instead.", code: "INVALID_CREDENTIALS" }
-        });
+            });
+        };
         if (!user) {
             await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
             return invalid();
@@ -372,6 +396,7 @@ const login = async (req, res) => {
         if (!passwordMatch) return invalid();
         
         // Password correct! Return user details
+        await loginThrottle.clear(cleanEmail);
         res.json({
             success: true,
             data: {

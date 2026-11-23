@@ -12,6 +12,7 @@ const keys = [];
 const email = () => `${randomUUID()}@example.com`;
 const hash = value => createHash('sha256').update(value).digest('hex');
 const verification = load('src/services/auth/verification.js', { '../../queue': { redisConnection: redis } });
+const loginThrottle = load('src/services/auth/loginThrottle.js', { '../../queue': { redisConnection: redis } });
 process.env.SESSION_SECRET = 'test-only-session-secret-with-at-least-32-bytes';
 const sessions = require('../src/services/auth/localSession');
 before(() => redis.connect());
@@ -122,6 +123,7 @@ test('database TLS verifies certificates even when the URL requests insecure SSL
 test('HTTP registration requires OTP proof and login issues a verified server session', async () => {
     const users = new Map();
     let sentCode;
+    let lastMail;
     let failDelivery = false;
     let migrated = false;
     const prisma = { user: {
@@ -133,9 +135,12 @@ test('HTTP registration requires OTP proof and login issues a verified server se
     const controller = load('src/controllers/auth.controller.js', {
         '../db': prisma,
         '../services/auth/verification': verification,
+        '../services/auth/loginThrottle': loginThrottle,
         nodemailer: { createTransport: () => ({ async sendMail(message) {
             if (failDelivery) throw new Error('test SMTP failure');
-            sentCode = message.text.match(/\d{6}/)[0];
+            lastMail = message;
+            const found = message.text.match(/\d{6}/);
+            if (found) sentCode = found[0];
         } }) }
     });
     const service = load('src/services/auth/AuthService.js', {
@@ -187,7 +192,34 @@ test('HTTP registration requires OTP proof and login issues a verified server se
         assert.equal(registered.status, 200);
         assert.equal(sessions.verifySession(registered.body.data.token).email, address);
         assert.notEqual([...users.values()][0].password_hash, userData.password);
-        assert.equal((await request('register', { ...userData, verificationToken })).status, 409);
+        // A used proof gets the same answer as an unknown email: register must not show who is registered.
+        const replay = await request('register', { ...userData, verificationToken });
+        const unknown = await request('register', { ...userData, email: email(), verificationToken });
+        assert.equal(replay.status, 403);
+        assert.deepEqual(replay, unknown);
+        // Only a valid proof for an email that already has an account gets as far as "already exists".
+        await redis.del(`gf:otpsend:${hash(address)}`); // let the test craft a proof directly
+        const knownCode = await verification.createChallenge(address);
+        const knownProof = await verification.verifyChallenge(address, knownCode);
+        assert.equal((await request('register', { ...userData, verificationToken: knownProof })).status, 409);
+        keys.push(`gf:otp:${hash(address)}`, `gf:otpsend:${hash(address)}`);
+        // The code request answers the same for a registered email: a notice instead of a code, the same pause.
+        await redis.del(`gf:otpsend:${hash(address)}`);
+        lastMail = null;
+        const noticed = await request('send-verification-code', { email: address });
+        assert.equal(noticed.status, 200);
+        assert.deepEqual(noticed.body.data, sent.body.data, 'same body as for an unregistered email');
+        assert.match(lastMail.subject, /already have a GrammarFlow account/);
+        assert.doesNotMatch(lastMail.text, /\d{6}/, 'a registered email never receives a code');
+        const noticeAgain = await request('send-verification-code', { email: address });
+        assert.equal(noticeAgain.status, 429);
+        assert.match(noticeAgain.body.error.message, /wait five minutes/);
+        failDelivery = true;
+        await redis.del(`gf:otpsend:${hash(address)}`);
+        assert.equal((await request('send-verification-code', { email: address })).status, 503);
+        failDelivery = false;
+        assert.equal((await request('send-verification-code', { email: address })).status, 200, 'a failed delivery releases the pause');
+        await redis.del(`gf:otpsend:${hash(address)}`);
         assert.equal((await request('login', { email: address, password: 'wrong' })).status, 401);
         const loggedIn = await request('login', userData);
         assert.equal(loggedIn.status, 200);
@@ -292,4 +324,74 @@ test('getHistoryDetail never sends the owner\'s password hash (or any user field
     assert.equal(JSON.stringify(response.body).includes('super-secret-bcrypt-hash'), false, 'password hash must never appear in the response');
     assert.equal(response.body.data.id, 'operation');
     assert.equal(response.body.data.operation_type, 'rewrite');
+});
+
+test('wrong passwords are counted per account, lock after ten, expire, and clear on success', async () => {
+    const address = email();
+    const key = `gf:loginfail:${hash(address)}`;
+    keys.push(key);
+    assert.equal(await loginThrottle.lockedFor(address), 0);
+    for (let i = 0; i < loginThrottle.MAX_FAILURES - 1; i++) await loginThrottle.recordFailure(address);
+    assert.equal(await loginThrottle.lockedFor(address), 0, 'one try left');
+    assert.ok(await redis.ttl(key) > 0 && await redis.ttl(key) <= loginThrottle.WINDOW_SECONDS, 'the count always has an expiry');
+    await loginThrottle.recordFailure(address);
+    const left = await loginThrottle.lockedFor(address);
+    assert.ok(left > 0 && left <= loginThrottle.WINDOW_SECONDS, 'locked for the rest of the window');
+    const other = email();
+    keys.push(`gf:loginfail:${hash(other)}`);
+    assert.equal(await loginThrottle.lockedFor(other), 0, 'another account is unaffected');
+    await loginThrottle.clear(address);
+    assert.equal(await loginThrottle.lockedFor(address), 0, 'a right password clears the lock');
+    const down = load('src/services/auth/loginThrottle.js', { '../../queue': { redisConnection: { status: 'end' } } });
+    await down.recordFailure(address);
+    assert.equal(await down.lockedFor(address), 0, 'with Redis down, login stays available');
+});
+
+test('the pause between sends is the same for every email, whatever happens to the code', async () => {
+    const address = email();
+    keys.push(`gf:otp:${hash(address)}`, `gf:otpsend:${hash(address)}`);
+    const code = await verification.createChallenge(address);
+    const wrong = code === '100000' ? '100001' : '100000';
+    for (let i = 0; i < 5; i++) await verification.verifyChallenge(address, wrong); // five wrong guesses delete the code
+    assert.equal(await redis.get(`gf:otp:${hash(address)}`), null, 'the code is gone');
+    await assert.rejects(verification.createChallenge(address), /already sent/, 'but the pause is not');
+    const registered = email();
+    keys.push(`gf:otpsend:${hash(registered)}`);
+    await verification.reserveNotice(registered);
+    await assert.rejects(verification.reserveNotice(registered), /already sent/, 'a notice has the same pause');
+    await verification.cancelNotice(registered);
+    await verification.reserveNotice(registered); // a failed delivery lifts it for both kinds
+    const used = email();
+    keys.push(`gf:otp:${hash(used)}`, `gf:otpsend:${hash(used)}`);
+    await verification.verifyChallenge(used, await verification.createChallenge(used)); // a correct code deletes it too
+    await assert.rejects(verification.createChallenge(used), /already sent/);
+    await verification.cancelChallenge(used);
+    assert.match(await verification.createChallenge(used), /^\d{6}$/, 'cancelling after a failed delivery allows a retry');
+});
+
+test('a proof can be looked at without being spent, and is spent exactly once afterwards', async () => {
+    const address = email();
+    keys.push(`gf:otp:${hash(address)}`, `gf:otpsend:${hash(address)}`);
+    const proof = await verification.verifyChallenge(address, await verification.createChallenge(address));
+    keys.push(`gf:verified:${hash(proof)}`);
+    assert.equal(await verification.peekProof(address, proof), true);
+    assert.equal(await verification.peekProof(address, proof), true, 'looking does not spend it');
+    assert.equal(await verification.peekProof(email(), proof), false, 'bound to the email it was issued for');
+    assert.equal(await verification.peekProof(address, 'not-a-proof'), false);
+    assert.equal(await verification.peekProof(address, undefined), false);
+    const spent = await Promise.all(Array.from({ length: 4 }, () => verification.consumeProof(address, proof)));
+    assert.equal(spent.filter(Boolean).length, 1);
+    assert.equal(await verification.peekProof(address, proof), false, 'gone once spent');
+});
+
+test('creating a code releases the send pause when the code cannot be stored', async () => {
+    const calls = [];
+    const flaky = {
+        status: 'ready',
+        async set(key, value, ...rest) { calls.push(['set', key]); if (key.startsWith('gf:otp:')) throw new Error('Redis went away'); return 'OK'; },
+        async del(key) { calls.push(['del', key]); return 1; }
+    };
+    const v = load('src/services/auth/verification.js', { '../../queue': { redisConnection: flaky } });
+    await assert.rejects(v.createChallenge(email()), /Redis went away/);
+    assert.ok(calls.some(([op, key]) => op === 'del' && key.startsWith('gf:otpsend:')), 'the reservation was released');
 });

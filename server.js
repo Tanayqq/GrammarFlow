@@ -71,27 +71,37 @@ const getHealthStatus = () => {
 app.get('/api/v1/health', (req, res) => res.json(getHealthStatus()));
 app.get('/health', (req, res) => res.json(getHealthStatus()));
 
-// Public readiness reports only availability, never database errors or account counts.
-let lastDbHealthLog = 0;
-app.get('/api/v1/db-health', async (req, res) => {
-    const prisma = require('./src/db');
-    try {
-        await prisma.$queryRaw`SELECT 1`;
-        res.json({ success: true, data: { db: 'connected' } });
-    } catch (err) {
-        if (Date.now() - lastDbHealthLog > 60000) {
-            lastDbHealthLog = Date.now();
-            console.error('[DB HEALTH] Database check failed:', err.code || err.name, err.message, require('./src/utils/databaseError').databaseHint(err));
-        }
-        res.status(503).json({ success: false, data: { db: 'unavailable' } });
-    }
-});
-
-
 // 4. Rate Limiting Protection (Global Safety-Net Sliding-Window)
 const { passiveAuth } = require('./src/middlewares/auth');
 const { globalSafetyLimiter } = require('./src/middlewares/rateLimiter');
 app.use('/api', passiveAuth, globalSafetyLimiter);
+
+// Public readiness reports only availability, never database errors or account counts. It sits behind the global
+// limiter and remembers its answer for 10 seconds, so a flood of calls cannot use up the database connections.
+let dbHealth = { at: 0, ok: false };
+let dbHealthCheck = null; // the check in progress, shared by every caller that arrives while it runs
+let lastDbHealthLog = 0;
+const checkDatabase = async () => {
+    try {
+        await require('./src/db').$queryRaw`SELECT 1`;
+        dbHealth = { at: Date.now(), ok: true };
+    } catch (err) {
+        dbHealth = { at: Date.now(), ok: false };
+        if (Date.now() - lastDbHealthLog > 60000) {
+            lastDbHealthLog = Date.now();
+            console.error('[DB HEALTH] Database check failed:', err.code || err.name, err.message, require('./src/utils/databaseError').databaseHint(err));
+        }
+    }
+};
+app.get('/api/v1/db-health', async (req, res) => {
+    if (Date.now() - dbHealth.at >= 10000) {
+        dbHealthCheck ||= checkDatabase().finally(() => { dbHealthCheck = null; });
+        await dbHealthCheck;
+    }
+    if (dbHealth.ok) return res.json({ success: true, data: { db: 'connected' } });
+    res.status(503).json({ success: false, data: { db: 'unavailable' } });
+});
+
 
 // 5. API Routes
 app.use('/api/v1', aiRoutes);

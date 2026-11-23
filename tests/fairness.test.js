@@ -39,7 +39,8 @@ const fakeRes = () => Object.assign(new EventEmitter(), {
 });
 const authController = (prisma) => load('src/controllers/auth.controller.js', {
     '../db': prisma,
-    '../services/auth/verification': {},
+    '../services/auth/verification': { peekProof: async () => true, consumeProof: async () => true }, // register checks the proof before it reads the database
+    '../services/auth/loginThrottle': { lockedFor: async () => 0, recordFailure: async () => {}, clear: async () => {} },
     nodemailer: { createTransport: () => ({}) }
 }, { console: quiet });
 const call = async (handler, body) => { const res = fakeRes(); await handler({ body, headers: {} }, res); return res; };
