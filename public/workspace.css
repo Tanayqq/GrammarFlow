@@ -163,3 +163,9 @@ body.editorial{background:var(--paper);color:var(--ink);font-family:Inter,system
 /* The Teleprompter button under a result follows the other buttons in the result cards. */
 .read-btn-mini { margin-top: 12px; min-height: 40px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--line); font-size: 12px; font-weight: 600; }
 .read-btn-mini:hover { border-color: var(--accent); }
+
+/* The floating window is small: one slim row of controls, the privacy note as a banner on top, so the text keeps the room. */
+.tp-floating .tp-bar { flex-wrap: nowrap; gap: 6px; padding: 6px 8px; }
+.tp-floating .tp-btn { min-height: 34px; min-width: 34px; padding: 0 10px; }
+.tp-floating :is(.tp-full-only, .tp-range, .tp-value, .tp-gap) { display: none; }
+.tp-floating .tp-hint { top: 0; bottom: auto; padding: 4px 8px; background: var(--tp-bar); border-bottom: 1px solid var(--tp-line); }

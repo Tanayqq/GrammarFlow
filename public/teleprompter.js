@@ -73,6 +73,8 @@
         const mirrorBtn = mk('Mirror', 'Flip the text left to right, for a prompter glass (M)', () => setMirror(!settings.mirror));
         const hideBtn = mk('Hide', 'Blank the teleprompter instantly, for example when you start sharing your screen (H)', () => toggleHidden());
         const themeBtn = mk('Dark', '', () => setTheme(settings.theme === 'forest' ? 'paper' : 'forest'));
+        themeBtn.classList.add('tp-full-only');
+        mirrorBtn.classList.add('tp-full-only');
         const popBtn = mk('Pop out', '', () => popOut());
         const closeBtn = mk('Close', 'Close the teleprompter (Esc)', () => close());
         const speed = el(doc, 'input', 'tp-range');
@@ -80,7 +82,7 @@
         speed.min = LIMITS.speed[0]; speed.max = LIMITS.speed[1]; speed.step = 5;
         speed.setAttribute('aria-label', 'Scroll speed');
         speed.oninput = () => setSpeed(Number(speed.value));
-        bar.append(playBtn, mk('Top', 'Back to the start (Home)', () => reset()), el(doc, 'span', 'tp-gap'),
+        bar.append(playBtn, (() => { const b = mk('Top', 'Back to the start (Home)', () => reset()); b.classList.add('tp-full-only'); return b; })(), el(doc, 'span', 'tp-gap'),
             mk('Slower', 'Slower (Arrow down)', () => setSpeed(settings.speed - 10)), speed,
             mk('Faster', 'Faster (Arrow up)', () => setSpeed(settings.speed + 10)), speedLabel,
             mk('A-', 'Smaller text (-)', () => setSize(settings.size - 4)), sizeLabel,
@@ -122,7 +124,8 @@
             content.style.fontSize = settings.size + 'px';
             content.classList.toggle('tp-mirror', settings.mirror);
             mirrorBtn.setAttribute('aria-pressed', String(settings.mirror));
-            hint.textContent = floating ? 'Only you can see this window, unless you share your entire screen. Share a tab or a window instead.' : '';
+            hint.textContent = floating ? 'Only you see this window, unless you share your entire screen.' : '';
+            overlay.classList.toggle('tp-floating', floating);
             overlay.classList.toggle('tp-hidden', hidden);
             const dark = settings.theme === 'forest';
             overlay.classList.toggle('tp-dark', dark);
@@ -132,7 +135,7 @@
             hideBtn.textContent = hidden ? 'Show' : 'Hide';
             popBtn.textContent = floating ? 'Dock' : 'Pop out';
             popBtn.title = floating ? 'Bring the teleprompter back into the page'
-                : root.documentPictureInPicture ? 'Float over other windows, such as a video call'
+                : root.documentPictureInPicture ? 'Float over other windows, such as a video call. Share a tab or a window, not your whole screen, to keep it private.'
                 : 'Open in its own window, to place beside a video call';
             playBtn.textContent = counting ? 'Cancel' : playing ? 'Pause' : (pos > 0 && pos >= maxScroll() ? 'Restart' : 'Play');
         };

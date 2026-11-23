@@ -377,11 +377,14 @@ test('the floating window says when others could see it', async t => {
         const h = tp.openTeleprompter('Private words.', doc);
         const hint = h.overlay.querySelector('.tp-hint');
         assert.equal(hint.textContent, '', 'no note while it is in the page');
+        assert.match(popButton(h).title, /Share a tab or a window/, 'the sharing advice is in the Pop out tooltip');
         await h.popOut();
         assert.match(hint.textContent, /unless you share your entire screen/);
-        assert.match(hint.textContent, /tab or a window/);
+        assert.equal(h.overlay.classList.contains('tp-floating'), true, 'the compact layout applies while floating');
+        assert.ok(h.overlay.querySelectorAll('.tp-full-only').length >= 3, 'Top, Mirror and Dark are the ones dropped from the small bar');
         h.dock();
         assert.equal(hint.textContent, '');
+        assert.equal(h.overlay.classList.contains('tp-floating'), false, 'back to the full layout when docked');
         h.close();
     });
 });
