@@ -4,7 +4,7 @@
     'use strict';
 
     const LIMITS = { speed: [10, 300], size: [24, 120] };
-    const DEFAULTS = { speed: 60, size: 48, mirror: false, theme: 'paper' }; // paper = the site's look, forest = dark
+    const DEFAULTS = { speed: 60, size: 48, mirror: false, theme: 'paper', line: true }; // paper = the site's look, forest = dark
     const COUNTDOWN = 3; // seconds shown before scrolling starts from the top
     const KEY = 'gf_teleprompter';
 
@@ -15,7 +15,7 @@
     const cleanSettings = raw => {
         const s = raw && typeof raw === 'object' ? raw : {};
         const num = (v, limits, fallback) => (Number.isFinite(v) ? clamp(Math.round(v), limits) : fallback);
-        return { speed: num(s.speed, LIMITS.speed, DEFAULTS.speed), size: num(s.size, LIMITS.size, DEFAULTS.size), mirror: s.mirror === true, theme: s.theme === 'forest' ? 'forest' : 'paper' };
+        return { speed: num(s.speed, LIMITS.speed, DEFAULTS.speed), size: num(s.size, LIMITS.size, DEFAULTS.size), mirror: s.mirror === true, theme: s.theme === 'forest' ? 'forest' : 'paper', line: s.line !== false };
     };
     const loadSettings = () => {
         try { return cleanSettings(JSON.parse(root.localStorage.getItem(KEY))); } catch (e) { return { ...DEFAULTS }; }
@@ -75,6 +75,8 @@
         const themeBtn = mk('Dark', '', () => setTheme(settings.theme === 'forest' ? 'paper' : 'forest'));
         themeBtn.classList.add('tp-full-only');
         mirrorBtn.classList.add('tp-full-only');
+        const lineBtn = mk('Line', 'Show or hide the reading line (L)', () => setLine(!settings.line));
+        lineBtn.classList.add('tp-full-only');
         const popBtn = mk('Pop out', '', () => popOut());
         const closeBtn = mk('Close', 'Close the teleprompter (Esc)', () => close());
         const speed = el(doc, 'input', 'tp-range');
@@ -86,7 +88,7 @@
             mk('Slower', 'Slower (Arrow down)', () => setSpeed(settings.speed - 10)), speed,
             mk('Faster', 'Faster (Arrow up)', () => setSpeed(settings.speed + 10)), speedLabel,
             mk('A-', 'Smaller text (-)', () => setSize(settings.size - 4)), sizeLabel,
-            mk('A+', 'Larger text (+)', () => setSize(settings.size + 4)), mirrorBtn, themeBtn, popBtn, hideBtn, closeBtn);
+            mk('A+', 'Larger text (+)', () => setSize(settings.size + 4)), mirrorBtn, lineBtn, themeBtn, popBtn, hideBtn, closeBtn);
         const countEl = el(doc, 'div', 'tp-count');
         countEl.setAttribute('aria-live', 'assertive');
         const hint = el(doc, 'div', 'tp-hint');
@@ -127,6 +129,8 @@
             hint.textContent = floating ? 'Only you see this window, unless you share your entire screen.' : '';
             overlay.classList.toggle('tp-floating', floating);
             overlay.classList.toggle('tp-hidden', hidden);
+            overlay.classList.toggle('tp-noline', !settings.line);
+            lineBtn.setAttribute('aria-pressed', String(settings.line));
             const dark = settings.theme === 'forest';
             overlay.classList.toggle('tp-dark', dark);
             themeBtn.textContent = dark ? 'Light' : 'Dark';
@@ -141,6 +145,7 @@
         };
         const setSpeed = v => { settings.speed = clamp(Math.round(v), LIMITS.speed); saveSettings(settings); render(); };
         const setSize = v => { settings.size = clamp(Math.round(v), LIMITS.size); saveSettings(settings); render(); };
+        const setLine = v => { settings.line = Boolean(v); saveSettings(settings); render(); };
         const setTheme = v => { settings.theme = v === 'forest' ? 'forest' : 'paper'; saveSettings(settings); render(); };
         const setMirror = v => { settings.mirror = Boolean(v); saveSettings(settings); render(); };
 
@@ -214,6 +219,7 @@
             if (hidden && e.key !== 'h' && e.key !== 'H' && e.key !== 'Escape') return;
             const keys = {
                 h: toggleHidden, H: toggleHidden,
+                l: () => setLine(!settings.line), L: () => setLine(!settings.line),
                 d: () => setTheme(settings.theme === 'forest' ? 'paper' : 'forest'), D: () => setTheme(settings.theme === 'forest' ? 'paper' : 'forest'),
                 ' ': toggle, Escape: close, Home: reset,
                 ArrowUp: () => setSpeed(settings.speed + 10), ArrowDown: () => setSpeed(settings.speed - 10),
@@ -276,7 +282,7 @@
         if (overlay.requestFullscreen) { try { const p = overlay.requestFullscreen(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* the overlay already fills the page */ } }
         render();
         (body ? playBtn : closeBtn).focus();
-        return { overlay, toggle, step, reset, close, setSpeed, setSize, setMirror, popOut, dock, toggleHidden, setTheme, state: () => ({ ...settings, playing, counting, floating, hidden, pos }) };
+        return { overlay, toggle, step, reset, close, setSpeed, setSize, setMirror, popOut, dock, toggleHidden, setTheme, setLine, state: () => ({ ...settings, playing, counting, floating, hidden, pos }) };
     }
 
     // Selected text in the draft if there is a selection, otherwise the whole draft.

@@ -30,7 +30,7 @@ test('scroll maths: speed is px per second and stops at the end', () => {
 });
 
 test('settings are clamped and unreadable values fall back to the defaults', () => {
-    assert.deepEqual(tp.cleanSettings({ speed: 9999, size: 1, mirror: true }), { speed: 300, size: 24, mirror: true, theme: 'paper' });
+    assert.deepEqual(tp.cleanSettings({ speed: 9999, size: 1, mirror: true }), { speed: 300, size: 24, mirror: true, theme: 'paper', line: true });
     assert.deepEqual(tp.cleanSettings({ speed: 'fast', size: null, mirror: 'yes' }), tp.DEFAULTS);
     assert.deepEqual(tp.cleanSettings(null), tp.DEFAULTS);
     assert.deepEqual(tp.cleanSettings(undefined), tp.DEFAULTS);
@@ -467,5 +467,45 @@ test('while floating, the page is free for typing; the shortcuts move with the o
         assert.equal(key(doc, ' ', typing).defaultPrevented, true, 'docked: the shortcuts are back on the page');
         h.close();
         assert.equal(key(doc, ' ', typing).defaultPrevented, false, 'closed: nothing is left listening');
+    });
+});
+
+test('the reading line can be switched off with the Line button or L, and the choice is remembered', () => {
+    const { doc } = page();
+    const h = tp.openTeleprompter('Some words.', doc);
+    const lineBtn = [...h.overlay.querySelectorAll('.tp-btn')].find(b => b.textContent === 'Line');
+    assert.equal(h.state().line, true, 'on by default');
+    assert.equal(lineBtn.getAttribute('aria-pressed'), 'true');
+    assert.equal(h.overlay.classList.contains('tp-noline'), false);
+    lineBtn.click();
+    assert.equal(h.state().line, false);
+    assert.equal(h.overlay.classList.contains('tp-noline'), true, 'the page CSS hides the line under this class');
+    assert.equal(lineBtn.getAttribute('aria-pressed'), 'false');
+    key(doc, 'l');
+    assert.equal(h.state().line, true);
+    key(doc, 'L');
+    assert.equal(h.state().line, false);
+    assert.equal(tp.cleanSettings({ line: false }).line, false);
+    assert.equal(tp.cleanSettings({ line: 'no' }).line, true, 'anything but a real false keeps the line');
+    assert.equal(tp.cleanSettings({}).line, true);
+    assert.ok(lineBtn.classList.contains('tp-full-only'), 'dropped from the small floating bar, where L still works');
+    h.close();
+});
+
+test('L does nothing while hidden, and the line setting survives docking', async t => {
+    const { doc } = pageWithStyles();
+    const pip = fakeWindow();
+    await withApi(t, 'documentPictureInPicture', { requestWindow: async () => pip }, async () => {
+        const h = tp.openTeleprompter('Some words.', doc);
+        h.setLine(false);
+        await h.popOut();
+        assert.equal(h.overlay.classList.contains('tp-noline'), true, 'still off in the floating window');
+        h.toggleHidden();
+        pip.document.body.dispatchEvent(new pip.KeyboardEvent('keydown', { key: 'l', bubbles: true, cancelable: true }));
+        assert.equal(h.state().line, false, 'L is ignored while hidden');
+        h.toggleHidden();
+        pip.document.body.dispatchEvent(new pip.KeyboardEvent('keydown', { key: 'l', bubbles: true, cancelable: true }));
+        assert.equal(h.state().line, true, 'and works in the floating window otherwise');
+        h.close();
     });
 });

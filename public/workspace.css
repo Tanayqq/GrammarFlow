@@ -169,3 +169,4 @@ body.editorial{background:var(--paper);color:var(--ink);font-family:Inter,system
 .tp-floating .tp-btn { min-height: 34px; min-width: 34px; padding: 0 10px; }
 .tp-floating :is(.tp-full-only, .tp-range, .tp-value, .tp-gap) { display: none; }
 .tp-floating .tp-hint { top: 0; bottom: auto; padding: 4px 8px; background: var(--tp-bar); border-bottom: 1px solid var(--tp-line); }
+.tp-noline > .tp-line { display: none; }
