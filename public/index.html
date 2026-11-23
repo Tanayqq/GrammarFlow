@@ -475,21 +475,7 @@
         transform: translateY(-2px);
     }
   </style>
-<script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            cosmic: {
-              900: '#080312',
-              800: '#13111c',
-              700: '#1f1d2b',
-            }
-          }
-        }
-      }
-    }
-  </script>
+<script src="tailwind-config.js"></script>
 <link rel="stylesheet" href="workspace.css?v=2"></head>
 <body class="min-h-screen bg-[#080312] text-[#e2e8f0] relative editorial">
 
@@ -814,10 +800,10 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
 
 </div>
 <!-- External Document Processing Libraries -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js" integrity="sha384-lrb5efVIYR2lZw+OsuztHZzP9wpGNrhui+0VlpiHb/iPcZSCDT3CeETsL9EMQ8ih" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js" integrity="sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js" integrity="sha384-948ahk4ZmxYVYOc+rxN1H2gM1EJ2Duhp7uHtZ4WSLkV4Vtx5MUqnV+l7u9B+jFv+" crossorigin="anonymous"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha384-Yv5O+t3uE3hunW8uyrbpPW3iw6/5/Y7HitWJBLgqfMoA36NogMmy+8wWZMpn3HWc" crossorigin="anonymous"></script>
 <script src="vendor/purify.min.js"></script>
 <script src="dictation.js"></script>
 <script src="teleprompter.js?v=1"></script>
@@ -827,34 +813,6 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
 
 
 
-<script>
-    function selectTone(value, btn) {
-        // Find the select element
-        if (value === 'Auto') {
-            document.getElementById('languageSelect').value = value;
-        } else {
-            document.getElementById('toneSelect').value = value;
-        }
-
-        // Visually update the chips
-        const parent = btn.parentElement;
-        parent.querySelectorAll('button').forEach(b => {
-            b.classList.remove('bg-purple-500/10', 'text-purple-400', 'border-purple-500/50', 'shadow-[0_0_10px_rgba(168,85,247,0.2)]');
-            b.classList.add('bg-white/5', 'text-gray-400', 'border-white/10');
-            
-            // For the stitch_doc_ai style chips
-            b.classList.remove('chip-active');
-            b.classList.remove('text-white');
-        });
-
-        // Add active classes to the clicked button
-        btn.classList.remove('bg-white/5', 'text-gray-400', 'border-white/10');
-        btn.classList.add('bg-purple-500/10', 'text-purple-400', 'border-purple-500/50', 'shadow-[0_0_10px_rgba(168,85,247,0.2)]');
-        
-        // Also add stitch_doc_ai style active classes just in case
-        btn.classList.add('chip-active');
-    }
-</script>
 
 
 <!-- Fullscreen Immersive Flow State Overlay -->

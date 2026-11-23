@@ -471,7 +471,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     <!-- Tab Contents -->
                     <div class="tab-content-${tabId}" id="${tabId}_corrected">
                         <div class="result-text text-gray-200 text-sm md:text-base leading-relaxed select-all" style="white-space: pre-wrap;">${escapeHTML(correctedText)}</div>
-                        <button class="copy-btn-mini" aria-label="Copy result" onclick="navigator.clipboard.writeText(document.getElementById('${tabId}_corrected').querySelector('.result-text').innerText || document.getElementById('${tabId}_corrected').querySelector('.result-text').textContent)">
+                        <button class="copy-btn-mini" aria-label="Copy result">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -481,7 +481,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
                     <div class="tab-content-${tabId} hidden" id="${tabId}_detailed">
                         <div class="result-text prose prose-invert max-w-none text-gray-300 text-sm space-y-3">${formattedDetailed}</div>
-                        <button class="copy-btn-mini" aria-label="Copy result" onclick="navigator.clipboard.writeText(document.getElementById('${tabId}_detailed').querySelector('.result-text').innerText || document.getElementById('${tabId}_detailed').querySelector('.result-text').textContent)">
+                        <button class="copy-btn-mini" aria-label="Copy result">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                 <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
@@ -525,13 +525,19 @@ document.addEventListener("DOMContentLoaded", () => {
                     <div class="result-text prose prose-invert max-w-none text-gray-200 text-sm md:text-base space-y-4">
                         ${formattedHtml}
                     </div>
-                    <button class="copy-btn-mini" aria-label="Copy result" onclick="navigator.clipboard.writeText(this.previousElementSibling.innerText || this.previousElementSibling.textContent)">
+                    <button class="copy-btn-mini" aria-label="Copy result">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                         </svg>
                     </button>`;
             }
+            card.querySelectorAll('.copy-btn-mini').forEach(copyBtn => {
+                copyBtn.addEventListener('click', () => {
+                    const shown = copyBtn.parentElement.querySelector('.result-text');
+                    if (shown) navigator.clipboard.writeText(shown.innerText || shown.textContent);
+                });
+            });
             if (readable && window.GFTeleprompter) {
                 const readBtn = document.createElement('button');
                 readBtn.type = 'button';
@@ -1118,8 +1124,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     chip.innerHTML = `
                         <svg class="w-4 h-4 text-purple-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5.586a1 1 0 0 1 .707.293l5.414 5.414a1 1 0 0 1 .293.707V19a2 2 0 0 1-2 2z"></path></svg>
                         <span class="truncate max-w-[180px] font-medium">${escapeHTML(file.name)}</span>
-                        <span class="remove-file text-gray-400 hover:text-red-400 font-bold text-lg ml-2 cursor-pointer transition-colors leading-none" onclick="window.documentProcessor.removeFile(${idx})">×</span>
+                        <span class="remove-file text-gray-400 hover:text-red-400 font-bold text-lg ml-2 cursor-pointer transition-colors leading-none">×</span>
                     `;
+                    chip.querySelector('.remove-file').addEventListener('click', () => window.documentProcessor.removeFile(idx));
                     UI.filePreviewContainer.appendChild(chip);
                 });
             } else {
@@ -1701,13 +1708,12 @@ document.addEventListener("DOMContentLoaded", () => {
                             </head>
                             <body>
                                 ${container.innerHTML}
-                                <script>
-                                    window.onload = function() { window.print(); };
-                                <\/script>
                             </body>
                             </html>
                         `);
                         printWin.document.close();
+                        // The popup cannot run its own script (the page's policy forbids inline scripts), so print from here.
+                        setTimeout(() => { printWin.focus(); printWin.print(); }, 300);
                     } else {
                         alert("PDF generator not ready. Please try again.");
                     }
