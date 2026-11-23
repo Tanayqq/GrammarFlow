@@ -210,7 +210,7 @@
         function onKey(e) {
             if (!overlay.isConnected) return;
             const tag = e.target && e.target.tagName;
-            if (tag === 'INPUT' && e.key !== 'Escape') return; // the speed slider keeps its own arrow keys
+            if (tag === 'INPUT' && /^(Arrow(Up|Down|Left|Right)|Home|End|Page(Up|Down))$/.test(e.key)) return; // the speed slider keeps its own navigation keys
             if (hidden && e.key !== 'h' && e.key !== 'H' && e.key !== 'Escape') return;
             const keys = {
                 h: toggleHidden, H: toggleHidden,
@@ -246,6 +246,7 @@
             w.document.body.style.background = settings.theme === 'forest' ? '#17231d' : '#f6f5ef';
             cancelFrame();
             popup = w; host = w; floating = true;
+            doc.removeEventListener('keydown', onKey, true); // the page is free for typing again while the teleprompter floats
             w.document.addEventListener('keydown', onKey, true);
             w.addEventListener('pagehide', dock);
             w.document.body.appendChild(overlay);
@@ -262,6 +263,7 @@
             floating = false; popup = null; host = root;
             try { w.document.removeEventListener('keydown', onKey, true); w.removeEventListener('pagehide', dock); } catch (e) { /* ignore */ }
             if (!closed) {
+                doc.addEventListener('keydown', onKey, true);
                 doc.body.appendChild(overlay);
                 stage.scrollTop = pos;
                 if (playing) { last = 0; frame = schedule(loop); }

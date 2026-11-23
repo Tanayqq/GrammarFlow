@@ -428,3 +428,44 @@ test('the pop-out window also gets the fonts, and its page colour follows the th
         h.close();
     });
 });
+
+test('H hides even when the speed slider has focus, while the slider keeps its own arrow keys', () => {
+    const { doc } = page();
+    const h = tp.openTeleprompter('Private words.', doc);
+    const slider = h.overlay.querySelector('.tp-range');
+    slider.focus();
+    const arrow = key(doc, 'ArrowUp', slider);
+    assert.equal(arrow.defaultPrevented, false, 'the slider handles its own arrow keys');
+    assert.equal(h.state().speed, 60, 'and the teleprompter does not also change the speed');
+    const hide = key(doc, 'h', slider);
+    assert.equal(h.state().hidden, true, 'H still hides from the slider');
+    assert.equal(hide.defaultPrevented, true);
+    key(doc, 'H', doc.querySelector('.tp-showbtn'));
+    assert.equal(h.state().hidden, false);
+    h.close();
+});
+
+test('while floating, the page is free for typing; the shortcuts move with the overlay and come back on Dock', async t => {
+    const { doc } = pageWithStyles();
+    const typing = doc.getElementById('inputText');
+    const pip = fakeWindow();
+    await withApi(t, 'documentPictureInPicture', { requestWindow: async () => pip }, async () => {
+        const h = tp.openTeleprompter('Read this out loud.', doc);
+        const before = key(doc, ' ', typing);
+        assert.equal(before.defaultPrevented, true, 'in the page the teleprompter owns Space (it is full-screen)');
+        await h.popOut();
+        for (const k of [' ', 'h', 'H', 'd', 'm', '+', '-']) {
+            const ev = key(doc, k, typing);
+            assert.equal(ev.defaultPrevented, false, `typing "${k}" in the page is left alone while floating`);
+        }
+        assert.equal(h.state().hidden, false, 'and nothing was triggered');
+        const inPopup = pip.document.body.dispatchEvent(new pip.KeyboardEvent('keydown', { key: 'h', bubbles: true, cancelable: true }));
+        assert.equal(inPopup, false, 'H in the floating window is handled');
+        assert.equal(h.state().hidden, true);
+        pip.document.body.dispatchEvent(new pip.KeyboardEvent('keydown', { key: 'h', bubbles: true, cancelable: true }));
+        h.dock();
+        assert.equal(key(doc, ' ', typing).defaultPrevented, true, 'docked: the shortcuts are back on the page');
+        h.close();
+        assert.equal(key(doc, ' ', typing).defaultPrevented, false, 'closed: nothing is left listening');
+    });
+});
