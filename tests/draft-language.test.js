@@ -249,3 +249,19 @@ test('Hindi fixes skip टाइम मशीन (feminine) and need a whole req
     assert.equal(casualize('आपकी उपलब्धता बताई गई है।', CASUAL_HI, 'Hindi'), 'आपकी उपलब्धता बताई गई है।', 'बताई is not a request');
     assert.equal(casualize('आपकी उपलब्धता बता दीजिए।', CASUAL_HI, 'Hindi'), 'आपका समय बता दीजिए।');
 });
+
+test('Hindi: longer adverbs before the request verb, and पुष्टि कर दें, are covered', () => {
+    const { casualize } = require('../src/utils/language');
+    assert.equal(casualize('अपनी उपलब्धता जल्द से जल्द बताएं।', CASUAL_HI, 'Hindi'), 'अपना समय जल्द से जल्द बताएं।');
+    assert.equal(casualize('आपकी उपलब्धता जल्द ही बता दीजिए।', CASUAL_HI, 'Hindi'), 'आपका समय जल्द ही बता दीजिए।');
+    assert.equal(casualize('अपनी उपलब्धता जल्दी से भेजिए।', CASUAL_HI, 'Hindi'), 'अपना समय जल्दी से भेजिए।');
+    assert.equal(casualize('अपनी उपलब्धता की पुष्टि कर दें।', CASUAL_HI, 'Hindi'), 'अपना समय कन्फर्म कर दें।');
+    assert.equal(casualize('कृपया पुष्टि कर दीजिए।', CASUAL_HI, 'Hindi'), 'कृपया कन्फर्म कर दें।');
+    assert.equal(casualize('अपनी उपलब्धता जल्द से जल्द बताई गई है।', CASUAL_HI, 'Hindi'), 'अपनी उपलब्धता जल्द से जल्द बताई गई है।', 'still no swap before a non-request');
+});
+
+test('Hindi: कन्फर्म counts as a request only with a request form after it', () => {
+    const { casualize } = require('../src/utils/language');
+    assert.equal(casualize('आपकी उपलब्धता जल्द ही कन्फर्म हो गई है।', CASUAL_HI, 'Hindi'), 'आपकी उपलब्धता जल्द ही कन्फर्म हो गई है।');
+    assert.equal(casualize('आपकी उपलब्धता जल्द ही कन्फर्म कर दें।', CASUAL_HI, 'Hindi'), 'आपका समय जल्द ही कन्फर्म कर दें।');
+});

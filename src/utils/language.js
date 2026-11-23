@@ -94,7 +94,7 @@ const QUOTED = /("[^"]*"|“[^”]*”|‘[^’]*’|(?<![\p{L}\p{M}])'[^']+'(?!
 // Formal words that have a plain everyday equivalent with the same meaning, per language. Longer forms come first.
 // Each swap keeps the meaning, and none rewrites a passive (that would need a new subject or case).
 // What may follow a person's उपलब्धता for the swap to be safe: an optional adverb, then a request verb.
-const HINDI_REQUEST = '(?=\\s+(?:(?:जल्दी|जल्द)\\s+)*(?:कन्फर्म|बताइए|बताइये|बताएं|बताएँ|बताओ|बता\\s+(?:दीजिए|दीजिये|दें)|भेजिए|भेजिये|भेजें|भेजो)(?![\\u0900-\\u0963\\u0966-\\u097F]))';
+const HINDI_REQUEST = '(?=\\s+(?:(?:जल्दी से|जल्द से जल्द|जल्द ही|जल्दी|जल्द)\\s+)*(?:कन्फर्म\\s+(?:कर\\s+(?:दें|दीजिए|दीजिये|लें)|करें|कीजिए|कीजिये)|बताइए|बताइये|बताएं|बताएँ|बताओ|बता\\s+(?:दीजिए|दीजिये|दें)|भेजिए|भेजिये|भेजें|भेजो)(?![\\u0900-\\u0963\\u0966-\\u097F]))';
 const CASUAL = {
     Telugu: {
         script: 'Telugu', range: 'ఀ-౿',
@@ -144,8 +144,8 @@ const CASUAL = {
         script: 'Devanagari', range: 'ऀ-ॣ०-ॿ',
         formal: /आदरणीय|शीघ्र|पुष्टि|अवगत|सूचित|हेतु|अपेक्षित|उपलब्धता|स्थगित/,
         swaps: [
-            [/की पुष्टि (?:करें|कीजिए|कीजिये)(?![ऀ-ॣ०-ॿ])/g, 'कन्फर्म कर दें'],
-            [/पुष्टि (?:करें|कीजिए|कीजिये)(?![ऀ-ॣ०-ॿ])/g, 'कन्फर्म कर दें'],
+            [/की पुष्टि (?:करें|कीजिए|कीजिये|कर दें|कर दीजिए|कर दीजिये)(?![ऀ-ॣ०-ॿ])/g, 'कन्फर्म कर दें'],
+            [/पुष्टि (?:करें|कीजिए|कीजिये|कर दें|कर दीजिए|कर दीजिये)(?![ऀ-ॣ०-ॿ])/g, 'कन्फर्म कर दें'],
             // A person's availability -> समय, only before a request verb (बताइए, कन्फर्म कर दें, भेजिए): there nothing else in the
             // sentence has to agree with the new masculine noun. The possessive changes gender too (उपलब्धता is feminine).
             [new RegExp('आपकी उपलब्धता' + HINDI_REQUEST, 'g'), 'आपका समय'],
