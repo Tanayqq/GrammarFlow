@@ -46,6 +46,12 @@ class ClerkAuthProvider {
             }
         }
 
+        // A development instance has strict user limits and none of the production protections.
+        const publishable = (process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || '').trim();
+        if ((process.env.NODE_ENV === 'production' || process.env.RENDER === 'true') && (publishable.startsWith('pk_test_') || this.secretKey.startsWith('sk_test_'))) {
+            console.warn('[CLERK AUTH WARNING] Production is using Clerk DEVELOPMENT keys (pk_test_/sk_test_). Create a Clerk production instance and replace CLERK_PUBLISHABLE_KEY, CLERK_SECRET_KEY and CLERK_ISSUER.');
+        }
+
         this.client = null;
         if (this.jwksUri) {
             // Instance-hosted JWKS is a safe fallback; the shared API host is not an issuer.

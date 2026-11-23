@@ -72,12 +72,17 @@ app.get('/api/v1/health', (req, res) => res.json(getHealthStatus()));
 app.get('/health', (req, res) => res.json(getHealthStatus()));
 
 // Public readiness reports only availability, never database errors or account counts.
+let lastDbHealthLog = 0;
 app.get('/api/v1/db-health', async (req, res) => {
     const prisma = require('./src/db');
     try {
         await prisma.$queryRaw`SELECT 1`;
         res.json({ success: true, data: { db: 'connected' } });
     } catch (err) {
+        if (Date.now() - lastDbHealthLog > 60000) {
+            lastDbHealthLog = Date.now();
+            console.error('[DB HEALTH] Database check failed:', err.code || err.name, err.message, require('./src/utils/databaseError').databaseHint(err));
+        }
         res.status(503).json({ success: false, data: { db: 'unavailable' } });
     }
 });

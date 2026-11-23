@@ -26,6 +26,6 @@ const prisma = new PrismaClient({
 
 prisma.$connect()
     .then(() => console.log('[PRISMA] Connected to Supabase PostgreSQL successfully.'))
-    .catch((err) => console.error('[PRISMA ERROR] Failed to connect to database:', err.message));
+    .catch((err) => console.error('[PRISMA ERROR] Failed to connect to database:', err.message, require('./utils/databaseError').databaseHint(err)));
 
 module.exports = prisma;

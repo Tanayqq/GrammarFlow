@@ -3,6 +3,9 @@ const redisConnection = process.env.GRAMMARFLOW_LOCAL_DEMO === 'true' ? null : r
 const { generateCacheKey } = require('../utils/cacheKey');
 const dictation = require('./dictation');
 
+// How many different texts may be in flight at once. Every client is also limited (middlewares/clientConcurrency.js),
+// so a few clients cannot use up all the slots.
+const MAX_PENDING = 8;
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const MODELS = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b'];
 const cache = new Map();
@@ -111,7 +114,7 @@ async function callGroqAPI(systemPrompt, userText, temperature = 0.7, options = 
     cache.delete(key);
     if (pending.has(key)) return pending.get(key);
     // Bound concurrent work, including optional cache reads, during bursts or provider outages.
-    if (pending.size >= 4) throw unavailable(10);
+    if (pending.size >= MAX_PENDING) throw unavailable(10);
     const request = generate(systemPrompt, userText, temperature, opts, key);
     pending.set(key, request);
     try { return await request; }
@@ -214,4 +217,4 @@ async function convertDictation({ spoken, context, target }) {
     }
 }
 
-module.exports = { callGroqAPI, transcribe, transcribeDetailed, convertDictation, AUDIO_TYPES };
+module.exports = { MAX_PENDING, callGroqAPI, transcribe, transcribeDetailed, convertDictation, AUDIO_TYPES };

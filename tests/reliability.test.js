@@ -69,13 +69,13 @@ test('bad credentials stop immediately and do not rotate through more keys', asy
 test('concurrent distinct requests have a fixed resource ceiling and recover after completion', async () => {
     const releases = [];
     const ai = service(() => new Promise(resolve => releases.push(() => resolve(success('Done.')))));
-    const active = Array.from({ length: 4 }, (_, i) => ai.callGroqAPI('p', String(i)));
+    const active = Array.from({ length: ai.MAX_PENDING }, (_, i) => ai.callGroqAPI('p', String(i)));
     await assert.rejects(ai.callGroqAPI('p', 'overflow'), error => error.status === 503 && error.retryAfter === 10);
-    assert.equal(releases.length, 4);
+    assert.equal(releases.length, ai.MAX_PENDING);
     releases.forEach(release => release());
     await Promise.all(active);
     const next = ai.callGroqAPI('p', 'new');
-    releases[4]();
+    releases[ai.MAX_PENDING]();
     assert.equal((await next).text, 'Done.');
 });
 

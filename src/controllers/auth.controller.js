@@ -4,8 +4,15 @@ const localSession = require('../services/auth/localSession');
 const { randomUUID } = require('node:crypto');
 const nodemailer = require('nodemailer');
 const bcrypt = require('bcryptjs');
+const { isDatabaseDown } = require('../utils/databaseError');
 // Hash of a random value nobody knows; compared against when the email is unknown.
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(require('node:crypto').randomBytes(16).toString('hex'), 12);
+
+// A database outage must read as "try again", not as a bug: 503 with a short wait.
+const databaseOffline = res => {
+    res.setHeader('Retry-After', '30');
+    return res.status(503).json({ success: false, error: { message: 'Accounts are temporarily unavailable. Please try again shortly.', code: 'DATABASE_OFFLINE' } });
+};
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -137,6 +144,7 @@ const syncSession = async (req, res) => {
             }
         });
     } catch (error) {
+        if (isDatabaseDown(error)) return databaseOffline(res);
         console.error("[AUTH CONTROLLER ERROR] Sync session failed:", error.message);
         res.status(error.status || 500).json({
             success: false,
@@ -219,6 +227,7 @@ const sendVerificationCode = async (req, res) => {
             }
         });
     } catch (error) {
+        if (isDatabaseDown(error)) return databaseOffline(res);
         console.error("[AUTH CONTROLLER ERROR] Send verification code failed:", error.message);
         res.status(error.status || 500).json({
             success: false,
@@ -253,6 +262,7 @@ const verifyCode = async (req, res) => {
             }
         });
     } catch (error) {
+        if (isDatabaseDown(error)) return databaseOffline(res);
         console.error("[AUTH CONTROLLER ERROR] Verify code failed:", error.message);
         res.status(error.status || 500).json({
             success: false,
@@ -314,6 +324,7 @@ const register = async (req, res) => {
             }
         });
     } catch (error) {
+        if (isDatabaseDown(error)) return databaseOffline(res);
         console.error("[AUTH CONTROLLER ERROR] Register failed:", error.message);
         res.status(error.status || 500).json({
             success: false,
@@ -374,6 +385,7 @@ const login = async (req, res) => {
             }
         });
     } catch (error) {
+        if (isDatabaseDown(error)) return databaseOffline(res);
         console.error("[AUTH CONTROLLER ERROR] Login check failed:", error.message);
         res.status(error.status || 500).json({
             success: false,
@@ -393,6 +405,7 @@ const getAuthConfig = async (req, res) => {
             }
         });
     } catch (error) {
+        if (isDatabaseDown(error)) return databaseOffline(res);
         console.error("[AUTH CONTROLLER ERROR] Get auth config failed:", error.message);
         res.status(error.status || 500).json({
             success: false,
