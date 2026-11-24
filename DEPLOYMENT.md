@@ -55,7 +55,7 @@ This revision changes source only. Configure secrets/CA and verify email and dat
 
 Production uses Render `grammarflow-brain` for the API and workers, and Vercel `grammarflowt` for static files from `public/`. Vercel forwards `/api/*` to the existing Render backend; it does not start duplicate queue workers or require database secrets. Both projects follow `main` in `Tanayqq/grammarflowt` on GitLab.
 
-Vercel skips dependency installation and backend builds because these frontend files need no build step. The Render build continues to install dependencies and generate the Prisma client. Configure backend-only secrets in Render. Clerk sign-in can operate without SMTP; the direct password-registration fallback requires SMTP and otherwise fails closed.
+Vercel skips dependency installation and backend builds. The one frontend build step, Tailwind, runs on your machine: after changing classes in the pages or scripts, run `npm run build:css` and commit `public/tailwind.css` (a test fails if it is out of date). The Render build continues to install dependencies and generate the Prisma client. Configure backend-only secrets in Render. Clerk sign-in can operate without SMTP; the direct password-registration fallback requires SMTP and otherwise fails closed.
 
 ## Reliability limits and background queues
 

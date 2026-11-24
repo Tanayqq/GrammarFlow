@@ -51,20 +51,32 @@ test('scripts do not write inline <script> tags into popups or the page', () => 
     }
 });
 
-test('every script from another site is pinned by an integrity hash, except the Tailwind runtime', () => {
+test('every script from another site is pinned by an integrity hash', () => {
     for (const page of pages) {
         const tags = [...read(`public/${page}`).matchAll(/<script[^>]*\bsrc="(https?:\/\/[^"]+)"[^>]*>/gi)];
         for (const [tag, src] of tags) {
-            if (/^https:\/\/cdn\.tailwindcss\.com/.test(src)) continue; // generated on the fly: it cannot be pinned
             assert.match(tag, /\sintegrity="sha(256|384|512)-[A-Za-z0-9+/=]+"/, `${page}: ${src} has no integrity hash`);
             assert.match(tag, /\scrossorigin="anonymous"/, `${page}: ${src} needs crossorigin for integrity checks`);
         }
     }
 });
 
-test('the Tailwind colors still load, now from a file instead of an inline script', () => {
-    const config = read('public/tailwind-config.js');
-    assert.match(config, /tailwind\.config\s*=/);
-    assert.match(config, /cosmic/);
-    assert.match(read('public/index.html'), /<script src="tailwind-config\.js"><\/script>/);
+test('Tailwind is built ahead of time: no runtime script, no CDN in the policy, colors present in the built file', () => {
+    const html = read('public/index.html');
+    assert.doesNotMatch(html, /cdn\.tailwindcss\.com|tailwind-config\.js/);
+    assert.match(html, /<link rel="stylesheet" href="tailwind\.css/);
+    assert.doesNotMatch(read('vercel.json'), /cdn\.tailwindcss\.com/);
+    assert.match(read('public/tailwind.css'), /cosmic|#080312/i);
+});
+
+test('public/tailwind.css is up to date with the classes the pages use', () => {
+    const { execFileSync } = require('node:child_process');
+    const os = require('node:os');
+    const fs = require('node:fs');
+    const out = path.join(os.tmpdir(), `tailwind-check-${process.pid}.css`);
+    const bin = path.join(__dirname, '..', 'node_modules', 'tailwindcss', 'lib', 'cli.js');
+    execFileSync(process.execPath, [bin, '-i', 'tailwind.input.css', '-o', out, '--minify'], { cwd: path.join(__dirname, '..'), stdio: 'ignore' });
+    const rebuilt = fs.readFileSync(out, 'utf8');
+    fs.unlinkSync(out);
+    assert.equal(rebuilt, read('public/tailwind.css'), 'a class changed: run "npm run build:css" and commit public/tailwind.css');
 });

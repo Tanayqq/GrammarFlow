@@ -20,7 +20,6 @@ async function editor(t, respond = () => ({ success: true, data: ['Corrected tex
     await new Promise(resolve => setImmediate(resolve));
     w.alert = () => {};
     w.confirm = () => false;
-    w.tailwind = {};
     w.fetch = async (url, options) => ({ ok: true, json: async () =>
         url.endsWith('/auth/config') ? { success: true, data: clerkUser ? { clerkPublishableKey: 'synthetic-key' } : {} } : respond(url, options) });
     if (clerkUser) {
