@@ -10,7 +10,7 @@ Document AI, a text humanizer and a teleprompter that keep you sounding like you
 
 ## Short description (directories, 2 sentences)
 
-GrammarFlow turns documents into plain explanations, humanizes stiff AI-sounding text, and rewrites in your own voice, in English and in Hinglish, Hindi, Telugu and Kannada. It also has a built-in teleprompter and a hands-free mode you control with head movement, and it is free to try with no sign-up.
+GrammarFlow turns documents into plain explanations, humanizes stiff AI-sounding text, and rewrites in your own voice, in English and in Hinglish, Hindi, Telugu and Kannada. It also has a built-in teleprompter, a hands-free mode you control with head movement, live grammar suggestions, voice dictation, a Chrome extension and a beta code editor, and it is free to try with no sign-up.
 
 ## Long description (Product Hunt, AlternativeTo, IH)
 
@@ -22,14 +22,26 @@ Most writing tools make everyone sound the same. GrammarFlow is built around fiv
 - **Teleprompter**: read a rewrite aloud from a floating window with a countdown, adjustable speed and an optional reading line.
 - **Hands-free mode**: move the pointer with your head using supported earbuds, so you can control the page without touching the mouse.
 
-It also fixes grammar, takes voice dictation, and has a Chrome extension for any web page. Guest history expires after 30 days, you can clear it any time, and no account is needed to start. It is early and built in public, so the most useful thing you can send is what feels wrong.
+And the rest of what it does:
+
+- **Grammar fix and rewrite** with ten tones: professional, casual, academic, friendly, confident, creative, direct, empathetic, persuasive and neutral.
+- **Live suggestions** as you type: underlines for grammar and style issues, with a one-click fix, plus smart suggestions for longer paragraphs and autocomplete.
+- **Languages**: English, Roman Hinglish, Hindi, Telugu and Kannada, including mixed text like Hindi + English, with automatic language detection.
+- **Document AI extras**: summarize, explain in simple words, or extract and fix grammar from scanned pages with OCR (PDF and image upload).
+- **Voice dictation**: speak instead of typing, including in Indian languages.
+- **Chrome extension**: select text on any page, or right-click, to rewrite, fix grammar, summarize or explain it in place.
+- **Dev Editor (beta)**: a code editor with AI help and a run button.
+- **History and sync**: every result is saved so you can reopen or delete it, and signing in syncs it across devices.
+- **Privacy**: no account needed to start, guest history expires after 30 days, you can clear it any time, and the app warns you to review AI suggestions before using them.
+
+It is early and built in public, so the most useful thing you can send is what feels wrong.
 
 ## Reddit (r/SideProject, r/alphaandbetausers, r/IMadeThis, r/buildinpublic)
 
 **Title:** I built Document AI + a text humanizer + a teleprompter that keep your own voice (Hinglish and Telugu too) - roast it
 
 **Body:**
-I got tired of tools that make every email sound like the same robot, and none of them handle Hinglish or Telugu well. So I built GrammarFlow: Document AI that explains PDFs and images in plain language, a text humanizer, a "My voice" mode that matches your own writing, a teleprompter, and a hands-free mode you control with head movement.
+I got tired of tools that make every email sound like the same robot, and none of them handle Hinglish or Telugu well. So I built GrammarFlow: Document AI that explains PDFs and images in plain language, a text humanizer, a "My voice" mode that matches your own writing, a teleprompter, and a hands-free mode you control with head movement. It also does live grammar suggestions, ten tones, voice dictation and OCR for scanned pages.
 
 It is free, no sign-up, and there is a Chrome extension. It is early, so please tell me what is confusing, slow, or just wrong. I will fix the top issues this week and post what changed.
 
