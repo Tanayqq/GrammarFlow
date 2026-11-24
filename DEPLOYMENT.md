@@ -53,7 +53,7 @@ This revision changes source only. Configure secrets/CA and verify email and dat
 
 ## Existing Render and Vercel deployment
 
-Production uses Render `grammarflow-brain` for the API and workers, and Vercel `grammarflowt` for static files from `public/`. Vercel forwards `/api/*` to the existing Render backend; it does not start duplicate queue workers or require database secrets. Both projects follow `main` in `Tanayqq/grammarflowt` on GitLab.
+Production uses Render `grammarflow-brain` for the API and workers, and Vercel `grammarflowt` for static files from `public/`. The browser calls the Render API directly (`PRODUCTION_API_URL` in `public/app-v16.js`); Vercel serves only static files and does not start duplicate queue workers or require database secrets. Both projects follow `main` in `Tanayqq/grammarflowt` on GitLab.
 
 Vercel skips dependency installation and backend builds. The one frontend build step, Tailwind, runs on your machine: after changing classes in the pages or scripts, run `npm run build:css` and commit `public/tailwind.css` (a test fails if it is out of date). The Render build continues to install dependencies and generate the Prisma client. Configure backend-only secrets in Render. Clerk sign-in can operate without SMTP; the direct password-registration fallback requires SMTP and otherwise fails closed.
 
@@ -64,3 +64,7 @@ Background AI/history queues are off by default. Requests run directly and histo
 AI calls have a 35-second provider budget, model cooldowns honoring Retry-After, at most four distinct calls in flight per process, and a bounded five-minute result cache. Duplicate in-flight work is shared. These are per-process bounds: coordinate them across instances before scaling beyond one. Provider errors return a sanitized 503 with Retry-After; abuse protection retains 429 responses. No key rotation is used to evade organization quotas.
 
 The existing Render service is Free. It can sleep after inactivity and cannot provide always-on production availability. Before a broad launch, configure an appropriate compute plan, production Clerk, verified email delivery and adequate Groq/Redis quotas. No code can guarantee unlimited provider capacity.
+
+## History retention
+
+The API deletes old history on its own: guests' entries after `HISTORY_GUEST_DAYS` (default 30), signed-in users' after `HISTORY_USER_DAYS` (default 365), plus empty guest accounts. The first run starts a minute after the server boots and logs how much is due. To see what would go without deleting anything, set `HISTORY_RETENTION_DRY_RUN=true` on Render before deploying; set `HISTORY_RETENTION_DISABLED=true` to turn the cleanup off.

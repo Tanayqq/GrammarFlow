@@ -1,6 +1,7 @@
 // Writing history is private text, so it is not kept forever: guests' entries expire after HISTORY_GUEST_DAYS (default 30),
 // signed-in users' after HISTORY_USER_DAYS (default 365). Guest accounts left with nothing are removed too.
-// HISTORY_RETENTION_DISABLED=true turns this off.
+// HISTORY_RETENTION_DISABLED=true turns this off. HISTORY_RETENTION_DRY_RUN=true only logs what would be removed.
+// Every run first logs how much is due, so the first deletion on a database with old data is visible in the logs.
 const DAY = 24 * 60 * 60 * 1000;
 
 const days = (value, fallback) => {
@@ -23,9 +24,14 @@ async function deleteOperations(prisma, where, batch, maxBatches) {
     return total;
 }
 
-async function purgeExpiredHistory(prisma, { now = Date.now(), guestDays = 30, userDays = 365, batch = 500, maxBatches = 20 } = {}) {
+async function purgeExpiredHistory(prisma, { now = Date.now(), guestDays = 30, userDays = 365, batch = 500, maxBatches = 20, dryRun = false } = {}) {
     const guestCutoff = new Date(now - guestDays * DAY);
     const userCutoff = new Date(now - userDays * DAY);
+    if (dryRun) {
+        const guestOps = await prisma.aiOperation.count({ where: { created_at: { lt: guestCutoff }, user: { is: { email: null, password_hash: null } } } });
+        const userOps = await prisma.aiOperation.count({ where: { created_at: { lt: userCutoff }, user: { is: { OR: [{ email: { not: null } }, { password_hash: { not: null } }] } } } });
+        return { guestOps, userOps, guests: 0, dryRun: true };
+    }
     const guestOps = await deleteOperations(prisma, { created_at: { lt: guestCutoff }, user: { is: { email: null, password_hash: null } } }, batch, maxBatches);
     const userOps = await deleteOperations(prisma, { created_at: { lt: userCutoff }, user: { is: { OR: [{ email: { not: null } }, { password_hash: { not: null } }] } } }, batch, maxBatches);
     let guests = 0;
@@ -52,14 +58,21 @@ async function purgeExpiredHistory(prisma, { now = Date.now(), guestDays = 30, u
 // Runs a minute after start, then every six hours. Timers are unref'd so they never keep a process alive.
 function start({ prisma = require('./db'), log = console } = {}) {
     if (process.env.HISTORY_RETENTION_DISABLED === 'true') return null;
-    const options = { guestDays: days(process.env.HISTORY_GUEST_DAYS, 30), userDays: days(process.env.HISTORY_USER_DAYS, 365) };
+    const options = { guestDays: days(process.env.HISTORY_GUEST_DAYS, 30), userDays: days(process.env.HISTORY_USER_DAYS, 365), dryRun: process.env.HISTORY_RETENTION_DRY_RUN === 'true' };
     let running = false;
+    let announced = false;
     const run = async () => {
         if (running) return;
         running = true;
         try {
+            if (!options.dryRun && !announced) {
+                announced = true;
+                const due = await purgeExpiredHistory(prisma, { ...options, dryRun: true });
+                if (due.guestOps || due.userOps) log.log(`[RETENTION] First run: ${due.guestOps} guest and ${due.userOps} user history entries are older than ${options.guestDays}/${options.userDays} days and will be removed.`);
+            }
             const done = await purgeExpiredHistory(prisma, options);
-            if (done.guestOps || done.userOps || done.guests) log.log(`[RETENTION] Removed ${done.guestOps} guest and ${done.userOps} user history entries, and ${done.guests} empty guest accounts.`);
+            if (done.dryRun) log.log(`[RETENTION] Dry run: ${done.guestOps} guest and ${done.userOps} user history entries would be removed. Nothing was deleted.`);
+            else if (done.guestOps || done.userOps || done.guests) log.log(`[RETENTION] Removed ${done.guestOps} guest and ${done.userOps} user history entries, and ${done.guests} empty guest accounts.`);
         } catch (error) {
             log.error('[RETENTION] History cleanup failed:', error.message, require('./utils/databaseError').databaseHint(error));
         } finally {

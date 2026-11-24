@@ -1980,7 +1980,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             } else {
                 isClerkEnabled = false;
-                console.log("[AUTH] Clerk Publishable Key not configured. Using mock auth fallback.");
+                console.log("[AUTH] Clerk is not configured on this server; guest mode only.");
             }
         } catch (err) {
             clerkLoadFailed = true;

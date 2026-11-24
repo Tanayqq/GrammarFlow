@@ -302,3 +302,20 @@ test('both history payloads carry the moment they were queued', () => {
         && body.lastIndexOf('markHistoryCleared(', body.indexOf('prisma.aiOperation.deleteMany')) < body.indexOf('prisma.aiOperation.deleteMany'),
         'the clear is recorded before anything is deleted, for users and for guests');
 });
+
+test('a dry run only counts what is due and deletes nothing', async () => {
+    const counted = [];
+    const prisma = { aiOperation: {
+        count: async ({ where }) => { counted.push(where); return counted.length === 1 ? 7 : 2; },
+        findMany: async () => { throw new Error('a dry run must not select rows to delete'); },
+        deleteMany: async () => { throw new Error('a dry run must not delete'); }
+    } };
+    const done = await retention.purgeExpiredHistory(prisma, { now: Date.UTC(2026, 10, 23), dryRun: true });
+    assert.equal(done.guestOps, 7);
+    assert.equal(done.userOps, 2);
+    assert.equal(done.dryRun, true);
+    assert.equal(counted.length, 2);
+    const source = read('src/historyRetention.js');
+    assert.match(source, /HISTORY_RETENTION_DRY_RUN/);
+    assert.match(source, /First run:/, 'the first run says how much is due before deleting');
+});
