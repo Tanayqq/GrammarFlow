@@ -3302,7 +3302,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             } catch (err) {
                 if (docResultsList) {
-                    docResultsList.innerHTML = '<p class="text-red-400 text-sm p-4">\u274C Error: ' + (err.message || 'Unknown error') + '</p>';
+                    docResultsList.innerHTML = '<p class="text-red-400 text-sm p-4">\u274C Error: ' + escapeHTML(err.message || 'Unknown error') + '</p>';
                 }
                 if (docOutputSection) docOutputSection.classList.remove('hidden');
             } finally {

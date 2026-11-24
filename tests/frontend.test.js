@@ -388,3 +388,8 @@ test('Fix Grammar results are readable too, and show the corrected text only', a
     app.get('resultsList').querySelector('.read-btn-mini').click();
     assert.equal(app.w.document.querySelector('.tp-text').textContent.trim(), 'Corrected sentence.');
 });
+
+test('error text is escaped before it is written into the document results area', () => {
+    const app = readFileSync(path.join(__dirname, '..', 'public', 'app-v16.js'), 'utf8');
+    assert.match(app, /Error: ' \+ escapeHTML\(err\.message/);
+});
