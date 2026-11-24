@@ -37,3 +37,24 @@ test('the database check sits behind the global limiter and remembers its answer
     assert.match(region, /10000/, 'the answer is kept for 10 seconds');
     assert.match(region, /dbHealthCheck \|\|=/, 'callers that arrive while a check runs share it');
 });
+
+test('every route in the routers has a rate limiter of its own or sits behind the global one', () => {
+    // Routes that run an AI model, send mail or touch history must name a limiter in their own registration.
+    const own = /(aiLimiter|docLimiter|readLimiter|authLimiter|dictationLimiter|executionLimiter)/;
+    const exempt = new Set(['/sync', '/config']); // /sync is behind the global limiter and only reads the session
+    let checked = 0;
+    for (const file of ['src/routes/ai.routes.js', 'src/routes/auth.routes.js']) {
+        const source = readFileSync(path.join(__dirname, '..', file), 'utf8');
+        for (const m of source.matchAll(/router\.(get|post|put|patch|delete)\(\s*'([^']+)'([^\n]*)/g)) {
+            if (exempt.has(m[2])) continue;
+            checked++;
+            assert.match(m[3], own, `${file}: ${m[1].toUpperCase()} ${m[2]} has no limiter of its own`);
+        }
+    }
+    assert.ok(checked >= 15, 'the route list was actually read');
+});
+
+test('the browser extension asks for the least it needs', () => {
+    const manifest = JSON.parse(readFileSync(path.join(__dirname, '..', 'GrammarFlow-Extension', 'manifest.json'), 'utf8'));
+    assert.ok(!manifest.permissions.includes('tabs'), 'host access already covers tab addresses, so the tabs permission adds only warnings');
+});

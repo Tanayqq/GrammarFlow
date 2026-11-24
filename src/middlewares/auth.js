@@ -18,7 +18,6 @@ async function passiveAuth(req, res, next) {
             if (user) {
                 req.user = user;
                 req.userId = user.id;
-                console.log(`[AUTH MIDDLEWARE] Authenticated Request. User ID: ${user.id}`);
             }
         }
     }

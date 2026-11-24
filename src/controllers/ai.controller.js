@@ -6,6 +6,7 @@ const { aiHistoryQueue } = require('../historyQueue');
 const { logHistoryRecord, markHistoryCleared } = require('../historyWorker');
 const { readGuestId } = require('../utils/guestId');
 const { isDatabaseDown } = require('../utils/databaseError');
+const { shortId } = require('../utils/logSafe');
 const prisma = require('../db');
 const { detectLanguage, draftLanguage, stripStrayScripts, casualize, fixNames, fixHindiGender } = require('../utils/language');
 const { sendAIError } = require('../utils/publicError');
@@ -43,31 +44,26 @@ const rewrite = async (req, res, next) => {
 
         let resultText = "";
         let source = "groq";
-        if (req.isCacheHit && req.cachedResponse) {
-            resultText = req.cachedResponse;
-            source = "cache";
-        } else {
-            let attempts = 0;
-            while (attempts < 2) {
-                let prompt = prompts.getRewritePrompt(style, tone, language, humanize, isLongText, req.body.voiceSample);
-                if (attempts > 0 && !isLongText) {
-                    prompt = `CRITICAL: Previous response was invalid. Provide exactly 3 rewrites separated by ===REWRITE_SEPARATOR=== in ${language} now.\n\n${prompt}`;
-                }
-                try {
-                    const response = await aiService.callGroqAPI(prompt, text, 0.7, { responseFormat: 'json' });
-                    try {
-                        const parsed = JSON.parse(response.text);
-                        resultText = parsed?.result?.corrected_text || parsed?.corrected_text || response.text;
-                    } catch(e) {
-                        resultText = response.text;
-                    }
-                    source = response.source;
-                    if (resultText.trim().length > 0 && !resultText.toLowerCase().includes("sorry")) break;
-                } catch (err) {
-                    throw err; // The service already handles transient failures; don't multiply retries.
-                }
-                attempts++;
+        let attempts = 0;
+        while (attempts < 2) {
+            let prompt = prompts.getRewritePrompt(style, tone, language, humanize, isLongText, req.body.voiceSample);
+            if (attempts > 0 && !isLongText) {
+                prompt = `CRITICAL: Previous response was invalid. Provide exactly 3 rewrites separated by ===REWRITE_SEPARATOR=== in ${language} now.\n\n${prompt}`;
             }
+            try {
+                const response = await aiService.callGroqAPI(prompt, text, 0.7, { responseFormat: 'json' });
+                try {
+                    const parsed = JSON.parse(response.text);
+                    resultText = parsed?.result?.corrected_text || parsed?.corrected_text || response.text;
+                } catch(e) {
+                    resultText = response.text;
+                }
+                source = response.source;
+                if (resultText.trim().length > 0 && !resultText.toLowerCase().includes("sorry")) break;
+            } catch (err) {
+                throw err; // The service already handles transient failures; don't multiply retries.
+            }
+            attempts++;
         }
 
         resultText = resultText.replace(/^(STRICT COMMAND|IMPORTANT|CRITICAL|STRICT|Note):.*?\n/gsi, '').trim();
@@ -231,15 +227,10 @@ const suggestions = async (req, res, next) => {
         if (!text) return res.status(400).json({ success: false, error: { message: "Text is required" } });
         let resultText = "";
         let source = "groq";
-        if (req.isCacheHit && req.cachedResponse) {
-            resultText = req.cachedResponse;
-            source = "cache";
-        } else {
-            const prompt = prompts.getSuggestionsPrompt(language);
-            const response = await aiService.callGroqAPI(prompt, text, 0.5);
-            resultText = response.text;
-            source = response.source;
-        }
+        const prompt = prompts.getSuggestionsPrompt(language);
+        const response = await aiService.callGroqAPI(prompt, text, 0.5);
+        resultText = response.text;
+        source = response.source;
         let parsedSuggestions = [];
         try {
             const jsonMatch = resultText.match(/\[.*\]/s);
@@ -257,15 +248,10 @@ const autocomplete = async (req, res, next) => {
         if (!context) return res.status(400).json({ success: false, error: { message: "Context is required" } });
         let resultText = "";
         let source = "groq";
-        if (req.isCacheHit && req.cachedResponse) {
-            resultText = req.cachedResponse;
-            source = "cache";
-        } else {
-            const prompt = prompts.getAutocompletePrompt(context, language);
-            const response = await aiService.callGroqAPI(prompt, partial_word || "", 0.3);
-            resultText = response.text;
-            source = response.source;
-        }
+        const prompt = prompts.getAutocompletePrompt(context, language);
+        const response = await aiService.callGroqAPI(prompt, partial_word || "", 0.3);
+        resultText = response.text;
+        source = response.source;
         sendResponse(res, true, resultText.replace(/^[\"']|[\"']$/g, '').trim(), null, { language, source });
     } catch (error) {
         sendAIError(res, error);
@@ -287,15 +273,10 @@ const analyzeRealtime = async (req, res, next) => {
 
         let resultText = "";
         let source = "groq";
-        if (req.isCacheHit && req.cachedResponse) {
-            resultText = req.cachedResponse;
-            source = "cache";
-        } else {
-            const prompt = prompts.getStableRealtimePrompt(language, humanize);
-            const response = await aiService.callGroqAPI(prompt, text, 0.55);
-            resultText = response.text;
-            source = response.source;
-        }
+        const prompt = prompts.getStableRealtimePrompt(language, humanize);
+        const response = await aiService.callGroqAPI(prompt, text, 0.55);
+        resultText = response.text;
+        source = response.source;
 
         let suggestionsList = [];
         try {
@@ -351,22 +332,17 @@ const analyzeSmartSuggestions = async (req, res, next) => {
 
         let resultText = "";
         let source = "groq";
-        if (req.isCacheHit && req.cachedResponse) {
-            resultText = req.cachedResponse;
-            source = "cache";
-        } else {
-            const prompt = prompts.getSmartSuggestionsPrompt(language, humanize, writingContext);
-            const response = await aiService.callGroqAPI(prompt, text, 0.45);
-            resultText = response.text;
-            source = response.source;
-        }
+        const prompt = prompts.getSmartSuggestionsPrompt(language, humanize, writingContext);
+        const response = await aiService.callGroqAPI(prompt, text, 0.45);
+        resultText = response.text;
+        source = response.source;
 
         let raw = [];
         try {
             const jsonMatch = resultText.match(/\[[\s\S]*\]/);
             raw = jsonMatch ? JSON.parse(jsonMatch[0]) : [];
         } catch (e) {
-            console.error("[Smart] Parse error:", resultText.substring(0, 200));
+            console.error(`[Smart] Parse error: the model's answer was not valid JSON (${resultText.length} characters)`);
             raw = [];
         }
 
@@ -398,18 +374,13 @@ const processDocument = async (req, res, next) => {
         const prompt = prompts.getDocumentProcessingPrompt(mode, language, style, tone, humanize, isConsolidation);
         let resultText = "";
         let source = "groq";
-        if (req.isCacheHit && req.cachedResponse) {
-            resultText = req.cachedResponse;
-            source = "cache";
-        } else {
-            const model = "openai/gpt-oss-120b";
-            const response = await aiService.callGroqAPI(prompt, text, mode === 'Explain' ? 0.2 : 0.4,
-                mode === 'Explain' ? { model, timeoutMs: 20000, ...(language === 'Hinglish' && { validate: isRomanHinglish }) } : model);
-            resultText = response.text;
-            source = response.source;
-        }
+        const model = "openai/gpt-oss-120b";
+        const response = await aiService.callGroqAPI(prompt, text, mode === 'Explain' ? 0.2 : 0.4,
+            mode === 'Explain' ? { model, timeoutMs: 20000, ...(language === 'Hinglish' && { validate: isRomanHinglish }) } : model);
+        resultText = response.text;
+        source = response.source;
         if (mode === 'Explain' && language === 'Hinglish' && !isRomanHinglish(resultText)) {
-            // One bounded repair; invalid cached output must pass the same check.
+            // One bounded repair; the repaired output must pass the same check.
             const repaired = await aiService.callGroqAPI(prompt + '\nFINAL CHECK: Every explanatory paragraph must be Roman Hinglish, not English. Regenerate concisely in Hindi-English mixed sentences.', text, 0.2, { model: 'openai/gpt-oss-120b', timeoutMs: 20000, validate: isRomanHinglish });
             resultText = repaired.text;
             source = repaired.source;
@@ -512,7 +483,7 @@ const getHistory = async (req, res) => {
         // Registered accounts have an email (Clerk or mock auth) or password_hash (mock auth).
         // A pure guest account has no email and no password_hash.
         if (!req.userId && (user.email || user.password_hash)) {
-            console.log(`[API v1] Blocking unauthenticated history request for registered user ID: ${user.id} (email: ${user.email ? 'yes' : 'no'}, password: ${user.password_hash ? 'yes' : 'no'})`);
+            console.log(`[API v1] Blocking unauthenticated history request for registered user ${shortId(user.id)} (email: ${user.email ? 'yes' : 'no'}, password: ${user.password_hash ? 'yes' : 'no'})`);
             // Clear the guest_session_id link from this registered user to prevent future leaks
             // (this can happen when the new guest_session_id gets linked during a logout race condition)
             try {
@@ -520,7 +491,7 @@ const getHistory = async (req, res) => {
                     where: { id: user.id },
                     data: { guest_session_id: null }
                 });
-                console.log(`[API v1] Cleared guest_session_id link from registered user ${user.id} to prevent future leaks`);
+                console.log(`[API v1] Cleared guest_session_id link from registered user ${shortId(user.id)} to prevent future leaks`);
             } catch (clearErr) {
                 console.warn(`[API v1] Could not clear guest_session_id from registered user:`, clearErr.message);
             }

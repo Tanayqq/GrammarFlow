@@ -25,8 +25,7 @@
     "storage",
     "activeTab",
     "scripting",
-    "contextMenus",
-    "tabs"
+    "contextMenus"
   ],
   "host_permissions": [
     "https://grammarflow-brain.onrender.com/*",

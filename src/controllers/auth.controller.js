@@ -7,6 +7,7 @@ const bcrypt = require('bcryptjs');
 const { isDatabaseDown } = require('../utils/databaseError');
 const loginThrottle = require('../services/auth/loginThrottle');
 const { cleanGuestId } = require('../utils/guestId');
+const { shortId } = require('../utils/logSafe');
 // Hash of a random value nobody knows; compared against when the email is unknown.
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(require('node:crypto').randomBytes(16).toString('hex'), 12);
 
@@ -33,7 +34,7 @@ const syncSession = async (req, res) => {
             });
         }
 
-        console.log(`[AUTH CONTROLLER] Syncing session. User ID: ${req.userId} | Guest Session: ${guestSessionId || 'none'}`);
+        console.log(`[AUTH CONTROLLER] Syncing session. User: ${shortId(req.userId)} | Guest: ${shortId(guestSessionId)}`);
 
         // 1. Upsert the authenticated User record
         const existingUser = await prisma.user.findUnique({ where: { id: req.userId } });
@@ -66,7 +67,7 @@ const syncSession = async (req, res) => {
 
             // If the guest user exists and is not already the same record as the authenticated user
             if (dbGuestUser && !dbGuestUser.email && !dbGuestUser.password_hash && dbGuestUser.id !== dbAuthUser.id) {
-                console.log(`[AUTH CONTROLLER] Migrating data from guest user "${dbGuestUser.id}" to auth user "${dbAuthUser.id}"`);
+                console.log(`[AUTH CONTROLLER] Migrating data from guest user ${shortId(dbGuestUser.id)} to auth user ${shortId(dbAuthUser.id)}`);
 
                 await prisma.$transaction(async (tx) => {
                     // Migrate AI Operations
@@ -168,7 +169,7 @@ async function deliverMail(to, { subject, text, html }) {
         await transporter.sendMail({ from: `"GrammarFlow" <${process.env.SMTP_USER}>`, to, subject, text, html });
         return true;
     } catch (mailErr) {
-        console.error("[AUTH ERROR] Failed to send email:", mailErr.message);
+        console.error("[AUTH ERROR] Failed to send email:", mailErr.code || mailErr.name); // the message can contain the address
         return false;
     }
 }
@@ -323,7 +324,7 @@ const register = async (req, res) => {
             ? await prisma.user.update({ where: { id: existingUser.id }, data: { password_hash: passwordHash, name: existingUser.name || cleanName } })
             : await prisma.user.create({ data: { id: randomUUID(), email: cleanEmail, name: cleanName, password_hash: passwordHash } });
 
-        console.log(`[AUTH CONTROLLER] Registered new user: ${cleanEmail} (ID: ${user.id})`);
+        console.log(`[AUTH CONTROLLER] Registered new user ${shortId(user.id)}`);
 
         res.json({
             success: true,

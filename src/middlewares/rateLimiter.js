@@ -1,6 +1,7 @@
 const { randomUUID } = require('node:crypto');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { redisConnection } = require('../queue');
+const { shortId } = require('../utils/logSafe');
 
 let isRedisRateLimiterDisabled = false;
 
@@ -166,7 +167,7 @@ const limitReachedHandler = (req, res, next, options) => {
     const resetTime = req.rateLimit?.resetTime;
     const retryAfter = resetTime ? Math.max(1, Math.ceil((new Date(resetTime).getTime() - Date.now()) / 1000)) : 60;
     
-    console.warn(`[\x1b[31mRATE LIMIT EXCEEDED\x1b[0m] Path: ${req.originalUrl || req.url} | ID: ${req.rateLimitKey || 'unknown'} | Retry-After: ${retryAfter}s`);
+    console.warn(`[\x1b[31mRATE LIMIT EXCEEDED\x1b[0m] Path: ${req.originalUrl || req.url} | ID: ${shortId(req.rateLimitKey)} | Retry-After: ${retryAfter}s`);
     
     res.setHeader('Retry-After', String(retryAfter));
     res.status(429).json({
@@ -184,13 +185,6 @@ const aiLimiter = rateLimit({
     legacyHeaders: false,
     store: new SlidingWindowStore(60 * 1000),
     keyGenerator: (req) => getRateLimitKey(req, 'ai'),
-    skip: (req) => {
-        if (req.isCacheHit) {
-            console.log(`[RATE LIMITER] Bypassing AI rate limit (Cache Hit) for ID: ${req.rateLimitKey}`);
-            return true;
-        }
-        return false;
-    },
     handler: limitReachedHandler
 });
 
@@ -202,13 +196,6 @@ const docLimiter = rateLimit({
     legacyHeaders: false,
     store: new SlidingWindowStore(60 * 1000),
     keyGenerator: (req) => getRateLimitKey(req, 'doc'),
-    skip: (req) => {
-        if (req.isCacheHit) {
-            console.log(`[RATE LIMITER] Bypassing Doc rate limit (Cache Hit) for ID: ${req.rateLimitKey}`);
-            return true;
-        }
-        return false;
-    },
     handler: limitReachedHandler
 });
 

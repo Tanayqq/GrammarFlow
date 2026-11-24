@@ -30,10 +30,9 @@ function controller(responses) {
     });
     return { module, count: () => calls };
 }
-async function run(api, cached) {
+async function run(api) {
     let response, status = 200;
-    await api.module.processDocument({ body: { text: 'Source excerpt.', mode: 'Explain', language: 'Hinglish' }, headers: {},
-        isCacheHit: !!cached, cachedResponse: cached }, {
+    await api.module.processDocument({ body: { text: 'Source excerpt.', mode: 'Explain', language: 'Hinglish' }, headers: {} }, {
         status(n) { status = n; return this; }, json(body) { response = body; return this; }, setHeader() {}
     });
     return { status, response };
@@ -44,10 +43,10 @@ test('wrong-language explanation is repaired once before being accepted', async 
     assert.equal(api.count(), 2); assert.equal(result.status, 200);
     assert.equal(result.response.data[0], hinglish);
 });
-test('invalid cached language is checked, and repeated mismatch fails closed', async () => {
-    const api = controller([english]);
-    const result = await run(api, english);
-    assert.equal(api.count(), 1); assert.equal(result.status, 422);
+test('a repeated language mismatch fails closed', async () => {
+    const api = controller([english, english]);
+    const result = await run(api);
+    assert.equal(api.count(), 2); assert.equal(result.status, 422);
     assert.equal(result.response.error.code, 'DOCUMENT_LANGUAGE_MISMATCH');
     assert.equal(result.response.data, undefined);
 });
