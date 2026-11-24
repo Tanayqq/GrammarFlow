@@ -58,3 +58,21 @@ test('the browser extension asks for the least it needs', () => {
     const manifest = JSON.parse(readFileSync(path.join(__dirname, '..', 'GrammarFlow-Extension', 'manifest.json'), 'utf8'));
     assert.ok(!manifest.permissions.includes('tabs'), 'host access already covers tab addresses, so the tabs permission adds only warnings');
 });
+
+test('the public health probe reveals no environment, version or memory details', () => {
+    const server = readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    const probe = server.slice(server.indexOf('const getHealthStatus'), server.indexOf("app.get('/api/v1/health'"));
+    assert.doesNotMatch(probe, /process\.version|memoryUsage|NODE_ENV|version:/);
+});
+
+test('the limiter goes back to Redis after a quota outage instead of staying in memory until restart', () => {
+    const source = readFileSync(path.join(__dirname, '..', 'src', 'middlewares', 'rateLimiter.js'), 'utf8');
+    assert.match(source, /redisDisabledUntil = Date\.now\(\) \+ REDIS_RETRY_MS/);
+    assert.match(source, /Date\.now\(\) >= redisDisabledUntil/);
+    assert.doesNotMatch(source, /isRedisRateLimiterDisabled/);
+});
+
+test('ts-node is no longer a dependency', () => {
+    const pkg = JSON.parse(readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+    assert.ok(!(pkg.dependencies || {})['ts-node'] && !(pkg.devDependencies || {})['ts-node']);
+});

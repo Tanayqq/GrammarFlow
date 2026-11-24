@@ -49,22 +49,13 @@ app.use((req, res, next) => {
 // 3. Consolidated Health & Diagnostics
 const getHealthStatus = () => {
     const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
-    const memory = process.memoryUsage();
     return {
         success: true,
         data: {
+            // Public probe: it says the server is up and nothing about how it is built or how loaded it is.
             status: 'UP',
             uptime: `${uptimeSeconds}s`,
-            timestamp: new Date().toISOString(),
-            environment: process.env.NODE_ENV || 'development',
-            version: '1.3.0',
-            system: {
-                nodeVersion: process.version,
-                memoryUsage: {
-                    rss: `${Math.round(memory.rss / 1024 / 1024)}MB`,
-                    heapUsed: `${Math.round(memory.heapUsed / 1024 / 1024)}MB`
-                }
-            }
+            timestamp: new Date().toISOString()
         }
     };
 };

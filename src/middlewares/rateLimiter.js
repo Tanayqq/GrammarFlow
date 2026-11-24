@@ -3,7 +3,9 @@ const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { redisConnection } = require('../queue');
 const { shortId } = require('../utils/logSafe');
 
-let isRedisRateLimiterDisabled = false;
+// After Redis refuses for quota reasons we use memory, then try Redis again after this long (a restart is not needed).
+const REDIS_RETRY_MS = 10 * 60 * 1000;
+let redisDisabledUntil = 0;
 
 /**
  * Custom Sliding Window Store for express-rate-limit.
@@ -30,7 +32,7 @@ class SlidingWindowStore {
         const windowMs = this.windowMs;
 
         // Try Redis first if it's connected and not limit-exceeded
-        if (!isRedisRateLimiterDisabled && redisConnection && redisConnection.status === 'ready') {
+        if (Date.now() >= redisDisabledUntil && redisConnection && redisConnection.status === 'ready') {
             try {
                 const luaScript = `
                     local key = KEYS[1]
@@ -76,8 +78,8 @@ class SlidingWindowStore {
                 };
             } catch (err) {
                 if (err.message && err.message.includes('max requests limit exceeded')) {
-                    isRedisRateLimiterDisabled = true;
-                    console.warn('[RATE LIMITER] Upstash limit exceeded. Switched to in-memory sliding window limiter.');
+                    redisDisabledUntil = Date.now() + REDIS_RETRY_MS;
+                    console.warn('[RATE LIMITER] Upstash limit exceeded. Using the in-memory limiter for 10 minutes, then trying Redis again.');
                 } else {
                     console.error(`[RATE LIMITER REDIS ERROR] Failed to increment key "${key}" in Redis:`, err.message);
                 }
@@ -119,7 +121,7 @@ class SlidingWindowStore {
     }
 
     async decrement(key) {
-        if (redisConnection && redisConnection.status === 'ready') {
+        if (Date.now() >= redisDisabledUntil && redisConnection && redisConnection.status === 'ready') {
             try {
                 await redisConnection.zremrangebyrank(key, -1, -1);
                 return;
@@ -136,7 +138,7 @@ class SlidingWindowStore {
     }
 
     async resetKey(key) {
-        if (redisConnection && redisConnection.status === 'ready') {
+        if (Date.now() >= redisDisabledUntil && redisConnection && redisConnection.status === 'ready') {
             try {
                 await redisConnection.del(key);
                 return;
