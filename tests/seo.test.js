@@ -31,3 +31,11 @@ test('robots.txt, the sitemap, llms.txt, the icon and the share image are real f
     assert.match(read('public/sitemap.xml'), new RegExp(`<loc>${SITE}/</loc>`));
     assert.equal(readFileSync(path.join(root, 'public', 'og-image.png')).subarray(1, 4).toString(), 'PNG');
 });
+
+test('the Google Search Console ownership tag stays on the homepage', () => {
+    // parsed, so a commented-out tag does not count; the token is the one Google issued for this property
+    const { JSDOM } = require('jsdom');
+    const tags = new JSDOM(read('public/index.html')).window.document.head.querySelectorAll('meta[name="google-site-verification"]');
+    assert.equal(tags.length, 1);
+    assert.equal(tags[0].content, 'NT46P7ComlYZiG-m7PrHxYTPOxhhiFACfUmhnF2Ll5A');
+});
