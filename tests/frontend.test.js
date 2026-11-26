@@ -39,7 +39,7 @@ async function editor(t, respond = () => ({ success: true, data: ['Corrected tex
     w.eval(read('public/teleprompter.js'));
     w.eval(read('public/app-v16.js'));
     // Execute inline scripts too: duplicate tab handlers previously referenced missing elements.
-    for (const script of w.document.querySelectorAll('script:not([src])')) w.eval(script.textContent);
+    for (const script of w.document.querySelectorAll('script:not([src]):not([type="application/ld+json"])')) w.eval(script.textContent);
     w.document.dispatchEvent(new w.Event('DOMContentLoaded'));
     await new Promise(resolve => setImmediate(resolve));
     return { w, errors, get: id => w.document.getElementById(id) };

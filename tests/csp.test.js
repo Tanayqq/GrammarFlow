@@ -30,7 +30,8 @@ test('the policy forbids inline and eval scripts, and closes forms, frames, plug
 test('no page has an inline script, an inline event handler or a javascript: link', () => {
     for (const page of pages) {
         const html = read(`public/${page}`);
-        const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>/gi)];
+        // type="application/ld+json" is data for search engines: browsers never run it
+        const inline = [...html.matchAll(/<script(?![^>]*\bsrc=)(?![^>]*type="application\/ld\+json")[^>]*>/gi)];
         assert.equal(inline.length, 0, `${page} has an inline <script>`);
         assert.doesNotMatch(html, /\son[a-z]+\s*=\s*["']/i, `${page} has an inline event handler`);
         assert.doesNotMatch(html, /(href|src)\s*=\s*["']\s*javascript:/i, `${page} has a javascript: URL`);

@@ -13,6 +13,7 @@ export async function buildApp(app, supplied){
     html=html.replaceAll('LOCAL BETA','BETA').replace('<a href="/">Runner verification ↗</a>','<a href="/">Back to workspace</a>')
         .replace('Local preview ·','Beta ·').replace('href="/dev-editor.css"','href="./dev-editor.css"')
         .replace('src="/dev-editor.mjs"','src="./dev-editor.mjs"').replace('href="/dev-editor.html"','href="./"');
+    html=html.replace('</title>','</title><meta name="description" content="Run code in 12 languages, see real output, step through Python line by line, and get explanations in English or Hinglish."><link rel="canonical" href="https://grammarflowt.vercel.app/dev-editor/"><link rel="icon" href="../favicon.svg" type="image/svg+xml">');
     await writeFile(new URL('index.html',app),html);
     const js=await readFile(new URL('dev-editor.mjs',app),'utf8');
     await writeFile(new URL('dev-editor.mjs',app),js.replace("fetch('/assist'","fetch('/api/v1/dev-editor/assist'").replace("fetch('/execute'","fetch('/api/v1/dev-editor/execute'"));

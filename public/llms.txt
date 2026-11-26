@@ -1,0 +1,16 @@
+# GrammarFlow
+
+> Fix grammar, humanize stiff drafts and explain PDFs in plain words. Works in English, Hinglish, Hindi, Telugu and Kannada. Free to try, no sign-up.
+
+## What it does
+- Grammar fix and rewrite with a choice of language, style and tone, including a "My voice" mode based on your own writing sample.
+- Document AI: upload a PDF or image to summarize it, explain it in simple words, fix its text (OCR) or humanize it.
+- Teleprompter, voice dictation, a Chrome extension, and a beta Dev Editor that runs code and explains it.
+
+## Good to know
+- AI output can be wrong; check it before using it.
+- Text you submit is sent to an AI provider for processing.
+
+## Pages
+- [Writing workspace](https://grammarflowt.vercel.app/)
+- [Dev Editor (beta)](https://grammarflowt.vercel.app/dev-editor/)
