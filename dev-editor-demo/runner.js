@@ -26,7 +26,6 @@ export async function run(code, inputs = [], {timeoutMs = 3000, signal} = {}) {
         frame.hidden = true;
         frame.sandbox = 'allow-scripts';
         frame.referrerPolicy = 'no-referrer';
-        const nonce = crypto.randomUUID().replaceAll('-', '');
         const channel = crypto.randomUUID();
         let finished = false, deadline, readyAt;
         const observed = [];
@@ -77,39 +76,10 @@ export async function run(code, inputs = [], {timeoutMs = 3000, signal} = {}) {
         };
         window.addEventListener('message', receive);
         signal?.addEventListener('abort', cancel, {once: true});
-        // Only trusted controller code enters HTML; user code travels by message.
-        // Pyodide's Emscripten bridge needs eval. It remains inside the opaque runner,
-        // with no app-origin access and connections restricted to the static host.
-        frame.srcdoc = `<!doctype html><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-${nonce}' blob: ${runtimeOrigin} 'unsafe-eval' 'wasm-unsafe-eval'; worker-src blob:; connect-src ${runtimeOrigin}; base-uri 'none'; form-action 'none'"><script nonce="${nonce}">
-        const channel = ${JSON.stringify(channel)};
-        const relay = (type, result) => parent.postMessage({channel, type, result}, '*');
-        let worker, timer;
-        addEventListener('message', event => {
-            if (event.source !== parent || event.data?.channel !== channel || worker) return;
-            const data = event.data;
-            try {
-                // A classic bootstrap can start from blob:null in the opaque frame.
-                // The bootstrap dynamically imports the ES-module Pyodide runtime.
-                worker = new Worker(URL.createObjectURL(new Blob([data.workerSource], {type:'text/javascript'})));
-            } catch (error) {
-                relay('failed', {stage:'worker_create', message:String(error.message).slice(0,400)}); return;
-            }
-            worker.onerror = event => {clearTimeout(timer); worker.terminate(); relay('failed', {stage:'worker_load', message:event.message || 'Worker module loading failed'});};
-            worker.onmessage = ({data: message}) => {
-                if (message.type === 'ready') {
-                    relay('ready');
-                    timer = setTimeout(() => {worker.terminate(); relay('timeout');}, data.timeoutMs);
-                    worker.postMessage({type:'run', code:data.code, inputs:data.inputs, recorder:data.recorder});
-                } else if (message.type === 'progress') {
-                    relay('progress', message.result);
-                } else if (message.type === 'result' || message.type === 'failed') {
-                    clearTimeout(timer); worker.terminate(); relay(message.type, message.result);
-                }
-            };
-        }, {once:true});
-        relay('loaded');
-        <\/script>`;
-        frame.onload = () => frame.contentWindow.postMessage({channel, workerSource:bootstrap, recorder, code, inputs, timeoutMs}, '*');
+        // User code travels only by message. The frame is sandboxed (opaque origin, no app access) and has its own
+        // policy, see vercel.json and runner-frame.js.
+        frame.src = new URL('./runner-frame.html', import.meta.url).href;
+        frame.onload = () => frame.contentWindow.postMessage({channel, runtimeOrigin, workerSource:bootstrap, recorder, code, inputs, timeoutMs}, '*');
         document.body.append(frame);
         if (signal?.aborted) cancel();
     });

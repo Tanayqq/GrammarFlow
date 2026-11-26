@@ -13,7 +13,7 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         path = self.path.split('?')[0]
         allowed = (path.startswith('/vendor/') if self.server.server_port == 8781 else
-                   path in ('/', '/index.html', '/runner.js', '/worker.mjs', '/recorder.py', '/tests.js'))
+                   path in ('/', '/index.html', '/runner.js', '/runner-frame.html', '/runner-frame.js', '/worker.mjs', '/recorder.py', '/tests.js'))
         if not allowed or '..' in path or '%' in path:
             self.send_error(404)
             return
@@ -23,7 +23,7 @@ class Handler(SimpleHTTPRequestHandler):
         # Apply the same allowlist; HEAD must not expose arbitrary local files.
         path = self.path.split('?')[0]
         allowed = (path.startswith('/vendor/') if self.server.server_port == 8781 else
-                   path in ('/', '/index.html', '/runner.js', '/worker.mjs', '/recorder.py', '/tests.js'))
+                   path in ('/', '/index.html', '/runner.js', '/runner-frame.html', '/runner-frame.js', '/worker.mjs', '/recorder.py', '/tests.js'))
         if not allowed or '..' in path or '%' in path:
             self.send_error(404)
             return

@@ -16,7 +16,7 @@ if(!process.env.GROQ_API_KEY){
     }catch{/* Optional AI remains unavailable if no compatible local config exists. */}
 }
 const reportPath = new URL('../../../outputs/Dev-Editor-Verification.json',import.meta.url);
-const demoFiles = new Set(['index.html','runner.js','worker.mjs','recorder.py','tests.js','protocol.mjs','runtime-config.mjs','dev-editor.html','dev-editor.mjs','dev-editor.css','regression-100.py']);
+const demoFiles = new Set(['index.html','runner.js','runner-frame.html','runner-frame.js','worker.mjs','recorder.py','tests.js','protocol.mjs','runtime-config.mjs','dev-editor.html','dev-editor.mjs','dev-editor.css','regression-100.py']);
 const runtimeFiles = new Set(['pyodide.mjs','pyodide.asm.mjs','pyodide.asm.wasm','python_stdlib.zip','pyodide-lock.json']);
 const types = {html:'text/html; charset=utf-8',css:'text/css; charset=utf-8',js:'text/javascript',mjs:'text/javascript',py:'text/plain',wasm:'application/wasm',zip:'application/zip',json:'application/json'};
 function serve(port, runtime) {

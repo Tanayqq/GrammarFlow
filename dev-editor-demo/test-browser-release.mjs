@@ -5,7 +5,7 @@ import {pathToFileURL,fileURLToPath} from 'node:url';
 import assert from 'node:assert/strict';
 const {default:puppeteer}=await import(pathToFileURL(process.argv[2]).href);
 const types={html:'text/html',js:'text/javascript',mjs:'text/javascript',css:'text/css',py:'text/plain'};
-const assets=new Set(['runner.js','protocol.mjs','worker.mjs','recorder.py','runtime-config.mjs','dev-editor.css','dev-editor.mjs']);
+const assets=new Set(['runner.js','runner-frame.html','runner-frame.js','protocol.mjs','worker.mjs','recorder.py','runtime-config.mjs','dev-editor.css','dev-editor.mjs']);
 const server=createServer(async(req,res)=>{
     const path=new URL(req.url,'http://localhost').pathname.slice(1);
     let file;

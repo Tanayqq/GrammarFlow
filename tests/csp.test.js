@@ -7,7 +7,8 @@ const root = path.join(__dirname, '..');
 const read = file => readFileSync(path.join(root, file), 'utf8');
 const policy = () => {
     const config = JSON.parse(read('vercel.json'));
-    const header = config.headers.flatMap(rule => rule.headers).find(h => h.key === 'Content-Security-Policy');
+    // the site-wide rule, not the one for the Python sandbox page
+    const header = config.headers.find(rule => rule.source.startsWith('/((?!')).headers.find(h => h.key === 'Content-Security-Policy');
     return Object.fromEntries(header.value.split(';').map(part => part.trim()).filter(Boolean).map(part => {
         const [name, ...values] = part.split(/\s+/);
         return [name, values];
@@ -86,3 +87,30 @@ test('while the built Dev Editor calls /api on its own site, Vercel must forward
     const rewrite = (JSON.parse(read('vercel.json')).rewrites || []).find(r => r.source === '/api/:path*');
     assert.equal(rewrite?.destination, 'https://grammarflow-brain.onrender.com/api/:path*');
 });
+
+test('the Python sandbox has its own policy, is always sandboxed, and the site-wide rule leaves it alone', () => {
+    const rules = JSON.parse(read('vercel.json')).headers;
+    const frame = rules.find(rule => rule.source === '/dev-editor/runner-frame.html');
+    const csp = frame.headers.find(h => h.key === 'Content-Security-Policy').value;
+    assert.match(csp, /^sandbox allow-scripts;/, 'even opened directly it gets an opaque origin');
+    assert.doesNotMatch(csp, /allow-same-origin|unsafe-inline/);
+    assert.match(csp, /frame-ancestors 'self'/);
+    assert.match(csp, /connect-src https:\/\/grammarflow-python-runtime\.vercel\.app;/, 'it can only reach the runtime');
+    assert.ok(!frame.headers.some(h => h.key === 'X-Frame-Options'), 'DENY would stop the Dev Editor framing it');
+    // every other rule with a policy must not also match the sandbox page, or both policies would apply
+    for (const rule of rules.filter(r => r !== frame && r.headers.some(h => h.key === 'Content-Security-Policy' || h.key === 'X-Frame-Options'))) {
+        const matches = url => new RegExp('^' + rule.source + '$').test(url);
+        assert.equal(matches('/dev-editor/runner-frame.html'), false, rule.source);
+        for (const url of ['/', '/index.html', '/dev-editor/', '/dev-editor/index.html', '/dev-editor/runner.js', '/dev-editor/runner-frameXhtml', '/dev-editor/runner-frame.html/', '/dev-editor/runner-frame.html.x', '/dev-editor/runner-frame.html/child']) assert.equal(matches(url), true, url);
+    }
+});
+
+test('the runner loads the sandbox page with scripts only, and the build ships it', () => {
+    const runner = read('dev-editor-demo/runner.js');
+    assert.match(runner, /frame\.sandbox = 'allow-scripts';/);
+    assert.match(runner, /runner-frame\.html/);
+    assert.doesNotMatch(runner, /srcdoc =/, 'a srcdoc frame would inherit the site policy again');
+    assert.match(read('dev-editor-demo/build-public.mjs'), /'runner-frame\.html','runner-frame\.js'/);
+    assert.match(read('dev-editor-demo/runner-frame.js'), /event\.source !== parent \|\| event\.origin !==/);
+});
+

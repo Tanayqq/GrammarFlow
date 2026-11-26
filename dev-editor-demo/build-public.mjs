@@ -7,7 +7,7 @@ export async function buildApp(app, supplied){
         ['grammarflowt.vercel.app','grammarflow-brain.onrender.com'].includes(origin.hostname))
         throw Error('A separate HTTPS static runtime origin is required.');
     await mkdir(app,{recursive:true});
-    for(const name of ['runner.js','protocol.mjs','worker.mjs','recorder.py','dev-editor.css','dev-editor.mjs'])
+    for(const name of ['runner.js','runner-frame.html','runner-frame.js','protocol.mjs','worker.mjs','recorder.py','dev-editor.css','dev-editor.mjs'])
         await copyFile(new URL(name,import.meta.url),new URL(name,app));
     let html=await readFile(new URL('./dev-editor.html',import.meta.url),'utf8');
     html=html.replaceAll('LOCAL BETA','BETA').replace('<a href="/">Runner verification ↗</a>','<a href="/">Back to workspace</a>')
