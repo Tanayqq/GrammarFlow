@@ -80,3 +80,9 @@ test('public/tailwind.css is up to date with the classes the pages use', () => {
     fs.unlinkSync(out);
     assert.equal(rebuilt, read('public/tailwind.css'), 'a class changed: run "npm run build:css" and commit public/tailwind.css');
 });
+
+test('while the built Dev Editor calls /api on its own site, Vercel must forward it to the API', () => {
+    assert.match(read('dev-editor-demo/build-public.mjs'), /fetch\('\/api\/v1\/dev-editor\/execute'/);
+    const rewrite = (JSON.parse(read('vercel.json')).rewrites || []).find(r => r.source === '/api/:path*');
+    assert.equal(rewrite?.destination, 'https://grammarflow-brain.onrender.com/api/:path*');
+});

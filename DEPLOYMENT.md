@@ -53,7 +53,7 @@ This revision changes source only. Configure secrets/CA and verify email and dat
 
 ## Existing Render and Vercel deployment
 
-Production uses Render `grammarflow-brain` for the API and workers, and Vercel `grammarflowt` for static files from `public/`. The browser calls the Render API directly (`PRODUCTION_API_URL` in `public/app-v16.js`); Vercel serves only static files and does not start duplicate queue workers or require database secrets. Both projects follow `main` in `Tanayqq/grammarflowt` on GitLab.
+Production uses Render `grammarflow-brain` for the API and workers, and Vercel `grammarflowt` for static files from `public/`. The main page calls the Render API directly (`PRODUCTION_API_URL` in `public/app-v16.js`). The Dev Editor calls `/api/*` on Vercel, so the rewrite in `vercel.json` that forwards it to Render is required. Vercel does not start duplicate queue workers or require database secrets. Both projects follow `main` in `Tanayqq/grammarflowt` on GitLab.
 
 Vercel skips dependency installation and backend builds. The one frontend build step, Tailwind, runs on your machine: after changing classes in the pages or scripts, run `npm run build:css` and commit `public/tailwind.css` (a test fails if it is out of date). The Render build continues to install dependencies and generate the Prisma client. Configure backend-only secrets in Render. Clerk sign-in can operate without SMTP; the direct password-registration fallback requires SMTP and otherwise fails closed.
 

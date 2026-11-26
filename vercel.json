@@ -3,6 +3,9 @@
   "installCommand": "",
   "buildCommand": "node dev-editor-demo/build-public.mjs",
   "outputDirectory": "public",
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://grammarflow-brain.onrender.com/api/:path*" }
+  ],
   "headers": [
     {
       "source": "/(.+)\\.(js|css|png|ico|svg|woff2?)$",

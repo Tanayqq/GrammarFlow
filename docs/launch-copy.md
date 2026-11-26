@@ -17,7 +17,7 @@ GrammarFlow turns documents into plain explanations, humanizes stiff AI-sounding
 Most writing tools make everyone sound the same. GrammarFlow is built around five things that keep you sounding like yourself:
 
 - **Document AI**: paste text or upload a PDF or image, then summarize or explain it in plain language, including in Hinglish.
-- **Text humanizer**: turn stiff, AI-sounding text into natural phrasing.
+- **Humanize in Document AI**: rewrite stiff, AI-sounding drafts so they read naturally, by cutting stock AI phrases and varying sentence rhythm. Check the result before you use it.
 - **My voice**: add a sample of your own writing and rewrites are matched to your style.
 - **Teleprompter**: read a rewrite aloud from a floating window with a countdown, adjustable speed and an optional reading line.
 - **Hands-free mode**: move the pointer with your head using supported earbuds, so you can control the page without touching the mouse.
@@ -30,7 +30,7 @@ And the rest of what it does:
 - **Document AI extras**: summarize, explain in simple words, or extract and fix grammar from scanned pages with OCR (PDF and image upload).
 - **Voice dictation**: speak instead of typing, including in Indian languages.
 - **Chrome extension**: select text on any page, or right-click, to rewrite, fix grammar, summarize or explain it in place.
-- **Dev Editor (beta)**: a code editor with AI help and a run button.
+- **Dev Editor (beta)**: paste code in 12 languages (Python, JavaScript, TypeScript, Java, C, C++, C#, Go, Rust, PHP, Ruby, SQL), run it and see real output and errors, step through recorded variable values in Python, and ask AI to explain lines or an error in English or Hinglish. AI explanations can be wrong, and code is run by an outside service (Judge0), so never paste secrets.
 - **History and sync**: every result is saved so you can reopen or delete it, and signing in syncs it across devices.
 - **Privacy**: no account needed to start, guest history expires after 30 days, you can clear it any time, and the app warns you to review AI suggestions before using them.
 
@@ -65,6 +65,15 @@ Same body as Reddit, plus one honest line about where you are: "Solo build, no r
 
 - **Tagline (60 characters max):** Document AI and humanizer that keep your voice
 - Post Tuesday to Thursday, prepare 3 to 4 screenshots, and be available to reply all day.
+
+## Uneed
+
+- **Name:** GrammarFlow
+- **Tagline:** Document AI and a writing assistant that keeps your voice
+- **Description:** Explain or summarize PDFs and images, humanize stiff drafts, rewrite in your own style, rehearse with a teleprompter, and run code in the beta Dev Editor. Works in English, Hinglish, Hindi, Telugu and Kannada. Free to try, no sign-up.
+- **Link:** https://grammarflowt.vercel.app
+
+Hacker News note: HN asks people not to post AI-generated text. Use the Show HN title and notes above as an outline and write the first comment in your own words.
 
 ## AlternativeTo / SaaSHub
 

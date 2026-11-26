@@ -21,7 +21,10 @@ Order: small, forgiving audiences first, then fix what they report, then the big
 - [ ] r/buildinpublic — https://www.reddit.com/r/buildinpublic/
 - [ ] r/SaaS — https://www.reddit.com/r/SaaS/ (read self-promotion rules first)
 - [ ] r/microsaas — https://www.reddit.com/r/microsaas/ (read self-promotion rules first)
-- [ ] Indie Hackers — https://www.indiehackers.com/
+- [ ] Indie Hackers (free product page and build-in-public updates) — https://www.indiehackers.com/
+- [ ] r/indiehackers — https://www.reddit.com/r/indiehackers/ (read self-promotion rules first)
+- [ ] Uneed: submit now, the free queue is reported to take about 50 days — https://www.uneed.best/
+- [ ] Fazier: submit early (reported ~30-day review; asks for their badge on your site) — https://fazier.com/
 - [ ] Fix the top issues people report
 
 ## Week 2 — directories (lasting traffic)
@@ -29,7 +32,9 @@ Order: small, forgiving audiences first, then fix what they report, then the big
 - [ ] AlternativeTo — https://alternativeto.net/ (list as alternative to Grammarly, QuillBot, LanguageTool)
 - [ ] SaaSHub — https://www.saashub.com/
 - [ ] AI Collection — https://www.thataicollection.com/
-- [ ] Uneed — https://www.uneed.best/
+- [ ] PeerPush (free standard queue) — https://peerpush.net/
+- [ ] SourceForge (free software listing) — https://sourceforge.net/
+- [ ] DevHunt, Dev Editor angle only: it is for developer tools (free listing, paid weekly feature) — https://devhunt.org/
 - [ ] TinyLaunch — https://www.tinylaunch.com
 - [ ] LaunchIgniter — https://launchigniter.com/submit
 - [ ] Launching Next — https://www.launchingnext.com/submit/
@@ -39,7 +44,12 @@ Order: small, forgiving audiences first, then fix what they report, then the big
 
 ## Week 3+ — big launches (one shot each)
 
-- [ ] Product Hunt — https://www.producthunt.com/ (Tuesday, Wednesday or Thursday)
+- [ ] Peerlist Launchpad (weekly Monday launch, needs a verified profile) — https://peerlist.io/launchpad
+- [ ] Product Hunt, from a personal account — https://www.producthunt.com/ (Tuesday, Wednesday or Thursday)
 - [ ] Show HN — https://news.ycombinator.com/showhn.html
+
+Not added: r/AndroidApps, because GrammarFlow has no Android app.
+
+Queue times, prices and rules for PeerPush, Uneed, Fazier, DevHunt, Peerlist and SourceForge come from a list added on 2026-11-26 and have not been checked. Confirm them on each site before submitting.
 
 Directory links come from https://github.com/mmccaff/PlacesToPostYourStartup (CC0). Not every link has been checked; some may be dead or paid.
