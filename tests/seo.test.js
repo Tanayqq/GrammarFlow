@@ -39,3 +39,21 @@ test('the Google Search Console ownership tag stays on the homepage', () => {
     assert.equal(tags.length, 1);
     assert.equal(tags[0].content, 'NT46P7ComlYZiG-m7PrHxYTPOxhhiFACfUmhnF2Ll5A');
 });
+
+test('the homepage explains its features in visible text, and makes no detector promise', () => {
+    const { JSDOM } = require('jsdom');
+    const doc = new JSDOM(read('public/index.html').replace(/^[^<]+/, '')).window.document;
+    const guide = doc.querySelector('.feature-guide');
+    assert.ok(guide && !guide.closest('.hidden'), 'it is not tucked away in a hidden panel');
+    assert.ok(guide.querySelectorAll('h3').length >= 6);
+    for (const word of [/PDF/, /humanizer/i, /teleprompter/i, /Hinglish/]) assert.match(guide.textContent, word);
+    assert.match(guide.textContent, /does not promise to pass AI detectors/);
+    assert.match(guide.textContent, /sent to our AI provider/);
+});
+
+test('there is a not-found page that search engines are told not to list', () => {
+    const page = read('public/404.html');
+    assert.match(page, /<meta name="robots" content="noindex">/);
+    assert.match(page, /Page not found/);
+    assert.doesNotMatch(page, /<script/);
+});

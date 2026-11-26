@@ -170,3 +170,10 @@ body.editorial{background:var(--paper);color:var(--ink);font-family:Inter,system
 .tp-floating :is(.tp-full-only, .tp-range, .tp-value, .tp-gap) { display: none; }
 .tp-floating .tp-hint { top: 0; bottom: auto; padding: 4px 8px; background: var(--tp-bar); border-bottom: 1px solid var(--tp-line); }
 .tp-noline > .tp-line { display: none; }
+/* Plain-language guide under the workspace */
+.feature-guide{margin-top:28px;padding:32px 28px;background:#fff;border:1px solid var(--line);border-radius:16px}
+.feature-guide h2{font-family:'Libre Baskerville',Georgia,serif;font-weight:400;font-size:24px;color:var(--ink);margin:0 0 8px}
+.feature-guide h3{font-size:15px;font-weight:600;color:var(--ink);margin:24px 0 6px}
+.feature-guide p:not(.eyebrow){font-size:14px;line-height:1.8;color:var(--muted);max-width:720px}
+.feature-guide a{color:var(--accent);text-decoration:underline}
+.feature-guide .feature-guide-note{margin-top:24px;font-size:12px}
