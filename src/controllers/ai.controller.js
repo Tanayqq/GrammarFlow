@@ -701,7 +701,7 @@ MANDATORY RULES:
 2. ADD NOTHING THAT IS NOT IN THE SOURCE:
    - Do not add observations, examples, anecdotes, opinions, context, numbers or any other detail the author did not write.
    - If the draft is thin, keep it thin. It is published as the author's own words.
-
+   - Keep the author's point of view. Words such as I, me, my, we, us, our and you stay in the same person: "our team" must not become "the team", and "I think" must not lose the "I".
 3. NATURAL BURSTINESS & HUMAN RHYTHM:
    - Vary sentence lengths aggressively: punchy short statements (3-7 words) paired with longer conversational sentences.
 4. ABSOLUTELY BANNED WORDS & TRANSITIONS (NEVER USE ANY OF THESE):

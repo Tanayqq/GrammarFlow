@@ -58,3 +58,9 @@ test('the humanizer never asks the model to add details the author did not write
     assert.doesNotMatch(prompt, /ADD A GROUNDED DETAIL|Seamlessly integrate/i);
     assert.match(prompt, /ADD NOTHING THAT IS NOT IN THE SOURCE/);
 });
+
+test('the humanizer keeps the author\'s point of view', () => {
+    const source = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'src', 'controllers', 'ai.controller.js'), 'utf8');
+    const prompt = source.slice(source.indexOf('function buildHumanizePrompt'), source.indexOf('const humanizeText'));
+    assert.match(prompt, /Keep the author's point of view/);
+});

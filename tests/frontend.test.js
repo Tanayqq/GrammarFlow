@@ -393,3 +393,10 @@ test('error text is escaped before it is written into the document results area'
     const app = readFileSync(path.join(__dirname, '..', 'public', 'app-v16.js'), 'utf8');
     assert.match(app, /Error: ' \+ escapeHTML\(err\.message/);
 });
+
+test('the Humanize result shows no engine badge and no change count', () => {
+    const app = readFileSync(path.join(__dirname, '..', 'public', 'app-v16.js'), 'utf8');
+    const humanizer = app.slice(app.indexOf('(function HumanizerModule()'));
+    assert.match(humanizer, /Humanized Output/);
+    assert.doesNotMatch(humanizer, /Groq Fallback|engineBadge|changes<\/span>/);
+});

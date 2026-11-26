@@ -3174,8 +3174,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     : [extractedText.trim()];
 
                 var humanizedChunks = [];
-                var totalWords = 0, totalMods = 0, totalLatency = 0;
-                var statsSource = 'groq';
+                var totalWords = 0, totalLatency = 0;
 
                 for (var i = 0; i < chunks.length; i++) {
                     if (this.isCanceled) throw new Error('Canceled by user.');
@@ -3239,9 +3238,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     humanizedChunks.push(data.humanized_text || chunks[i]);
                     totalWords   += (data.words_processed || 0);
-                    totalMods    += (data.modifications_count || 0);
                     totalLatency += (data.latency_ms || 0);
-                    if (data.source) statsSource = data.source;
 
                     if (i < chunks.length - 1) {
                         await new Promise(function(resolve) { setTimeout(resolve, 800); });
@@ -3254,21 +3251,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 this.finalOutput = fullHumanizedText;
 
                 // 3) Render result card
-                var engineBadge = statsSource === 'turnitout'
-                    ? '<span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-green-500/15 border border-green-500/25 text-green-300 font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span>Turnitout Engine</span>'
-                    : '<span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 border border-purple-500/25 text-purple-300 font-semibold"><span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse inline-block"></span>Groq Fallback</span>';
-
                 var card = document.createElement('div');
                 card.className = 'result-card';
                 var escapedText = fullHumanizedText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                 card.innerHTML = [
                     '<div class="flex flex-wrap items-center justify-between gap-2 mb-3">',
                     '  <span class="text-xs font-bold text-purple-400 uppercase tracking-widest">&#128737; Humanized Output</span>',
-                    '  ' + engineBadge,
                     '</div>',
                     '<div class="flex gap-4 text-xs text-gray-400 mb-3">',
                     '  <span>&#128196; <strong class="text-gray-200">' + totalWords.toLocaleString() + '</strong> words</span>',
-                    '  <span>&#9999; <strong class="text-gray-200">' + totalMods.toLocaleString() + '</strong> changes</span>',
                     '  <span>&#9201; <strong class="text-gray-200">' + Math.round(totalLatency) + 'ms</strong></span>',
                     '</div>',
                     '<div class="result-text text-gray-200 text-sm md:text-base leading-relaxed select-all" id="humDocOutput" style="white-space:pre-wrap;">' + escapedText + '</div>',
