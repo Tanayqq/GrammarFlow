@@ -68,3 +68,7 @@ The existing Render service is Free. It can sleep after inactivity and cannot pr
 ## History retention
 
 The API deletes old history on its own: guests' entries after `HISTORY_GUEST_DAYS` (default 30), signed-in users' after `HISTORY_USER_DAYS` (default 365), plus empty guest accounts. The first run starts a minute after the server boots and logs how much is due. To see what would go without deleting anything, set `HISTORY_RETENTION_DRY_RUN=true` on Render before deploying; set `HISTORY_RETENTION_DISABLED=true` to turn the cleanup off.
+
+## Not-found pages on Vercel
+
+`.vercelignore` hides `package.json` and `package-lock.json` from Vercel. With them visible, Vercel answered unknown addresses with the homepage and a success code; with them hidden, it serves `public/404.html` with a 404. Keep the Vercel build free of npm packages, or find another fix before removing the ignore file.

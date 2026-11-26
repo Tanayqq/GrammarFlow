@@ -57,3 +57,13 @@ test('there is a not-found page that search engines are told not to list', () =>
     assert.match(page, /Page not found/);
     assert.doesNotMatch(page, /<script/);
 });
+
+test('Vercel does not see package.json, so unknown addresses get the 404 page, and its build does not need it', () => {
+    const ignored = read('.vercelignore').split(/\r?\n/).filter(line => line && !line.startsWith('#'));
+    assert.deepEqual(ignored, ['package.json', 'package-lock.json']);
+    const vercel = JSON.parse(read('vercel.json'));
+    assert.equal(vercel.installCommand, '');
+    assert.match(vercel.buildCommand, /^node dev-editor-demo\/build-public\.mjs$/);
+    const build = read('dev-editor-demo/build-public.mjs');
+    for (const [, from] of build.matchAll(/from\s+'([^']+)'/g)) assert.match(from, /^(node:|\.)/, `the build imports the package ${from}`);
+});

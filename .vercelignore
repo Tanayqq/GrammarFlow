@@ -1,0 +1,6 @@
+# Vercel only serves the static files in public/. Render runs the Node server.
+# When Vercel sees package.json (it lists Express), unknown addresses get the homepage with a success code
+# instead of public/404.html. Confirmed with preview deployments on 2026-11-27.
+# If the Vercel build ever needs npm packages, this has to be solved another way.
+package.json
+package-lock.json
