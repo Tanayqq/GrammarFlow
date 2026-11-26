@@ -400,3 +400,11 @@ test('the Humanize result shows no engine badge and no change count', () => {
     assert.match(humanizer, /Humanized Output/);
     assert.doesNotMatch(humanizer, /Groq Fallback|engineBadge|changes<\/span>/);
 });
+
+test('the PDF export header is not a table, so the document table rules cannot box or realign it', () => {
+    const app = readFileSync(path.join(__dirname, '..', 'public', 'app-v16.js'), 'utf8');
+    const header = app.slice(app.indexOf("<!-- Not a table: the export's table rules"), app.indexOf('<div class="grammarflow-pdf-body">'));
+    assert.match(header, /justify-content: space-between/);
+    assert.match(header, /text-align: right/);
+    assert.doesNotMatch(header, /<table|<td/);
+});

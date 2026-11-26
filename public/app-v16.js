@@ -1608,18 +1608,17 @@ document.addEventListener("DOMContentLoaded", () => {
                         .grammarflow-pdf-export tr { page-break-inside: avoid !important; break-inside: avoid !important; }
                     </style>
                     
-                    <table style="width: 100%; border: none; border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; margin-bottom: 20px;">
-                        <tr>
-                            <td style="border: none; padding: 0; vertical-align: middle;">
-                                <div style="font-size: 22px; font-weight: 800; color: #5b21b6; margin: 0; line-height: 1.2;">GrammarFlow</div>
-                                <div style="font-size: 13px; font-weight: 600; color: #4b5563; margin-top: 3px;">${modeTitle}</div>
-                            </td>
-                            <td style="border: none; padding: 0; text-align: right; vertical-align: middle;">
-                                <div style="font-size: 11px; color: #6b7280; line-height: 1.4;">${timestamp}</div>
-                                <div style="font-size: 11px; color: #7c3aed; font-weight: 600;">Document AI</div>
-                            </td>
-                        </tr>
-                    </table>
+                    <!-- Not a table: the export's table rules (borders, left alignment, !important) are for the document's own tables. -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 2px solid #8b5cf6; padding-bottom: 10px; margin-bottom: 20px;">
+                        <div>
+                            <div style="font-size: 22px; font-weight: 800; color: #5b21b6; margin: 0; line-height: 1.2;">GrammarFlow</div>
+                            <div style="font-size: 13px; font-weight: 600; color: #4b5563; margin-top: 3px;">${modeTitle}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 11px; color: #6b7280; line-height: 1.4;">${timestamp}</div>
+                            <div style="font-size: 11px; color: #7c3aed; font-weight: 600;">Document AI</div>
+                        </div>
+                    </div>
 
                     <div class="grammarflow-pdf-body">
                         ${contentHtml}
