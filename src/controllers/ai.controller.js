@@ -698,18 +698,19 @@ MANDATORY RULES:
 1. REORDER POINTS & RESTRUCTURE COMPLETELY (DO NOT FOLLOW ORIGINAL OUTLINE):
    - Do NOT follow the source text sentence-by-sentence. Invert and reorder supporting points.
    - Recast any near-copied sentences completely from scratch with different sentence openings and varied grammatical structures.
-2. ADD A GROUNDED DETAIL OR EDITORIAL PERSPECTIVE:
-   - Write with the authentic voice of a human writer.
-   - Seamlessly integrate a specific practical observation, real-world context, or subtle editorial detail that humanizes the narrative.
+2. ADD NOTHING THAT IS NOT IN THE SOURCE:
+   - Do not add observations, examples, anecdotes, opinions, context, numbers or any other detail the author did not write.
+   - If the draft is thin, keep it thin. It is published as the author's own words.
+
 3. NATURAL BURSTINESS & HUMAN RHYTHM:
-   - Vary sentence lengths aggressively: punchy short statements (3-7 words) paired with detailed conversational explanations.
+   - Vary sentence lengths aggressively: punchy short statements (3-7 words) paired with longer conversational sentences.
 4. ABSOLUTELY BANNED WORDS & TRANSITIONS (NEVER USE ANY OF THESE):
    ${BANNED_AI_WORDS.join(', ')}
    - Never use mechanical transitions like "Moreover", "Furthermore", "Additionally", "Thereby", "In conclusion".
    - Never use fake academic synonyms ("thoroughfares", "relinquishes heat", "metropolitan sectors").
    - Do NOT scatter em-dashes (—) across the paragraphs.
 5. PRESERVE FACTUAL INTEGRITY:
-   - Keep all core facts, numbers, dates, locations, and essential technical terms intact while telling the story freshly.
+   - Keep all core facts, numbers, dates, locations, and essential technical terms intact while changing only the wording.
 6. Output ONLY the final rewritten text without intros, preambles, or meta-comments.
 
 INPUT TEXT:
