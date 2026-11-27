@@ -1,13 +1,15 @@
 ﻿const express = require('express');
 const router = express.Router();
 const aiController = require('../controllers/ai.controller');
-const { aiLimiter, docLimiter, readLimiter, executionLimiter, dictationLimiter } = require('../middlewares/rateLimiter');
+const { aiLimiter, docLimiter, readLimiter, executionLimiter, dictationLimiter, feedbackLimiter } = require('../middlewares/rateLimiter');
+const { submitFeedback } = require('../controllers/feedback.controller');
 const { passiveAuth } = require('../middlewares/auth');
 const authRoutes = require('./auth.routes');
 const validateAIInput = require('../middlewares/validateAIInput');
 const clientConcurrency = require('../middlewares/clientConcurrency');
 
 router.use('/auth', authRoutes);
+router.post('/feedback', feedbackLimiter, submitFeedback);
 
 router.post('/dev-editor/execute', passiveAuth, executionLimiter, async (req,res)=>{
     res.setHeader('Cache-Control','no-store');

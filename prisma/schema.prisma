@@ -50,3 +50,12 @@ model UserSettings {
   created_at         DateTime @default(now())
   user               User     @relation(fields: [user_id], references: [id])
 }
+
+// Messages from the in-page feedback form. No user id and no IP address are stored.
+model Feedback {
+  id         String   @id @default(cuid())
+  kind       String
+  message    String
+  email      String?
+  created_at DateTime @default(now())
+}

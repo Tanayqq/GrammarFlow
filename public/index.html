@@ -492,7 +492,7 @@
         transform: translateY(-2px);
     }
   </style>
-<link rel="stylesheet" href="workspace.css?v=3"></head>
+<link rel="stylesheet" href="workspace.css?v=4"></head>
 <body class="min-h-screen bg-[#080312] text-[#e2e8f0] relative editorial">
 
 
@@ -765,7 +765,24 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
             <h3>What happens to my text?</h3>
             <p>Text you submit is sent to our AI provider for processing, so don’t enter anything sensitive. No account is needed to start. Guest history expires on our servers after 30 days, and you can clear your history at any time.</p>
             <p class="feature-guide-note">AI can make mistakes. Review its suggestions before using them.</p>
-        </section><footer class="workspace-footer"><span>Thoughtful writing starts with you.</span><span>AI can make mistakes. Review suggestions before using them.</span></footer><details class="beta-feedback"><summary>What felt confusing or didn’t work?</summary><p>Help shape GrammarFlow. Tell us what you tried, what you expected and what happened. Please leave out private writing, documents, passwords and account details.</p><a href="mailto:ktanay1704@gmail.com?subject=GrammarFlow%20beta%20feedback&amp;body=What%20I%20tried%3A%0A%0AWhat%20I%20expected%3A%0A%0AWhat%20happened%3A%0A%0ADid%20the%20suggestions%20keep%20my%20meaning%20and%20tone%3F%0A">Email feedback ↗</a><p class="feedback-note">Opens your email app. Nothing is sent until you choose to send it.</p></details>
+        </section><footer class="workspace-footer"><span>Thoughtful writing starts with you.</span><span>AI can make mistakes. Review suggestions before using them.</span></footer><details class="beta-feedback"><summary>What felt confusing or didn’t work?</summary><p>Help shape GrammarFlow. Tell us what you tried, what you expected and what happened. Please leave out private writing, documents, passwords and account details.</p>
+        <form id="feedbackForm" class="feedback-form" novalidate>
+            <label for="feedbackKind">What is it about?</label>
+            <select id="feedbackKind" name="kind">
+                <option value="confusing">Something was confusing</option>
+                <option value="broken">Something did not work</option>
+                <option value="idea">I have an idea</option>
+                <option value="other">Something else</option>
+            </select>
+            <label for="feedbackMessage">Your message</label>
+            <textarea id="feedbackMessage" name="message" rows="5" maxlength="2000" required></textarea>
+            <label for="feedbackEmail">Your email (optional, only so we can reply)</label>
+            <input id="feedbackEmail" name="email" type="email" maxlength="254" autocomplete="email">
+            <div class="feedback-trap" aria-hidden="true"><label for="feedbackWebsite">Leave this empty</label><input id="feedbackWebsite" name="website" type="text" tabindex="-1" autocomplete="off"></div>
+            <button type="submit" id="feedbackSend">Send feedback</button>
+            <p id="feedbackStatus" class="feedback-note" role="status" aria-live="polite"></p>
+        </form>
+        <p class="feedback-note">We save your message, and your email if you add it. We use them only to improve GrammarFlow and to reply.</p></details>
 
         <!-- TEXT MODE CONTAINER -->
         
@@ -845,6 +862,7 @@ Paste an email, an essay or a paragraph here." aria-label="Your draft"></textare
 <script src="dictation.js"></script>
 <script src="teleprompter.js?v=1"></script>
     <script src="app-v16.js?v=28"></script>
+<script src="feedback.js?v=1"></script>
 <script src="head-pointer.js?v=17"></script>
 <script src="analytics.js?v=1" defer></script>
 

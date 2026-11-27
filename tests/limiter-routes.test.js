@@ -40,7 +40,7 @@ test('the database check sits behind the global limiter and remembers its answer
 
 test('every route in the routers has a rate limiter of its own or sits behind the global one', () => {
     // Routes that run an AI model, send mail or touch history must name a limiter in their own registration.
-    const own = /(aiLimiter|docLimiter|readLimiter|authLimiter|dictationLimiter|executionLimiter)/;
+    const own = /(aiLimiter|docLimiter|readLimiter|authLimiter|dictationLimiter|executionLimiter|feedbackLimiter)/;
     const exempt = new Set(['/sync', '/config']); // /sync is behind the global limiter and only reads the session
     let checked = 0;
     for (const file of ['src/routes/ai.routes.js', 'src/routes/auth.routes.js']) {

@@ -214,7 +214,7 @@ const readLimiter = rateLimit({
 
 // Routes that have their own limiter, so the global one must not count them twice.
 const SELF_LIMITED = ['/rewrite', '/grammar-fix', '/suggestions', '/autocomplete', '/analyze-realtime', '/analyze-smart',
-    '/process-document', '/history', '/job', '/dev-editor/assist', '/dev-editor/execute'];
+    '/process-document', '/history', '/job', '/dev-editor/assist', '/dev-editor/execute', '/feedback'];
 // Probes that must never be throttled. Match the exact path only: a query string such as "?x=/health" is not part of it.
 const UNLIMITED = ['/api/v1/health'];
 function skipGlobalLimit(req) {
@@ -237,6 +237,11 @@ const globalSafetyLimiter = rateLimit({
 
 module.exports = {
     skipGlobalLimit,
+    // five messages in ten minutes: plenty for a person, useless for flooding the database
+    feedbackLimiter: rateLimit({
+        windowMs: 10 * 60 * 1000, limit: 5, standardHeaders: true, legacyHeaders: false,
+        store: new SlidingWindowStore(10 * 60 * 1000), keyGenerator: req => getRateLimitKey(req, 'feedback'), handler: limitReachedHandler
+    }),
     executionLimiter: rateLimit({
         windowMs:60000,limit:10,standardHeaders:true,legacyHeaders:false,
         store:new SlidingWindowStore(60000),keyGenerator:req=>getRateLimitKey(req,'execution'),handler:limitReachedHandler
