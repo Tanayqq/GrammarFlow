@@ -72,3 +72,9 @@ The API deletes old history on its own: guests' entries after `HISTORY_GUEST_DAY
 ## Not-found pages on Vercel
 
 `.vercelignore` hides `package.json` and `package-lock.json` from Vercel. With them visible, Vercel answered unknown addresses with the homepage and a success code; with them hidden, it serves `public/404.html` with a 404. Keep the Vercel build free of npm packages, or find another fix before removing the ignore file.
+
+## Database security and hand-applied migrations
+
+Every table in `public` must have row level security on, because Supabase exposes that schema through its web API. A new table needs `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;` in its migration (a test checks this). Do not add policies unless the browser really needs direct access.
+
+The Render build does not run migrations. `20261128000000_add_feedback` and `20261128000100_rls` were run by hand in the Supabase SQL editor on 2026-11-28, so Prisma has no record of them. Before ever running `prisma migrate deploy` against production, mark both as applied with `npx prisma migrate resolve --applied <name>`.

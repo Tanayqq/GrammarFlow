@@ -123,3 +123,13 @@ test('text typed while the message is sending is not erased', async () => {
     assert.equal(p.el('feedbackMessage').value, 'First message, and one more thing');
 });
 
+test('every table the app has is closed to the Supabase web API by a migration', () => {
+    const { readdirSync } = require('node:fs');
+    const dir = path.join(__dirname, '..', 'prisma', 'migrations');
+    const sql = readdirSync(dir, { withFileTypes: true }).filter(e => e.isDirectory()).map(e => read(`prisma/migrations/${e.name}/migration.sql`)).join('\n');
+    const models = [...read('prisma/schema.prisma').matchAll(/^model (\w+) \{/gm)].map(m => m[1]);
+    assert.ok(models.length >= 4);
+    for (const model of models) assert.match(sql, new RegExp(`ALTER TABLE "${model}" ENABLE ROW LEVEL SECURITY;`), `${model}: add row level security in its migration`);
+    assert.doesNotMatch(sql, /DISABLE ROW LEVEL SECURITY|CREATE POLICY/i);
+});
+
